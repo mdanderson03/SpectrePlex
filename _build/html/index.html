@@ -1,0 +1,266 @@
+
+<!DOCTYPE html>
+
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Welcome to AutoCIF’s documentation! &#8212; AutoCIF 1.0 documentation</title>
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css" />
+    <link rel="stylesheet" type="text/css" href="_static/alabaster.css" />
+    <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
+    <script src="_static/jquery.js"></script>
+    <script src="_static/underscore.js"></script>
+    <script src="_static/doctools.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="GitHub" href="modules.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <div class="section" id="module-autocif">
+<span id="welcome-to-autocif-s-documentation"></span><h1>Welcome to AutoCIF’s documentation!<a class="headerlink" href="#module-autocif" title="Permalink to this headline">¶</a></h1>
+<dl class="py class">
+<dt class="sig sig-object py" id="autocif.cycif">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">autocif.</span></span><span class="sig-name descname"><span class="pre">cycif</span></span><a class="headerlink" href="#autocif.cycif" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="py method">
+<dt class="sig sig-object py" id="autocif.cycif.auto_focus">
+<span class="sig-name descname"><span class="pre">auto_focus</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#autocif.cycif.auto_focus" title="Permalink to this definition">¶</a></dt>
+<dd><p>Runs entire auto focus algorithm in current XY position. Gives back predicted
+in focus z position via focus_score method which is the Brenner score.</p>
+<dl class="simple">
+<dt>Args:</dt><dd><p>None</p>
+</dd>
+<dt>Returns:</dt><dd><p>ideal_z (float)</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="autocif.cycif.autofocus_fit">
+<span class="sig-name descname"><span class="pre">autofocus_fit</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">brenner</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#autocif.cycif.autofocus_fit" title="Permalink to this definition">¶</a></dt>
+<dd><p>Takes focus scores and z and fits data with gaussian. Gives back z position of the fitted gaussian’s middle
+which is the ideal/ in focus z plane</p>
+<dl class="simple">
+<dt>Args:</dt><dd><p>brenner (float), list that contains pairs of [focus_score, z]</p>
+</dd>
+<dt>Results:</dt><dd><p>ideal_z (float)</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="autocif.cycif.focus">
+<span class="sig-name descname"><span class="pre">focus</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">image</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">metadata</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#autocif.cycif.focus" title="Permalink to this definition">¶</a></dt>
+<dd><p>Method that hook from autofocus image acquistion calls. It takes image, calculates a focus score for it
+via focus_score method and exports a list that contains both the focus score and the z position it was taken at</p>
+<dl class="simple">
+<dt>Args:</dt><dd><p>image (numpy array),
+metadata (unknown)</p>
+</dd>
+<dt>Returns:</dt><dd><p>Nothing</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="autocif.cycif.focus_score">
+<span class="sig-name descname"><span class="pre">focus_score</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">image</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#autocif.cycif.focus_score" title="Permalink to this definition">¶</a></dt>
+<dd><p>Calculates focus score with Brenners algorithm.</p>
+<dl class="simple">
+<dt>Args:</dt><dd><p>image (numpy array)</p>
+</dd>
+<dt>Returns:</dt><dd><p>focus score (float)</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="autocif.cycif.gauss">
+<span class="sig-name descname"><span class="pre">gauss</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">A</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">x0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sig</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">y0</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#autocif.cycif.gauss" title="Permalink to this definition">¶</a></dt>
+<dd><p>gaussian function that gives y value back when given all parameters including x.</p>
+<dl class="simple">
+<dt>Args:</dt><dd><p>x (float),
+A (float),
+X0 (float),
+sig (float),
+y0 (float)</p>
+</dd>
+<dt>Returns:</dt><dd><p>y (float)</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="autocif.cycif.syr_obj_switch">
+<span class="sig-name descname"><span class="pre">syr_obj_switch</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">state</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#autocif.cycif.syr_obj_switch" title="Permalink to this definition">¶</a></dt>
+<dd><p>Switch stage from objective to syringe,
+0 = objective
+1 = syringe</p>
+<dl class="simple">
+<dt>Args:</dt><dd><p>state (int)</p>
+</dd>
+<dt>Returns:</dt><dd><p>nothing</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="autocif.arduino">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">autocif.</span></span><span class="sig-name descname"><span class="pre">arduino</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">com_address</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">baudrate</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">timeout</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#autocif.arduino" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="py method">
+<dt class="sig sig-object py" id="autocif.arduino.order_execute">
+<span class="sig-name descname"><span class="pre">order_execute</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">orders</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#autocif.arduino.order_execute" title="Permalink to this definition">¶</a></dt>
+<dd><p>input list of serial codes for arduino and executes them one at a time, left to right. See serial command decoder for info. Also, for arduino object,
+it is something of the form: serial.Serial(port=’COM5’, baudrate=9600, timeout=5)</p>
+<dl class="simple">
+<dt>Args:</dt><dd><p>orders (int)</p>
+</dd>
+<dt>Returns:</dt><dd><p>Nothing</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="autocif.arduino.post_acquistion_cycle">
+<span class="sig-name descname"><span class="pre">post_acquistion_cycle</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#autocif.arduino.post_acquistion_cycle" title="Permalink to this definition">¶</a></dt>
+<dd><blockquote>
+<div><p>What post_acquistion_cycle is doing
+1. move stage underneath pipettor and raise objective out of pool|
+2. drain chamber|
+3. bleach cycle|
+4. waterfall wash 1 times|
+5. wait 5 mionutes|
+6. waterfall wash 1 times|
+7. stain (calibrate syringe, prime, dispense and unprime)|
+8. close lid|
+9. incubate stain for 45 minutes|
+10. open lid|
+11. fill chamber w/ PBS|
+12. place objective into pool and move over tissue|</p>
+</div></blockquote>
+<dl class="simple">
+<dt>Args:</dt><dd><p>syringe_num (int), 0-7 of what syringe is to be used to stain in next cycle</p>
+</dd>
+<dt>Returns:</dt><dd><p>Nothing</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="autocif.arduino.prim_secondary_cycle">
+<span class="sig-name descname"><span class="pre">prim_secondary_cycle</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">prim_syringe_num</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">secondary_syringe_num</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#autocif.arduino.prim_secondary_cycle" title="Permalink to this definition">¶</a></dt>
+<dd><p>First cycle of CyCIF consists of primary and secondaries.</p>
+<dl class="simple">
+<dt>Args:</dt><dd><p>prim_syringe_num (int)|
+secondary_syringe_num (int)</p>
+</dd>
+<dt>Returns:</dt><dd><p>Nothing</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<div class="toctree-wrapper compound">
+<p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="modules.html">GitHub</a><ul class="simple">
+</ul>
+</li>
+</ul>
+</div>
+</div>
+<div class="section" id="indices-and-tables">
+<h1>Indices and tables<a class="headerlink" href="#indices-and-tables" title="Permalink to this headline">¶</a></h1>
+<ul class="simple">
+<li><p><a class="reference internal" href="genindex.html"><span class="std std-ref">Index</span></a></p></li>
+<li><p><a class="reference internal" href="py-modindex.html"><span class="std std-ref">Module Index</span></a></p></li>
+<li><p><a class="reference internal" href="search.html"><span class="std std-ref">Search Page</span></a></p></li>
+</ul>
+</div>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="#">AutoCIF</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="modules.html">GitHub</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="#">Documentation overview</a><ul>
+      <li>Next: <a href="modules.html" title="next chapter">GitHub</a></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>$('#searchbox').show(0);</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2022, MD Anderson, Jeffery La.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 4.4.0</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+      |
+      <a href="_sources/index.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>
