@@ -2,7 +2,6 @@ from pycromanager import Bridge, Acquisition, multi_d_acquisition_events, Datase
 import numpy as np
 import matplotlib.pyplot as plt
 import math
-from tifffile import imread, imwrite
 import os
 import time
 from scipy import stats
@@ -12,15 +11,15 @@ from scipy.optimize import curve_fit
 import pandas as pd
 
 
-'''run autocif microscope'''
-
 class cycif:
 
-    bridge = Bridge()
-    core = bridge.core()
+    #bridge = Bridge()
+    #core = bridge.core()
     z_range = [5800, 5900, 10] #[z start, z end, z step]
 
+    def __init__(self):
 
+        return
 
 
 
@@ -50,8 +49,18 @@ class cycif:
         xy_pos = list((x_middle, y_middle))
         return xy_pos
 
-    def syr_obj_switch(state):
-        '''0 = objective, 1 = syringe'''
+    def syr_obj_switch(self, state):
+        '''
+        Switch stage from objective to syringe,
+        0 = objective
+        1 = syringe
+
+        Args:
+            state (int)
+
+        Returns:
+            nothing
+        '''
         core = cycif.core
         diff_vec_x = -92000
         diff_vec_y = 7000
@@ -76,52 +85,22 @@ class cycif:
 
         return
 
-    def order_execute(orders,arduino):  # input list of serial codes for arduino and executes them one at a time, left to right. See serial command decoder for info.
-        for order in orders:
-            exit = 1
-            command = str(order)
-            command = command.encode()
-            arduino.write(command)
-            while exit != 0:  # this part reads the finished command from arduino to know that the entered command was fully executed
-                exit = arduino.readline()
-                exit = exit.decode()
-                try:
-                    exit = int(exit)
-                except:
-                    exit = 1
-        return
 
-    def prim_secondary_cycle(prim_syringe_num, secondary_syringe_num, arduino):
-        prim_syringe_command = str(str(1) + str(prim_syringe_num))
-        second_syringe_command = str(str(1) + str(secondary_syringe_num))
-        cycif.syr_obj_switch(1)
-        list_of_orders = [70, prim_syringe_command, 21, 34, 20, 61]
-        cycif.order_execute(list_of_orders, arduino)
-        time.sleep(2700)
-        list_of_orders = [49, 71, 85, 70, 49, 60, second_syringe_command, 21, 34, 20, 61]
-        cycif.order_execute(list_of_orders, arduino)
-        time.sleep(2700)
-        list_of_orders = [49, 71, 85, 70, 49, 60, 71]
-        cycif.order_execute(list_of_orders, arduino)
-        cycif.syr_obj_switch(0)
-
-        return
-
-    def post_acquistion_cycle(syringe_num):
-        syringe_command = int(str(1) + str(syringe_num))
-        cycif.syr_obj_switch(1)
-        list_of_orders = [70, 53, 49, 49, 49, syringe_command, 21, 32, 20, 61]
-        cycif.order_execute(list_of_orders)
-        time.sleep(2700)
-        list_of_orders = [49, 49, 49, 60, 71]
-        cycif.order_execute(list_of_orders)
-        cycif.syr_obj_switch(0)
-
-        return
 
 
 ############ All in section are functions for the autofocus function
-    def focus(image, metadata):
+    def focus(self, image, metadata):
+        '''
+        Method that hook from autofocus image acquistion calls. It takes image, calculates a focus score for it
+        via focus_score method and exports a list that contains both the focus score and the z position it was taken at
+
+        Args:
+            image (numpy array),
+            metadata (unknown)
+
+        Returns:
+            Nothing
+        '''
         # append z
         z = f_start + metadata['Axes']['z'] * f_step  ### is z change in z here?
 
@@ -141,7 +120,16 @@ class cycif:
 
         return
 
-    def focus_score(image, z):
+    def focus_score(self, image):
+        '''
+        Calculates focus score with Brenners algorithm.
+
+        Args:
+            image (numpy array)
+
+        Returns:
+            focus score (float)
+        '''
         # focus score using Brenner's score function
         # Note: Uniform background is a bit mandatory
         a = image[2:, :]
@@ -153,14 +141,37 @@ class cycif:
         # check to see if this works. and it does.
         # print(f_score_shadow)
         # print(z)
-        return f_score_shadow, z
+        return f_score_shadow
 
-    def gauss(x, A, x0, sig, y0):
+    def gauss(self, x, A, x0, sig, y0):
+        '''
+        gaussian function that gives y value back when given all parameters including x.
+
+        Args:
+            x (float),
+            A (float),
+            X0 (float),
+            sig (float),
+            y0 (float)
+
+        Returns:
+            y (float)
+        '''
         # fit to a gaussian
         y = y0 + (A * np.exp(-((x - x0) / sig) ** 2))
         return y
 
-    def autofocus_fit():
+    def autofocus_fit(self, brenner):
+        '''
+        Takes focus scores and z and fits data with gaussian. Gives back z position of the fitted gaussian's middle
+        which is the ideal/ in focus z plane
+
+        Args:
+            brenner (float), list that contains pairs of [focus_score, z]
+
+        Results:
+            ideal_z (float)
+        '''
         brenner_temp = np.array(brenner)  # brenner's a global variable. there's no reason to re-call it
         f_score_temp = brenner_temp[:, 0]
         z = brenner_temp[:, 1]
@@ -193,7 +204,17 @@ class cycif:
         plt.show()
         return parameters[1]
 #################################################
-    def auto_focus():
+    def auto_focus(self):
+        '''
+        Runs entire auto focus algorithm in current XY position. Gives back predicted
+        in focus z position via focus_score method which is the Brenner score.
+
+        Args:
+            None
+
+        Returns:
+            ideal_z (float)
+        '''
 
         brenner = [] #need to test, may pose issue here outside of focus function
 
@@ -214,23 +235,112 @@ class cycif:
         return z_ideal
 
 
-'''
-        What post_acquistion_cycle is doing
-        1. move stage underneath pipettor and raise objective out of pool
-        2. drain chamber
-        3. bleach cycle
-        4. waterfall wash 1 times
-        5. wait 5 mionutes
-        6. waterfall wash 1 times
-        7. stain (calibrate syringe, prime, dispense and unprime)
-        8. close lid
-        9. incubate stain for 45 minutes
-        10. open lid
-        11. fill chamber w/ PBS
-        12. place objective into pool and move over tissue 
-'''
 
 
+class arduino:
 
+    def __init__(self, com_address, baudrate, timeout):
+        '''
+        Establishes connection to arduino
+
+        Args:
+            com_address(int),
+            baudrate (int),
+            timeout (int)
+
+        Returns:
+            Nothing
+        '''
+
+        connection = 1
+
+        return connection
+
+    def order_execute(self, orders):
+        '''
+        input list of serial codes for arduino and executes them one at a time, left to right. See serial command decoder for info. Also, for arduino object,
+        it is something of the form: serial.Serial(port='COM5', baudrate=9600, timeout=5)
+
+        Args:
+            orders (int)
+
+        Returns:
+            Nothing
+        '''
+        # input list of serial codes for arduino and executes them one at a time, left to right. See serial command decoder for info.
+        for order in orders:
+            exit = 1
+            command = str(order)
+            command = command.encode()
+            arduino.write(command)
+            while exit != 0:  # this part reads the finished command from arduino to know that the entered command was fully executed
+                exit = arduino.readline()
+                exit = exit.decode()
+                try:
+                    exit = int(exit)
+                except:
+                    exit = 1
+        return
+
+    def prim_secondary_cycle(self, prim_syringe_num, secondary_syringe_num):
+        '''
+        First cycle of CyCIF consists of primary and secondaries.
+
+        Args:
+            prim_syringe_num (int)|
+            secondary_syringe_num (int)
+
+        Returns:
+            Nothing
+
+        '''
+        prim_syringe_command = str(str(1) + str(prim_syringe_num))
+        second_syringe_command = str(str(1) + str(secondary_syringe_num))
+        cycif.syr_obj_switch(1)
+        list_of_orders = [70, prim_syringe_command, 21, 34, 20, 61]
+        cycif.order_execute(list_of_orders, arduino)
+        time.sleep(2700)
+        list_of_orders = [49, 71, 85, 70, 49, 60, second_syringe_command, 21, 34, 20, 61]
+        cycif.order_execute(list_of_orders, arduino)
+        time.sleep(2700)
+        list_of_orders = [49, 71, 85, 70, 49, 60, 71]
+        cycif.order_execute(list_of_orders, arduino)
+        cycif.syr_obj_switch(0)
+
+        return
+
+    def post_acquistion_cycle(syringe_num):
+
+        '''
+                What post_acquistion_cycle is doing
+                1. move stage underneath pipettor and raise objective out of pool|
+                2. drain chamber|
+                3. bleach cycle|
+                4. waterfall wash 1 times|
+                5. wait 5 mionutes|
+                6. waterfall wash 1 times|
+                7. stain (calibrate syringe, prime, dispense and unprime)|
+                8. close lid|
+                9. incubate stain for 45 minutes|
+                10. open lid|
+                11. fill chamber w/ PBS|
+                12. place objective into pool and move over tissue|  
+
+        Args:
+            syringe_num (int), 0-7 of what syringe is to be used to stain in next cycle
+
+        Returns:
+             Nothing
+        '''
+        syringe_command = int(str(1) + str(syringe_num))
+        cycif.syr_obj_switch(1)
+        list_of_orders = [70, 53, 49, 49, 49, syringe_command, 21, 32, 20, 61]
+        cycif.order_execute(list_of_orders)
+        time.sleep(2700)
+        list_of_orders = [49, 49, 49, 60, 71]
+        cycif.order_execute(list_of_orders)
+        cycif.syr_obj_switch(0)
+
+        return
 
 
