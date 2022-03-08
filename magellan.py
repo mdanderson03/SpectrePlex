@@ -5,9 +5,10 @@ core = bridge.get_core()
 magellan = bridge.get_magellan()
 
 
-surface = magellan.get_surface('New Surface 1')
 
-def tile_xy_pos(surface):  #input is magellan surface, output is dictionary with x and y terms
+
+def tile_xy_pos():  #input is magellan surface, output is dictionary with x and y terms
+    surface = magellan.get_surface('New Surface 1')
     num = surface.get_num_positions()
     xy = surface.get_xy_positions()
     surface_points_xy = {}

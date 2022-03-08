@@ -30,5 +30,5 @@ class arduino:
 
 
 connection = arduino(4,5,6)
-connection.sample(4)
+connection.sample(5)
 
