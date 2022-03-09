@@ -5,23 +5,18 @@ import math
 import os
 import time
 from scipy import stats
-#from skimage import io
+from skimage import io
 from scipy.io import loadmat
 from scipy.optimize import curve_fit
 import pandas as pd
+import serial
 
 
 class cycif:
 
-    #bridge = Bridge()
-    #core = bridge.core()
-
-
     def __init__(self):
 
         return
-
-
 
     def tissue_center(mag_surface):
         surface_points = {}
@@ -83,11 +78,8 @@ class cycif:
 
         return
 
-
-
-
 ############ All in section are functions for the autofocus function
-    def focus(self, image, metadata):
+    def image_process_hook(self, image, metadata):
         '''
         Method that hooks from autofocus image acquistion calls. It takes image, calculates a focus score for it
         via focus_score method and exports a list that contains both the focus score and the z position it was taken at
@@ -97,22 +89,12 @@ class cycif:
 
         :return: Nothing
         '''
-        # append z
-        z = f_start + metadata['Axes']['z'] * f_step  ### is z change in z here?
 
-        # focus_score(image,z) outputs f_score and z
-        # focus_score(image, z)
-
-        # image in numpy array and z in integer with micron units
-        # output should something like this:
-        # [[fscore1,z1],[fscore2,z2],...]
-        brenner.append(cycif.focus_score(image, z))
-
-        # null the image to save memory
-        # plt.imshow(image)
-        # plt.show()
-        # image[:100, :100] = 0
+        z = metadata.pop('ZPosition_um_Intended') # moves up while taking z stack
+        image_focus_score = self.focus_score(image)
+        brenner.append([image_focus_score, z])
         image[:, :] = []
+
 
         return
 
@@ -125,7 +107,6 @@ class cycif:
         :return: focus score for image
         :rtype: float
         '''
-        # focus score using Brenner's score function
         # Note: Uniform background is a bit mandatory
         a = image[2:, :]
         b = image[:-2, :]
@@ -133,9 +114,6 @@ class cycif:
         c = c * c
         f_score_shadow = c.sum()
 
-        # check to see if this works. and it does.
-        # print(f_score_shadow)
-        # print(z)
         return f_score_shadow
 
     def gauss(self, x, A, x0, sig, y0):
@@ -152,7 +130,7 @@ class cycif:
         :rtype: float
 
         '''
-        # fit to a gaussian
+
         y = y0 + (A * np.exp(-((x - x0) / sig) ** 2))
         return y
 
@@ -170,10 +148,6 @@ class cycif:
         f_score_temp = brenner_temp[:, 0]
         z = brenner_temp[:, 1]
 
-        # print(brenner_temp)
-        # print(f_score_temp)
-        # print(z)
-
         # curve fitted with bounds relating to the inputs
         # let's force it such that z_ideal is within our range.
         parameters, covariance = curve_fit(gauss, z, f_score_temp,
@@ -185,17 +159,17 @@ class cycif:
         # bounds = [(min(f_score_temp) / 4, min(z) / 2, f_start / 2, 0),
         #           (max(f_score_temp) * 4, max(z) * 2, f_start * 2, max(f_score_temp))])
 
-        print('Z focus is located at: (microns)')
-        print(parameters[1])
+        #print('Z focus is located at: (microns)')
+        #print(parameters[1])
 
         # for a sanity check, let's plot this
-        fit_f_score_gauss = cycif.gauss(z, *parameters)
-        plt.plot(z, f_score_temp, 'o', label='data')
-        plt.plot(z, fit_f_score_gauss, '-', label='fit')
-        plt.title(['fstart,fend,fstep: ', str(f_start), ' ', str(f_end), ' ', str(f_step)])
-        plt.legend()
-        plt.grid()
-        plt.show()
+        #fit_f_score_gauss = cycif.gauss(z, *parameters)
+        #plt.plot(z, f_score_temp, 'o', label='data')
+        #plt.plot(z, fit_f_score_gauss, '-', label='fit')
+        #plt.title(['fstart,fend,fstep: ', str(f_start), ' ', str(f_end), ' ', str(f_step)])
+        #plt.legend()
+        #plt.grid()
+        #plt.show()
         return parameters[1]
 #################################################
     def auto_focus(self, z_range):
@@ -208,13 +182,16 @@ class cycif:
         :return: z coordinate for in focus plane
         :rtype: float
         '''
+        global brenner
+        brenner = []
+
 
         brenner = [] #need to test, may pose issue here outside of focus function
 
         with Acquisition(directory='C:/Users/CyCIF PC/Desktop/test_images',
                          name='z_stack_DAPI',
                          show_display=False,
-                         image_process_fn=cycif.focus) as acq:
+                         image_process_fn=self.image_process_hook) as acq:
             events = multi_d_acquisition_events(channel_group='Color',
                                                 channels=['DAPI'],
                                                 z_start=z_range[0],
@@ -223,7 +200,7 @@ class cycif:
                                                 order='zc')
             acq.acquire(events)
 
-        z_ideal = cycif.autofocus_fit()
+        z_ideal = self.autofocus_fit()
 
         return z_ideal
 
@@ -237,7 +214,7 @@ class cycif:
         :return: XY coordinates of the center of each tile from micro-magellan surface
         :rtype: dictionary {{x:(int)}, {y:(int)}}
         '''
-        surface = magellan.get_surface(surface_name)
+        surface = self.get_surface(surface_name)
         num = surface.get_num_positions()
         xy = surface.get_xy_positions()
         tile_points_xy = {}
@@ -255,12 +232,13 @@ class cycif:
 
         return tile_points_xy
 
-    def focus_tile(self, tile_points_xy):
+    def focus_tile(self, tile_points_xy, core):
         '''
         Takes dictionary of XY coordinates, moves to each of them, executes autofocus algorithm from method
         auto_focus and outputs the paired in focus z coordinate
 
         :param dictionary tile_points_xy: dictionary containing all XY coordinates. In the form: {{x:(int)}, {y:(int)}}
+        :param MMCore_Object core: Object made from Bridge.core()
 
         :return: XZY points where XY are stage coords and Z is in focus coordinate. {{x:(int)}, {y:(int)}, {z:(float)}}
         :rtype: dictionary
@@ -289,8 +267,8 @@ class cycif:
 
         :return: Nothing
         '''
-        magellan.create_surface(new_surface_name)  # need to make naming convention
-        focused_surface = magellan.get_surface(new_surface_name)
+        self.create_surface(new_surface_name)  # need to make naming convention
+        focused_surface = self.get_surface(new_surface_name)
         num = len(surface_points_xyz['x'])
         for q in range(0, num):
             focused_surface.add_point(surface_points_xyz['x'][q], surface_points_xyz['y'][q], surface_points_xyz['z'][q])
@@ -318,9 +296,9 @@ class cycif:
 
         :return: Nothing
         '''
-        magellan.create_acquisition_settings()
+        self.create_acquisition_settings()
 
-        acq_settings = magellan.get_acquisition_settings(2)
+        acq_settings = self.get_acquisition_settings(2)
         acq_settings.set_acquisition_name(surface_name)  # make same name as in focused_surface_generate function (all below as well too)
         acq_settings.set_acquisition_space_type('2d_surface')
         acq_settings.set_xy_position_source(surface_name)
@@ -336,7 +314,7 @@ class cycif:
         acq_settings.set_channel_exposure('A647', int(exposure[3]))  # channel_name, exposure in ms
         acq_settings.set_channel_z_offset('DAPI', 0)  # channel_name, offset in um
 
-    def surf2focused_surf(self, z_range, surface_name, new_focus_surface_name):
+    def surf2focused_surf(self, z_range, surface_name, new_focus_surface_name, core):
         '''
         Takes generated micro-magellan surface with name: surface_name and generates new micro-magellan surface with name:
         new_focus_surface_name and makes an acquistion event after latter surface and auto exposes DAPI, A488, A555 and A647 channels
@@ -348,10 +326,10 @@ class cycif:
         :return: Nothing
         '''
         tile_surface_xy = self.tile_xy_pos(surface_name)  # pull center tile coords from manually made surface
-        surface_points_xyz = self.focus_tile(tile_surface_xy, z_range)  # go to each tile coord and autofocus and populate associated z with result
+        surface_points_xyz = self.focus_tile(tile_surface_xy, z_range, core)  # go to each tile coord and autofocus and populate associated z with result
         self.focused_surface_generate(surface_points_xyz, new_focus_surface_name)
-        exposure_array = microscope.auto_expose()
-        microscope.focused_surface_acq_settings(exposure_array, new_focus_surface_name)
+        exposure_array = core.auto_expose()
+        core.focused_surface_acq_settings(exposure_array, new_focus_surface_name)
 
 
 class arduino:
@@ -419,7 +397,7 @@ class arduino:
 
         return
 
-    def post_acquistion_cycle(syringe_num):
+    def post_acquistion_cycle(self, syringe_num):
         '''
         Normal directly conjugated cycle. It bleaches sample, restains and washes sample.
 
