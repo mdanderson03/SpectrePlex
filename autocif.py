@@ -11,12 +11,21 @@ from scipy.optimize import curve_fit
 import pandas as pd
 import serial
 
+import autocif
+
+
+class brenner:
+    def __init__(self):
+        brenner.value = []
+        return
 
 class cycif:
 
     def __init__(self):
 
         return
+
+
 
     def tissue_center(mag_surface):
         surface_points = {}
@@ -90,10 +99,12 @@ class cycif:
         :return: Nothing
         '''
 
+
         z = metadata.pop('ZPosition_um_Intended') # moves up while taking z stack
         image_focus_score = self.focus_score(image)
-        brenner.append([image_focus_score, z])
+        brenner.value.append([image_focus_score, z])
         image[:, :] = []
+
 
 
         return
@@ -116,25 +127,9 @@ class cycif:
 
         return f_score_shadow
 
-    def gauss(self, x, A, x0, sig, y0):
-        '''
-        gaussian function y = y0 + (A * exp(-((x - x0) / sig) ** 2)) that outputs y value for x input
 
-        :param float x: x coordinate
-        :param float A: Coefficent
-        :param float xo: Gaussian shifted center
-        :param float sig: Gaussian width
-        :param float y0: y axis displacement
 
-        :return: y
-        :rtype: float
-
-        '''
-
-        y = y0 + (A * np.exp(-((x - x0) / sig) ** 2))
-        return y
-
-    def autofocus_fit(self, brenner):
+    def autofocus_fit(self):
         '''
         Takes focus scores and its associated z and fits data with gaussian. Gives back position of the fitted gaussian's middle
         (x0 parameter) which is the ideal/ in focus z plane
@@ -144,9 +139,16 @@ class cycif:
         :results: z coordinate for in focus plane
         :rtype: float
         '''
-        brenner_temp = np.array(brenner)  # brenner's a global variable. there's no reason to re-call it
-        f_score_temp = brenner_temp[:, 0]
-        z = brenner_temp[:, 1]
+
+        def gauss(x, A, x0, sig, y0):
+
+            y = y0 + (A * np.exp(-((x - x0) / sig) ** 2))
+            return y
+
+
+        f_score_temp = [l[0] for l in brenner.value[0:-1]]
+        z = [l[1] for l in brenner.value[0:-1]]
+
 
         # curve fitted with bounds relating to the inputs
         # let's force it such that z_ideal is within our range.
@@ -182,11 +184,10 @@ class cycif:
         :return: z coordinate for in focus plane
         :rtype: float
         '''
-        global brenner
-        brenner = []
 
+        brenner = autocif.brenner() # found using class for brenner was far superior to using it as a global variable.
+        # I had issues with the image process hook function not updating brenner as a global variable
 
-        brenner = [] #need to test, may pose issue here outside of focus function
 
         with Acquisition(directory='C:/Users/CyCIF PC/Desktop/test_images',
                          name='z_stack_DAPI',
