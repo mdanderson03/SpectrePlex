@@ -205,17 +205,18 @@ class cycif:
 
         return z_ideal
 
-    def tile_xy_pos(self, surface_name):
+    def tile_xy_pos(self, surface_name, magellan_object):
         '''
         imports previously generated micro-magellan surface with name surface_name and outputs
         the coordinates of the center of each tile from it.
 
         :param str surface_name: name of micro-magellan surface
+        :param object magellan_object: object created via = bridge.get_magellan()
 
         :return: XY coordinates of the center of each tile from micro-magellan surface
-        :rtype: dictionary {{x:(int)}, {y:(int)}}
+        :rtype: dictionary {{x:(float)}, {y:(float)}}
         '''
-        surface = self.get_surface(surface_name)
+        surface = magellan_object.get_surface(surface_name)
         num = surface.get_num_positions()
         xy = surface.get_xy_positions()
         tile_points_xy = {}
@@ -233,7 +234,7 @@ class cycif:
 
         return tile_points_xy
 
-    def focus_tile(self, tile_points_xy, core):
+    def focus_tile(self, tile_points_xy, z_range, core):
         '''
         Takes dictionary of XY coordinates, moves to each of them, executes autofocus algorithm from method
         auto_focus and outputs the paired in focus z coordinate
@@ -251,14 +252,14 @@ class cycif:
             new_y = tile_points_xy['y'][q]
             core.set_xy_position(new_x, new_y)
             time.sleep(0.25)  # wait long enough for stage to translate to new location
-            z_focused = self.auto_focus()  # here is where autofocus results go. = auto_focus()
+            z_focused = self.auto_focus(z_range)  # here is where autofocus results go. = auto_focus()
             z_temp.append(z_focused)
         tile_points_xy['z'] = z_temp
         surface_points_xyz = tile_points_xy
 
         return surface_points_xyz
 
-    def focused_surface_generate(self, surface_points_xyz, new_surface_name):  # only get 1/2 points anticipated, dont know why
+    def focused_surface_generate(self, surface_points_xyz, magellan_object, new_surface_name):  # only get 1/2 points anticipated, dont know why
         '''
         Generates new micro-magellan surface with name new_surface_name and uses all points in surface_points_xyz dictionary
         as interpolation points.
@@ -268,8 +269,8 @@ class cycif:
 
         :return: Nothing
         '''
-        self.create_surface(new_surface_name)  # need to make naming convention
-        focused_surface = self.get_surface(new_surface_name)
+        magellan_object.create_surface(new_surface_name)  # need to make naming convention
+        focused_surface = magellan_object.get_surface(new_surface_name)
         num = len(surface_points_xyz['x'])
         for q in range(0, num):
             focused_surface.add_point(surface_points_xyz['x'][q], surface_points_xyz['y'][q], surface_points_xyz['z'][q])
@@ -287,7 +288,7 @@ class cycif:
         exposure = np.array([100, 100, 100, 100])  # exposure time in milliseconds
         return exposure
 
-    def focused_surface_acq_settings(self, exposure, surface_name):
+    def focused_surface_acq_settings(self, exposure, original_surface_name, surface_name, magellan_object):
         '''
         Takes already generated micro-magellan surface with name surface_name, sets it as a 2D surface, what channel group
         to use, sets exposure levels for all 4 channels and where to make the savings directory.
@@ -297,12 +298,12 @@ class cycif:
 
         :return: Nothing
         '''
-        self.create_acquisition_settings()
+        magellan_object.create_acquisition_settings()
 
-        acq_settings = self.get_acquisition_settings(2)
+        acq_settings = magellan_object.get_acquisition_settings(1)
         acq_settings.set_acquisition_name(surface_name)  # make same name as in focused_surface_generate function (all below as well too)
         acq_settings.set_acquisition_space_type('2d_surface')
-        acq_settings.set_xy_position_source(surface_name)
+        acq_settings.set_xy_position_source(original_surface_name)
         acq_settings.set_surface(surface_name)
         acq_settings.set_bottom_surface(surface_name)
         acq_settings.set_top_surface(surface_name)
@@ -315,7 +316,7 @@ class cycif:
         acq_settings.set_channel_exposure('A647', int(exposure[3]))  # channel_name, exposure in ms
         acq_settings.set_channel_z_offset('DAPI', 0)  # channel_name, offset in um
 
-    def surf2focused_surf(self, z_range, surface_name, new_focus_surface_name, core):
+    def surf2focused_surf(self, z_range, surface_name, new_focus_surface_name, core, magellan_object):
         '''
         Takes generated micro-magellan surface with name: surface_name and generates new micro-magellan surface with name:
         new_focus_surface_name and makes an acquistion event after latter surface and auto exposes DAPI, A488, A555 and A647 channels
@@ -326,11 +327,11 @@ class cycif:
 
         :return: Nothing
         '''
-        tile_surface_xy = self.tile_xy_pos(surface_name)  # pull center tile coords from manually made surface
+        tile_surface_xy = self.tile_xy_pos(surface_name, magellan_object)  # pull center tile coords from manually made surface
         surface_points_xyz = self.focus_tile(tile_surface_xy, z_range, core)  # go to each tile coord and autofocus and populate associated z with result
-        self.focused_surface_generate(surface_points_xyz, new_focus_surface_name)
-        exposure_array = core.auto_expose()
-        core.focused_surface_acq_settings(exposure_array, new_focus_surface_name)
+        self.focused_surface_generate(surface_points_xyz, magellan_object, new_focus_surface_name)
+        exposure_array = self.auto_expose()
+        self.focused_surface_acq_settings(exposure_array, surface_name, new_focus_surface_name, magellan_object)
 
 
 class arduino:
