@@ -1,3 +1,4 @@
+import openpyxl
 from pycromanager import Bridge, Acquisition, multi_d_acquisition_events, Dataset
 import numpy as np
 import matplotlib.pyplot as plt
@@ -10,6 +11,7 @@ from scipy.io import loadmat
 from scipy.optimize import curve_fit
 import pandas as pd
 import serial
+from openpyxl import Workbook
 
 import autocif
 
@@ -99,11 +101,14 @@ class cycif:
         :return: Nothing
         '''
 
-
+        binning_size = 4
         z = metadata.pop('ZPosition_um_Intended') # moves up while taking z stack
+        image = image[::binning_size, ::binning_size]
         image_focus_score = self.focus_score(image)
         brenner.value.append([image_focus_score, z])
         image[:, :] = []
+
+
 
 
 
@@ -189,6 +194,7 @@ class cycif:
         # I had issues with the image process hook function not updating brenner as a global variable
 
 
+
         with Acquisition(directory='C:/Users/CyCIF PC/Desktop/test_images',
                          name='z_stack_DAPI',
                          show_display=False,
@@ -251,7 +257,7 @@ class cycif:
             new_x = tile_points_xy['x'][q]
             new_y = tile_points_xy['y'][q]
             core.set_xy_position(new_x, new_y)
-            time.sleep(0.25)  # wait long enough for stage to translate to new location
+            time.sleep(2)  # wait long enough for stage to translate to new location
             z_focused = self.auto_focus(z_range)  # here is where autofocus results go. = auto_focus()
             z_temp.append(z_focused)
         tile_points_xy['z'] = z_temp
@@ -285,7 +291,7 @@ class cycif:
         :return: exposure times: [dapi_exposure, a488_exposure, a555_exposure, a647_exposure]
         :rtype: numpy array
         '''
-        exposure = np.array([100, 100, 100, 100])  # exposure time in milliseconds
+        exposure = np.array([10, 100, 100, 100])  # exposure time in milliseconds
         return exposure
 
     def focused_surface_acq_settings(self, exposure, original_surface_name, surface_name, magellan_object):
