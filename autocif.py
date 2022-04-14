@@ -339,6 +339,28 @@ class cycif:
         exposure_array = self.auto_expose()
         self.focused_surface_acq_settings(exposure_array, surface_name, new_focus_surface_name, magellan_object)
 
+    def tilt_angle_chip(self, core):
+        x_0 = core.get_x_position()
+        y_0 = core.get_y_position()
+        z_0 = core.get_position(core.get_focus_device())
+        z_range= [z_0 - 10, z_0 + 10, 2]
+        corners_ideal_z = []
+        for x in range(0,2):
+            for y in range(0,2):
+                core.set_roi(x * 842, y * 493, 421, 246)
+                core.set_xy_position(x_0 - x * 636, y_0 - y * 372)
+                z_focused = self.auto_focus(z_range)  # here is where autofocus results go. = auto_focus()
+                corners_ideal_z.append(z_focused)
+                print(z_focused)
+        core.set_xy_position(x_0, y_0)
+        core.clear_roi()
+        angle_x = np.arctan([(corners_ideal_z[3] - corners_ideal_z[1]) + (corners_ideal_z[2] - corners_ideal_z[0])][0]/1272) * 1000 * 57.32 #angle in millidegrees
+        angle_y = np.arctan([(corners_ideal_z[1] - corners_ideal_z[0]) + (corners_ideal_z[3] - corners_ideal_z[2])][0]/ 1272) * 1000 * 57.32  # angle in millidegrees
+        print('angle X: ' + str(angle_x) + ' millidegrees', 'angle Y: ' + str(angle_y) + ' millidegrees')
+        print(corners_ideal_z)
+
+
+
 
 class arduino:
 
