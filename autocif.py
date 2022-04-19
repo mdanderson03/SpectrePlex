@@ -116,7 +116,9 @@ class cycif:
 
     def focus_score(self, image):
         '''
-        Calculates focus score on image with Brenners algorithm.
+        Calculates focus score on image with Brenners algorithm on downsampled image.
+
+        Image is downsampled by [binning_size x binning_size], where binning_size is currently hardcoded in.
 
         :param numpy image: single image from hooked from acquistion
 
@@ -124,8 +126,14 @@ class cycif:
         :rtype: float
         '''
         # Note: Uniform background is a bit mandatory
-        a = image[2:, :]
-        b = image[:-2, :]
+
+        # do binning. maybe set this as an input?
+        binning_size = 4
+        image_binned = image[::binning_size, ::binning_size]
+
+        # do Brenner score
+        a = image_binned[2:, :]
+        b = image_binned[:-2, :]
         c = a - b
         c = c * c
         f_score_shadow = c.sum()

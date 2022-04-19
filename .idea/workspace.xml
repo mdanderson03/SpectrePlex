@@ -1,9 +1,13 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="ChangeListManager">
+<<<<<<< Updated upstream
     <list default="true" id="d6b7f11d-cf95-483f-85a2-ffa62ee3beed" name="Changes" comment="">
       <change afterPath="$PROJECT_DIR$/experiments/4_14_22 ROI experiment/notes.txt" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+=======
+    <list default="true" id="0039ebed-0051-40bb-880c-104ae6dafd16" name="Changes" comment="">
+>>>>>>> Stashed changes
       <change beforePath="$PROJECT_DIR$/autocif.py" beforeDir="false" afterPath="$PROJECT_DIR$/autocif.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/test_run.py" beforeDir="false" afterPath="$PROJECT_DIR$/test_run.py" afterDir="false" />
     </list>
