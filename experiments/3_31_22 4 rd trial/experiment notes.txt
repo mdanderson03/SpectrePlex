@@ -1,3 +1,36 @@
 3-31-22 multiplex trial on autocif
 
 Used for stain order: 3_31_22 4 rd trial.excel
+
+1. Autofocus still cant seem to work well enough with binning camera
+2. Micromagellan initially seeds 4gb blocks for each level (13 in total) and then reduces from there. If you dont have the ehad room to accomodate that initially, it runs out of room and throws an error. 
+3. Works directly saving to drive, but takes about 10 minutes to do a 7 tile image.
+
+
+Appears to fool Brenner score in this specific image: brenner_fool.tif
+
+
+
+diagnostics:
+
+
+20220331 
+
+Does motor speed significantly affect image quality? 
+
+Micro-Magellan -> Device Property Browser
+
+XYStage:XY:31-AccelerationX-AC(ms)
+Value: 101
+XYStage:XY:31-AccelerationX-AC(ms)
+Value: 101
+
+note: maybe value is time it takes motor to reach max velocity?
+
+if one scrolls down the Device Property Browser:
+XYStage:XY:31-MotorSpeedX-S(mm/s)
+Value: 5.7458 [adjustable slide bar]
+XYStage:XY:31-MotorSpeedY-S(mm/s)
+Value: 5.7458 [adjustable slide bar]
+
+I take it that this is the max velocity. 

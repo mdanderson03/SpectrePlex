@@ -70,14 +70,36 @@
 <dt class="sig sig-object py" id="autocif.cycif">
 <em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">autocif.</span></span><span class="sig-name descname"><span class="pre">cycif</span></span><a class="headerlink" href="#autocif.cycif" title="Permalink to this definition"></a></dt>
 <dd><dl class="py method">
+<dt class="sig sig-object py" id="autocif.cycif.auto_expose">
+<span class="sig-name descname"><span class="pre">auto_expose</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#autocif.cycif.auto_expose" title="Permalink to this definition"></a></dt>
+<dd><p>Autoexposure algorithm. Currently, just sets each exposure to 100ms</p>
+<dl class="field-list simple">
+<dt class="field-odd">Param</dt>
+<dd class="field-odd"><p>Nothing</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>exposure times: [dapi_exposure, a488_exposure, a555_exposure, a647_exposure]</p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>numpy array</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
 <dt class="sig sig-object py" id="autocif.cycif.auto_focus">
-<span class="sig-name descname"><span class="pre">auto_focus</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#autocif.cycif.auto_focus" title="Permalink to this definition"></a></dt>
+<span class="sig-name descname"><span class="pre">auto_focus</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">z_range</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#autocif.cycif.auto_focus" title="Permalink to this definition"></a></dt>
 <dd><p>Runs entire auto focus algorithm in current XY position. Gives back predicted
 in focus z position via focus_score method which is the Brenner score.</p>
-<dl class="simple">
-<dt>Args:</dt><dd><p>None</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>z_range</strong> (<em>list</em><em>[</em><em>int</em><em>, </em><em>int</em><em>, </em><em>int</em><em>]</em>) – defines range and stepsize with [z start, z end, z step]</p>
 </dd>
-<dt>Returns:</dt><dd><p>ideal_z (float)</p>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>z coordinate for in focus plane</p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>float</p>
 </dd>
 </dl>
 </dd></dl>
@@ -85,12 +107,17 @@ in focus z position via focus_score method which is the Brenner score.</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="autocif.cycif.autofocus_fit">
 <span class="sig-name descname"><span class="pre">autofocus_fit</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">brenner</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#autocif.cycif.autofocus_fit" title="Permalink to this definition"></a></dt>
-<dd><p>Takes focus scores and z and fits data with gaussian. Gives back z position of the fitted gaussian’s middle
-which is the ideal/ in focus z plane</p>
-<dl class="simple">
-<dt>Args:</dt><dd><p>brenner (float), list that contains pairs of [focus_score, z]</p>
+<dd><p>Takes focus scores and its associated z and fits data with gaussian. Gives back position of the fitted gaussian’s middle
+(x0 parameter) which is the ideal/ in focus z plane</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>brenner</strong> (<em>list</em><em>[</em><em>float</em><em>, </em><em>float</em><em>]</em>) – list that contains pairs of [focus_score, z]</p>
 </dd>
-<dt>Results:</dt><dd><p>ideal_z (float)</p>
+<dt class="field-even">Results</dt>
+<dd class="field-even"><p>z coordinate for in focus plane</p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>float</p>
 </dd>
 </dl>
 </dd></dl>
@@ -98,13 +125,17 @@ which is the ideal/ in focus z plane</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="autocif.cycif.focus">
 <span class="sig-name descname"><span class="pre">focus</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">image</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">metadata</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#autocif.cycif.focus" title="Permalink to this definition"></a></dt>
-<dd><p>Method that hook from autofocus image acquistion calls. It takes image, calculates a focus score for it
+<dd><p>Method that hooks from autofocus image acquistion calls. It takes image, calculates a focus score for it
 via focus_score method and exports a list that contains both the focus score and the z position it was taken at</p>
-<dl class="simple">
-<dt>Args:</dt><dd><p>image (numpy array),
-metadata (unknown)</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>image</strong> (<em>numpy</em>) – single image from hooked from acquistion</p></li>
+<li><p><strong>metadata</strong> (<em>list</em><em>[</em><em>float</em><em>]</em>) – metadata for image</p></li>
+</ul>
 </dd>
-<dt>Returns:</dt><dd><p>Nothing</p>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>Nothing</p>
 </dd>
 </dl>
 </dd></dl>
@@ -112,11 +143,70 @@ metadata (unknown)</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="autocif.cycif.focus_score">
 <span class="sig-name descname"><span class="pre">focus_score</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">image</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#autocif.cycif.focus_score" title="Permalink to this definition"></a></dt>
-<dd><p>Calculates focus score with Brenners algorithm.</p>
-<dl class="simple">
-<dt>Args:</dt><dd><p>image (numpy array)</p>
+<dd><p>Calculates focus score on image with Brenners algorithm.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>image</strong> (<em>numpy</em>) – single image from hooked from acquistion</p>
 </dd>
-<dt>Returns:</dt><dd><p>focus score (float)</p>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>focus score for image</p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>float</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="autocif.cycif.focus_tile">
+<span class="sig-name descname"><span class="pre">focus_tile</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">tile_points_xy</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#autocif.cycif.focus_tile" title="Permalink to this definition"></a></dt>
+<dd><p>Takes dictionary of XY coordinates, moves to each of them, executes autofocus algorithm from method
+auto_focus and outputs the paired in focus z coordinate</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>tile_points_xy</strong> (<em>dictionary</em>) – dictionary containing all XY coordinates. In the form: {{x:(int)}, {y:(int)}}</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>XZY points where XY are stage coords and Z is in focus coordinate. {{x:(int)}, {y:(int)}, {z:(float)}}</p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>dictionary</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="autocif.cycif.focused_surface_acq_settings">
+<span class="sig-name descname"><span class="pre">focused_surface_acq_settings</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">exposure</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">surface_name</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#autocif.cycif.focused_surface_acq_settings" title="Permalink to this definition"></a></dt>
+<dd><p>Takes already generated micro-magellan surface with name surface_name, sets it as a 2D surface, what channel group
+to use, sets exposure levels for all 4 channels and where to make the savings directory.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>exposure</strong> (<em>numpy array</em>) – a numpy array of [dapi_exposure, a488_exposure, a555_exposure, a647_exposure] with exposure times in milliseconds</p></li>
+<li><p><strong>surface_name</strong> (<em>str</em>) – name of micro-magellan surface that is to be used as the space coordinates for this acquistion event</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>Nothing</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="autocif.cycif.focused_surface_generate">
+<span class="sig-name descname"><span class="pre">focused_surface_generate</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">surface_points_xyz</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">new_surface_name</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#autocif.cycif.focused_surface_generate" title="Permalink to this definition"></a></dt>
+<dd><p>Generates new micro-magellan surface with name new_surface_name and uses all points in surface_points_xyz dictionary
+as interpolation points.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>surface_points_xyz</strong> (<em>dictionary</em>) – all paired-wise points of XYZ where XY are stage coords and Z is in focus. {{x:(int)}, {y:(int)}, {z:(float)}}</p></li>
+<li><p><strong>new_surface_name</strong> (<em>str</em>) – name that generated surface will have</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>Nothing</p>
 </dd>
 </dl>
 </dd></dl>
@@ -124,15 +214,41 @@ metadata (unknown)</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="autocif.cycif.gauss">
 <span class="sig-name descname"><span class="pre">gauss</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">A</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">x0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sig</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">y0</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#autocif.cycif.gauss" title="Permalink to this definition"></a></dt>
-<dd><p>gaussian function that gives y value back when given all parameters including x.</p>
-<dl class="simple">
-<dt>Args:</dt><dd><p>x (float),
-A (float),
-X0 (float),
-sig (float),
-y0 (float)</p>
+<dd><p>gaussian function y = y0 + (A * exp(-((x - x0) / sig) ** 2)) that outputs y value for x input</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>x</strong> (<em>float</em>) – x coordinate</p></li>
+<li><p><strong>A</strong> (<em>float</em>) – Coefficent</p></li>
+<li><p><strong>xo</strong> (<em>float</em>) – Gaussian shifted center</p></li>
+<li><p><strong>sig</strong> (<em>float</em>) – Gaussian width</p></li>
+<li><p><strong>y0</strong> (<em>float</em>) – y axis displacement</p></li>
+</ul>
 </dd>
-<dt>Returns:</dt><dd><p>y (float)</p>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>y</p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>float</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="autocif.cycif.surf2focused_surf">
+<span class="sig-name descname"><span class="pre">surf2focused_surf</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">z_range</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">surface_name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">new_focus_surface_name</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#autocif.cycif.surf2focused_surf" title="Permalink to this definition"></a></dt>
+<dd><p>Takes generated micro-magellan surface with name: surface_name and generates new micro-magellan surface with name:
+new_focus_surface_name and makes an acquistion event after latter surface and auto exposes DAPI, A488, A555 and A647 channels</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>z_range</strong> (<em>tuple</em><em>[</em><em>int</em><em>, </em><em>int</em><em>, </em><em>int</em><em>]</em>) – defines range and stepsize with [z start, z end, z step]</p></li>
+<li><p><strong>surface_name</strong> (<em>str</em>) – Name of surface that center XY coords of tiles will be taken from</p></li>
+<li><p><strong>new_focus_surface_name</strong> (<em>str</em>) – Name of new surface that will be generated</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>Nothing</p>
 </dd>
 </dl>
 </dd></dl>
@@ -143,10 +259,30 @@ y0 (float)</p>
 <dd><p>Switch stage from objective to syringe,
 0 = objective
 1 = syringe</p>
-<dl class="simple">
-<dt>Args:</dt><dd><p>state (int)</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>state</strong> (<em>int</em>) – positional state of stage.</p>
 </dd>
-<dt>Returns:</dt><dd><p>nothing</p>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>Nothing</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="autocif.cycif.tile_xy_pos">
+<span class="sig-name descname"><span class="pre">tile_xy_pos</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">surface_name</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#autocif.cycif.tile_xy_pos" title="Permalink to this definition"></a></dt>
+<dd><p>imports previously generated micro-magellan surface with name surface_name and outputs
+the coordinates of the center of each tile from it.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>surface_name</strong> (<em>str</em>) – name of micro-magellan surface</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>XY coordinates of the center of each tile from micro-magellan surface</p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>dictionary {{x:(int)}, {y:(int)}}</p>
 </dd>
 </dl>
 </dd></dl>
@@ -155,16 +291,17 @@ y0 (float)</p>
 
 <dl class="py class">
 <dt class="sig sig-object py" id="autocif.arduino">
-<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">autocif.</span></span><span class="sig-name descname"><span class="pre">arduino</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">com_address</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">baudrate</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">timeout</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#autocif.arduino" title="Permalink to this definition"></a></dt>
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">autocif.</span></span><span class="sig-name descname"><span class="pre">arduino</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">com_address</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">baudrate</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">9600</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">timeout</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">5</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#autocif.arduino" title="Permalink to this definition"></a></dt>
 <dd><dl class="py method">
 <dt class="sig sig-object py" id="autocif.arduino.order_execute">
 <span class="sig-name descname"><span class="pre">order_execute</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">orders</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#autocif.arduino.order_execute" title="Permalink to this definition"></a></dt>
-<dd><p>input list of serial codes for arduino and executes them one at a time, left to right. See serial command decoder for info. Also, for arduino object,
-it is something of the form: serial.Serial(port=’COM5’, baudrate=9600, timeout=5)</p>
-<dl class="simple">
-<dt>Args:</dt><dd><p>orders (int)</p>
+<dd><p>input list of commands for arduino and executes them one at a time, left to right. See serial command decoder file for info.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>orders</strong> (<em>list</em><em>[</em><em>int</em><em>, </em><em>int</em><em>, </em><em>...</em><em>]</em>) – List of all commands to be sent to arduino. This list has no limit in length.</p>
 </dd>
-<dt>Returns:</dt><dd><p>Nothing</p>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>Nothing</p>
 </dd>
 </dl>
 </dd></dl>
@@ -172,38 +309,31 @@ it is something of the form: serial.Serial(port=’COM5’, baudrate=9600, timeo
 <dl class="py method">
 <dt class="sig sig-object py" id="autocif.arduino.post_acquistion_cycle">
 <span class="sig-name descname"><span class="pre">post_acquistion_cycle</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#autocif.arduino.post_acquistion_cycle" title="Permalink to this definition"></a></dt>
-<dd><blockquote>
-<div><p>What post_acquistion_cycle is doing
-1. move stage underneath pipettor and raise objective out of pool|
-2. drain chamber|
-3. bleach cycle|
-4. waterfall wash 1 times|
-5. wait 5 mionutes|
-6. waterfall wash 1 times|
-7. stain (calibrate syringe, prime, dispense and unprime)|
-8. close lid|
-9. incubate stain for 45 minutes|
-10. open lid|
-11. fill chamber w/ PBS|
-12. place objective into pool and move over tissue|</p>
-</div></blockquote>
-<dl class="simple">
-<dt>Args:</dt><dd><p>syringe_num (int), 0-7 of what syringe is to be used to stain in next cycle</p>
+<dd><p>Normal directly conjugated cycle. It bleaches sample, restains and washes sample.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>syringe_num</strong> (<em>int</em>) – Number on autopipettor revolver that the direct conjugated stain is in</p>
 </dd>
-<dt>Returns:</dt><dd><p>Nothing</p>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>Nothing</p>
 </dd>
 </dl>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="autocif.arduino.prim_secondary_cycle">
-<span class="sig-name descname"><span class="pre">prim_secondary_cycle</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">prim_syringe_num</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">secondary_syringe_num</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#autocif.arduino.prim_secondary_cycle" title="Permalink to this definition"></a></dt>
+<span class="sig-name descname"><span class="pre">prim_secondary_cycle</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">prim_syringe_num</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">secondary_syringe_num</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">microscope_object</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#autocif.arduino.prim_secondary_cycle" title="Permalink to this definition"></a></dt>
 <dd><p>First cycle of CyCIF consists of primary and secondaries.</p>
-<dl class="simple">
-<dt>Args:</dt><dd><p>prim_syringe_num (int)|
-secondary_syringe_num (int)</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>prim_syringe_num</strong> (<em>int</em>) – Number on autopipettor revolver that the primary antibody is in</p></li>
+<li><p><strong>secondary_syringe_num</strong> (<em>int</em>) – Number on autopipettor revolver that the secdonary antibody is in</p></li>
+<li><p><strong>microscope_object</strong> (<em>object</em>) – pycromanager Class object that controls micromanager core API</p></li>
+</ul>
 </dd>
-<dt>Returns:</dt><dd><p>Nothing</p>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>Nothing</p>
 </dd>
 </dl>
 </dd></dl>
