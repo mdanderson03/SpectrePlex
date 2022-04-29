@@ -31,9 +31,7 @@ class cycif:
 
     def tissue_center(mag_surface):
         surface_points = {}
-        interp_points = (
-            mag_surface.get_points()
-        )  # pull all points that are contained in micromagellan surface
+        interp_points = (mag_surface.get_points())  # pull all points that are contained in micromagellan surface
         x_temp = []
         y_temp = []
         z_temp = []
@@ -89,6 +87,12 @@ class cycif:
 
         return
 
+    def num_surfaces_count(self, magellan):
+        x = 1
+        while magellan.get_surface("New Surface " + str(x)) != None:
+            x += 1
+        return x - 1
+
 ############ All in section are functions for the autofocus function
     def image_process_hook(self, image, metadata):
         '''
@@ -101,7 +105,7 @@ class cycif:
         :return: Nothing
         '''
 
-        binning_size = 4
+        binning_size = 1
         z = metadata.pop('ZPosition_um_Intended') # moves up while taking z stack
         image = image[::binning_size, ::binning_size]
         image_focus_score = self.focus_score(image)
@@ -248,6 +252,45 @@ class cycif:
 
         return tile_points_xy
 
+    def z_range(self, tile_points_xy, surface_name, magellan_object):
+
+        '''
+        takes all tile points and starts with the first position (upper left corner of surface) and adds on an amount to shift the center of the z range
+        which compensates for the tilt of the slide.
+
+        :param tile_points_xy:
+        :param str surface_name: name of micro-magellan surface
+        :param object magellan_object: object created via = Magellan()
+        :return: list of z centers for points as compensated for slide tilt
+        :rtype: list[float]
+        '''
+
+        x_slide_slope = -0.0032 #rise over run of z focus change over x change in microns
+        y_slide_slope = -0.0098 #rise over run of z focus change over y change in microns
+
+        z_centers = []
+        z_center_initial = magellan_object.get_surface(surface_name).get_points().get(0).z
+        z_centers.append(z_center_initial)
+
+        num_points = len(tile_points_xy['x'])
+        x_initial = tile_points_xy['x'][0]
+        y_initial = tile_points_xy['y'][0]
+
+        for x in range(1, num_points):
+            x_point = tile_points_xy['x'][x]
+            y_point = tile_points_xy['y'][x]
+
+            x_diff = x_point - x_initial
+            y_diff = y_point - y_initial
+
+            z_offset_x = x_diff * x_slide_slope
+            z_offset_y = y_diff * y_slide_slope
+            z_offset = z_offset_y + z_offset_x
+
+            z_centers.append(z_center_initial + z_offset)
+
+        return z_centers
+        
     def focus_tile(self, tile_points_xy, z_range, core):
         '''
         Takes dictionary of XY coordinates, moves to each of them, executes autofocus algorithm from method
@@ -302,7 +345,7 @@ class cycif:
         exposure = np.array([10, 100, 100, 100])  # exposure time in milliseconds
         return exposure
 
-    def focused_surface_acq_settings(self, exposure, original_surface_name, surface_name, magellan_object):
+    def focused_surface_acq_settings(self, exposure, original_surface_name, surface_name, magellan_object, acq_surface_num):
         '''
         Takes already generated micro-magellan surface with name surface_name, sets it as a 2D surface, what channel group
         to use, sets exposure levels for all 4 channels and where to make the savings directory.
@@ -314,7 +357,7 @@ class cycif:
         '''
         magellan_object.create_acquisition_settings()
 
-        acq_settings = magellan_object.get_acquisition_settings(1)
+        acq_settings = magellan_object.get_acquisition_settings(acq_surface_num)
         acq_settings.set_acquisition_name(surface_name)  # make same name as in focused_surface_generate function (all below as well too)
         acq_settings.set_acquisition_space_type('2d_surface')
         acq_settings.set_xy_position_source(original_surface_name)
@@ -330,22 +373,52 @@ class cycif:
         acq_settings.set_channel_exposure('A647', int(exposure[3]))  # channel_name, exposure in ms
         acq_settings.set_channel_z_offset('DAPI', 0)  # channel_name, offset in um
 
-    def surf2focused_surf(self, z_range, surface_name, new_focus_surface_name, core, magellan_object):
+    def surf2focused_surf(self, core, magellan_object):
         '''
         Takes generated micro-magellan surface with name: surface_name and generates new micro-magellan surface with name:
-        new_focus_surface_name and makes an acquistion event after latter surface and auto exposes DAPI, A488, A555 and A647 channels
+        new_focus_surface_name and makes an acquistion event after latter surface and auto exposes DAPI, A488, A555 and A647 channels.
+        It also compensates for slope of slide issues using the z_range function.
 
-        :param tuple[int, int, int] z_range: defines range and stepsize with [z start, z end, z step]
-        :param str surface_name: Name of surface that center XY coords of tiles will be taken from
-        :param str new_focus_surface_name: Name of new surface that will be generated
+        :param MMCore_Object core: Object made from Bridge.core()
+        :param object magellan_object: object created via = bridge.get_magellan()
+
 
         :return: Nothing
         '''
-        tile_surface_xy = self.tile_xy_pos(surface_name, magellan_object)  # pull center tile coords from manually made surface
-        surface_points_xyz = self.focus_tile(tile_surface_xy, z_range, core)  # go to each tile coord and autofocus and populate associated z with result
-        self.focused_surface_generate(surface_points_xyz, magellan_object, new_focus_surface_name)
-        exposure_array = self.auto_expose()
-        self.focused_surface_acq_settings(exposure_array, surface_name, new_focus_surface_name, magellan_object)
+
+        num_surfaces = self.num_surfaces_count(magellan_object)
+        elapsed_time_array = []
+
+
+
+
+
+
+        for x in range(1,num_surfaces + 1):
+
+            surface_name = 'New Surface ' + str(x)
+            new_focus_surface_name = 'Focused Surface ' + str(x)
+
+            tile_surface_xy = self.tile_xy_pos(surface_name,magellan_object)  # pull center tile coords from manually made surface
+
+
+            z_centers = self.z_range(tile_surface_xy, surface_name, magellan_object)
+            z_center = z_centers[x - 1]
+            z_range = [z_center -25, z_center + 25, 5]
+
+            start = time.perf_counter()
+            surface_points_xyz = self.focus_tile(tile_surface_xy, z_range, core)  # go to each tile coord and autofocus and populate associated z with result
+            end = time.perf_counter()
+            elapsed_time = end - start
+
+            self.focused_surface_generate(surface_points_xyz, magellan_object, new_focus_surface_name)
+            exposure_array = self.auto_expose()
+            self.focused_surface_acq_settings(exposure_array, surface_name, new_focus_surface_name, magellan_object, x)
+
+            elapsed_time_array.append(elapsed_time)
+
+        return elapsed_time_array
+
 
     def tilt_angle_chip(self, core):
         x_0 = core.get_x_position()
