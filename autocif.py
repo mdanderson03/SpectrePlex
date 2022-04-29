@@ -291,13 +291,14 @@ class cycif:
 
         return z_centers
         
-    def focus_tile(self, tile_points_xy, z_range, core):
+    def focus_tile(self, tile_points_xy, z_centers, core):
         '''
         Takes dictionary of XY coordinates, moves to each of them, executes autofocus algorithm from method
         auto_focus and outputs the paired in focus z coordinate
 
         :param dictionary tile_points_xy: dictionary containing all XY coordinates. In the form: {{x:(int)}, {y:(int)}}
         :param MMCore_Object core: Object made from Bridge.core()
+        :param z_centers: list of z points associated with xy points where the slide tilt was compensated for
 
         :return: XZY points where XY are stage coords and Z is in focus coordinate. {{x:(int)}, {y:(int)}, {z:(float)}}
         :rtype: dictionary
@@ -305,10 +306,14 @@ class cycif:
         z_temp = []
         num = len(tile_points_xy['x'])
         for q in range(0, num):
+
+            z_center = z_centers[q]
+            z_range = [z_center - 10, z_center + 10, 5]
+
             new_x = tile_points_xy['x'][q]
             new_y = tile_points_xy['y'][q]
             core.set_xy_position(new_x, new_y)
-            time.sleep(2)  # wait long enough for stage to translate to new location
+            #time.sleep(2)  # wait long enough for stage to translate to new location
             z_focused = self.auto_focus(z_range)  # here is where autofocus results go. = auto_focus()
             z_temp.append(z_focused)
         tile_points_xy['z'] = z_temp
@@ -403,11 +408,9 @@ class cycif:
 
 
             z_centers = self.z_range(tile_surface_xy, surface_name, magellan_object)
-            z_center = z_centers[x - 1]
-            z_range = [z_center -25, z_center + 25, 5]
 
             start = time.perf_counter()
-            surface_points_xyz = self.focus_tile(tile_surface_xy, z_range, core)  # go to each tile coord and autofocus and populate associated z with result
+            surface_points_xyz = self.focus_tile(tile_surface_xy, z_centers, core)  # go to each tile coord and autofocus and populate associated z with result
             end = time.perf_counter()
             elapsed_time = end - start
 
