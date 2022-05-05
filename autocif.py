@@ -1,5 +1,5 @@
 import openpyxl
-from pycromanager import Bridge, Acquisition, multi_d_acquisition_events, Dataset
+from pycromanager import Core, Acquisition, multi_d_acquisition_events, Dataset
 import numpy as np
 import matplotlib.pyplot as plt
 import math
@@ -63,7 +63,7 @@ class cycif:
 
         :return: Nothing
         '''
-        core = cycif.core
+        core = Core()
         diff_vec_x = -92000
         diff_vec_y = 7000
         y = core.get_y_position()
@@ -74,11 +74,11 @@ class cycif:
             new_x = x + diff_vec_x
             core.set_xy_position(new_x, new_y)
             time.sleep(15)
-            core.set_position(z - 12000)
+            core.set_position(z - 15000)
             time.sleep(12)
 
         if state == 1:
-            core.set_position(z + 12000)
+            core.set_position(z + 15000)
             time.sleep(12)
             new_y = y - diff_vec_y
             new_x = x - diff_vec_x
@@ -220,7 +220,7 @@ class cycif:
             acq.acquire(events)
 
         z_ideal = self.autofocus_fit()
-
+        print(z_ideal)
         return z_ideal
 
     def tile_xy_pos(self, surface_name, magellan_object):
@@ -308,7 +308,7 @@ class cycif:
         for q in range(0, num):
 
             z_center = z_centers[q]
-            z_range = [z_center - 10, z_center + 10, 5]
+            z_range = [z_center - 10, z_center + 10, 2]
 
             new_x = tile_points_xy['x'][q]
             new_y = tile_points_xy['y'][q]
@@ -452,7 +452,7 @@ class arduino:
         '''
         Establishes connection to arduino
 
-        :param str com_address: address of com port that arduibo is connected to. Example: 'COM5'
+        :param str com_address: address of com port that arduino is connected to. Example: 'COM5'
         :param int baudrate: baudrate that connection to arduino is. Defaults to 9600.
         :param int timeout: how long to wait to check for information in line in ms. Defaults to 5
 
@@ -498,15 +498,15 @@ class arduino:
         '''
         prim_syringe_command = str(str(1) + str(prim_syringe_num))
         second_syringe_command = str(str(1) + str(secondary_syringe_num))
-        microscope_object.syr_obj_switch(1)
+        #microscope_object.syr_obj_switch(1)
         list_of_orders = [70, prim_syringe_command, 21, 34, 20, 61]
-        self.order_execute(list_of_orders, arduino)
-        time.sleep(2700)
+        self.order_execute(list_of_orders)
+        time.sleep(3600)
         list_of_orders = [49, 71, 85, 70, 49, 60, second_syringe_command, 21, 34, 20, 61]
-        self.order_execute(list_of_orders, arduino)
+        self.order_execute(list_of_orders)
         time.sleep(2700)
         list_of_orders = [49, 71, 85, 70, 49, 60, 71]
-        self.order_execute(list_of_orders, arduino)
+        self.order_execute(list_of_orders)
         microscope_object.syr_obj_switch(0)
 
         return
