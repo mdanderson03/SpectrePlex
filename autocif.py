@@ -269,7 +269,8 @@ class cycif:
         y_slide_slope = -0.0098 #rise over run of z focus change over y change in microns
 
         z_centers = []
-        z_center_initial = magellan_object.get_surface(surface_name).get_points().get(0).z
+        #z_center_initial = magellan_object.get_surface(surface_name).get_points().get(0).z
+        z_center_initial = 2777.86
         z_centers.append(z_center_initial)
 
         num_points = len(tile_points_xy['x'])
@@ -308,7 +309,7 @@ class cycif:
         for q in range(0, num):
 
             z_center = z_centers[q]
-            z_range = [z_center - 10, z_center + 10, 2]
+            z_range = [z_center - 15, z_center + 15, 2]
 
             new_x = tile_points_xy['x'][q]
             new_y = tile_points_xy['y'][q]
@@ -448,7 +449,7 @@ class cycif:
 
 class arduino:
 
-    def __init__(self, com_address, baudrate =9600, timeout =5):
+    def __init__(self, com_address, baudrate = 9600, timeout = 5):
         '''
         Establishes connection to arduino
 
@@ -511,7 +512,7 @@ class arduino:
 
         return
 
-    def post_acquistion_cycle(self, syringe_num):
+    def post_acquistion_cycle(self, syringe_num, cycif_object):
         '''
         Normal directly conjugated cycle. It bleaches sample, restains and washes sample.
 
@@ -520,14 +521,47 @@ class arduino:
         :return: Nothing
         '''
         syringe_command = int(str(1) + str(syringe_num))
-        cycif.syr_obj_switch(1)
-        list_of_orders = [70, 53, 49, 49, 49, syringe_command, 21, 32, 20, 61]
+        cycif_object.syr_obj_switch(1)
+        list_of_orders = [70, 53, 49, 49, syringe_command, 21, 34, 20, 61]
         self.order_execute(list_of_orders)
         time.sleep(2700)
-        list_of_orders = [49, 49, 49, 60, 71]
+        list_of_orders = [49, 49, 60, 71]
         self.order_execute(list_of_orders)
-        cycif.syr_obj_switch(0)
+        cycif_object.syr_obj_switch(0)
 
         return
 
+    def bleach_cycle(self):
+        '''
+        Normal directly conjugated cycle. It bleaches sample, restains and washes sample.
 
+        :param cycif_object: Number on autopipettor revolver that the direct conjugated stain is in
+
+        :return: Nothing
+        '''
+        core = Core()
+        z = core.get_position()
+        core.set_position(z + 15000)
+        list_of_orders = [70, 53, 53, 49, 49, 71]
+        self.order_execute(list_of_orders)
+        core.set_position(z - 15000)
+        return
+
+    def stain_cycle(self, syringe_num, cycif_object):
+        '''
+        Normal directly conjugated cycle. It bleaches sample, restains and washes sample.
+
+        :param int syringe_num: Number on autopipettor revolver that the direct conjugated stain is in
+
+        :return: Nothing
+        '''
+        syringe_command = int(str(1) + str(syringe_num))
+        cycif_object.syr_obj_switch(1)
+        list_of_orders = [syringe_command, 21, 34, 20, 61]
+        self.order_execute(list_of_orders)
+        time.sleep(2700)
+        list_of_orders = [49, 49, 60, 71]
+        self.order_execute(list_of_orders)
+        cycif_object.syr_obj_switch(0)
+
+        return

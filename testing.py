@@ -1,7 +1,8 @@
 from autocif import *
 from pycromanager import Core, Magellan
+
 core = Core()
-magellan = Magellan()
+magellan = Magellan() # magellan class object
 microscope = cycif() # initialize cycif object
 arduino = arduino('COM3')
 import numpy as np
@@ -12,8 +13,10 @@ import serial
 
 time.sleep(5)
 
-arduino.prim_secondary_cycle(0,1,microscope)
+arduino.bleach_cycle()
 
+#arduino.prim_secondary_cycle(0,1,microscope)
+#arduino.post_acquistion_cycle(0, microscope)
 #time_array = microscope.surf2focused_surf(core, magellan)
 #print(time_array)
 '''
