@@ -252,7 +252,7 @@ class cycif:
 
         return tile_points_xy
 
-    def z_range(self, tile_points_xy, surface_name, magellan_object):
+    def z_range(self, tile_points_xy, surface_name, magellan_object, cycle_number):
 
         '''
         takes all tile points and starts with the first position (upper left corner of surface) and adds on an amount to shift the center of the z range
@@ -269,8 +269,12 @@ class cycif:
         y_slide_slope = -0.0098 #rise over run of z focus change over y change in microns
 
         z_centers = []
-        #z_center_initial = magellan_object.get_surface(surface_name).get_points().get(0).z
-        z_center_initial = 2777.86
+        if cycle_number == 1:
+            z_center_initial = magellan_object.get_surface(surface_name).get_points().get(0).z
+        if cycle_number != 1:
+            first_cycle_z = magellan_object.get_surface(surface_name).get_points().get(0).z
+            z_center_initial = self.long_range_z(tile_points_xy, first_cycle_z, core)
+
         z_centers.append(z_center_initial)
 
         num_points = len(tile_points_xy['x'])
@@ -290,8 +294,23 @@ class cycif:
 
             z_centers.append(z_center_initial + z_offset)
 
-        return z_centers
-        
+            return z_centers
+
+
+    def long_range_z(self, tile_points_xy, first_cycle_z, core):
+
+        x_point = tile_points_xy['x'][x]
+        y_point = tile_points_xy['y'][x]
+
+        core.set_xy_position(x_point, y_point)
+        z = first_cycle_z
+        z_range = [z - 50, z + 50, 2]
+        z_focused = self.auto_focus(z_range)
+
+        return z_focused
+
+
+
     def focus_tile(self, tile_points_xy, z_centers, core):
         '''
         Takes dictionary of XY coordinates, moves to each of them, executes autofocus algorithm from method
@@ -407,8 +426,7 @@ class cycif:
 
             tile_surface_xy = self.tile_xy_pos(surface_name,magellan_object)  # pull center tile coords from manually made surface
 
-
-            z_centers = self.z_range(tile_surface_xy, surface_name, magellan_object)
+            z_centers = self.z_range(tile_surface_xy, surface_name, magellan_object, x)
 
             start = time.perf_counter()
             surface_points_xyz = self.focus_tile(tile_surface_xy, z_centers, core)  # go to each tile coord and autofocus and populate associated z with result
