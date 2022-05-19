@@ -1,0 +1,64 @@
+Title=A555
+Comment=
+Signature=ISS_Experiment_Ver_1_0
+Timestamp=Thu May 19 14:51:42 2022
+
+AcquisitionType=Photon Counting
+AcquisitionFormat=L
+AcquisitionSide=Right
+
+Measurable=Intensity
+
+RightEmissionWavelengthBandwidth=8
+ExcitationWavelengthBandwidth=8
+Visualization=PlotType:2D,X:EmissionWavelength,Y:Intensity
+
+
+Iteration=type:index,unit:none,count:1
+EmissionWavelength=type:numeric,unit:nm,from:760.0,to:800.0,step:1.0
+ExcitationWavelength=type:numeric,unit:nm,fixed:754.0
+
+Space=Iteration,EmissionWavelength
+Columns=Iteration,EmissionWavelength,Intensity,IntensityStdError
+[Data]
+1  	760    	         12039.2       98.836
+1  	761    	         12819.8       130.11
+1  	762    	         13495.5       132.15
+1  	763    	         13750.9       185.02
+1  	764    	         14647.5       130.73
+1  	765    	         14802.8       135.52
+1  	766    	           15304       167.47
+1  	767    	         16143.6       128.41
+1  	768    	         15736.4       168.37
+1  	769    	         16243.6       101.68
+1  	770    	         16803.7       182.22
+1  	771    	         17076.6       141.11
+1  	772    	           17631       176.37
+1  	773    	         18116.4       167.32
+1  	774    	           18664       175.96
+1  	775    	         18939.7       181.86
+1  	776    	         19022.6       214.28
+1  	777    	         19163.3       164.96
+1  	778    	         19588.1       175.06
+1  	779    	         19500.2       195.91
+1  	780    	         19368.9       159.72
+1  	781    	         19659.8       162.78
+1  	782    	         19395.8       148.69
+1  	783    	         19627.1       141.26
+1  	784    	           19344       118.45
+1  	785    	         18595.4       139.48
+1  	786    	         18800.3       200.57
+1  	787    	         18743.7       129.72
+1  	788    	         18283.9       133.76
+1  	789    	         17836.7       141.11
+1  	790    	         17680.3       188.11
+1  	791    	         16955.3        113.4
+1  	792    	           16635       150.18
+1  	793    	         15867.3       141.15
+1  	794    	         15587.2       74.077
+1  	795    	         15175.1       107.24
+1  	796    	         14515.5       88.073
+1  	797    	         14208.6       79.852
+1  	798    	         13751.8       103.21
+1  	799    	         12868.1       122.47
+1  	800    	         12474.9       108.94

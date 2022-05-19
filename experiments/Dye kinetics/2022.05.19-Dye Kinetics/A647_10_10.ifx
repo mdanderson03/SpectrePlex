@@ -1,0 +1,35 @@
+Title=Alexa650-Kinetics
+Comment=
+Signature=ISS_Experiment_Ver_1_0
+Timestamp=Thu May 19 12:39:25 2022
+
+AcquisitionType=Photon Counting
+AcquisitionFormat=L
+AcquisitionSide=Right
+
+Measurable=Intensity
+CloseExcitationShutterAfterEveryMeasurement=1
+
+RightEmissionWavelengthBandwidth=8
+ExcitationWavelengthBandwidth=8
+Visualization=PlotType:2D,X:Time,Y:Intensity
+
+
+Time=type:numeric,unit:s,from:0.0,to:900.0,step:10.0
+ExcitationWavelength=type:numeric,unit:nm,fixed:650.0
+EmissionWavelength=type:numeric,unit:nm,fixed:668.0
+
+Space=Time
+Columns=Time,Intensity,IntensityStdError
+[Data]
+   0.00	          2487.6       75.386
+  10.01	          1915.6       107.85
+  20.01	           843.3       57.169
+  30.01	           459.4        74.64
+  40.01	           356.8       55.623
+  50.01	           131.3       42.338
+  60.01	           100.6       48.192
+  70.01	            12.1       53.052
+  80.01	           -68.1        47.24
+  90.03	            92.4       28.503
+ 100.03	            -7.8       47.622

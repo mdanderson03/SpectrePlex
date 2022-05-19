@@ -1,0 +1,15 @@
+OD w/ 1x PBS (2x diluted in DD H2O)
+
+A647:  1:300 dilution = 0.007
+
+Kinetics
+
+A647_10_10 = A647 10% H2O2 pH10
+A650_kinetics-2 = A647 0.75uL, 75uL 1xPBS and then adding 12uL 1M NaOH and then 30uL 30% H2O2 through the lid top. No mix.
+A650_kinetics-3 = mixed 0.75uL to 75uL 1x PBS pH 10.1, 0.1% H2O2
+A650_kinetics-4 = A650-kinetics-3 w/ 2.5uL30% H2O2 added (measured pH post and it was 7.8)
+A650_kinetics-5 = A650-kinetics-4 w/ 1 uL 1M NaOH added (measured pH post and it was ). Note kinetics 4 was not saved and 5 is way after NaOH was added. It did affect it and was on the time scale of 200 seconds.
+A650_1_10 = A647 mixed 1% H2O2 , pH 10
+dylight755_spectra = 2uL dylight secodnary into 75uL 1x PBS. 
+
+for base spectras I did 0.75uL A647, 2uL for all 700s dyes and A555, and 0.5uL for a488.  wavelength was actually 565 not 555 for A555 spectra. 
