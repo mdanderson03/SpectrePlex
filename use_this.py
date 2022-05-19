@@ -5,6 +5,8 @@ mm_app_path = 'C:/Program Files/Micro-Manager-2.0gamma'
 config_file = 'C:/Users/CyCIF PC/Desktop/backup config files/auto_cycif.cfg'
 start_headless(mm_app_path, config_file, timeout=15000)
 
+
+
 bridge = Bridge()
 core = bridge.get_core()
 microscope = cycif() # initialize cycif object
