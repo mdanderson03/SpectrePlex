@@ -220,7 +220,7 @@ class cycif:
             acq.acquire(events)
 
         z_ideal = self.autofocus_fit()
-        print(z_ideal)
+
         return z_ideal
 
     def tile_xy_pos(self, surface_name, magellan_object):
@@ -252,7 +252,7 @@ class cycif:
 
         return tile_points_xy
 
-    def z_range(self, tile_points_xy, surface_name, magellan_object, cycle_number):
+    def z_range(self, tile_points_xy, surface_name, magellan_object, core, cycle_number):
 
         '''
         takes all tile points and starts with the first position (upper left corner of surface) and adds on an amount to shift the center of the z range
@@ -265,8 +265,8 @@ class cycif:
         :rtype: list[float]
         '''
 
-        x_slide_slope = -0.0032 #rise over run of z focus change over x change in microns
-        y_slide_slope = -0.0098 #rise over run of z focus change over y change in microns
+        x_slide_slope = 0.0014 #rise over run of z focus change over x change in microns
+        y_slide_slope = -0.0007 #rise over run of z focus change over y change in microns
 
         z_centers = []
         if cycle_number == 1:
@@ -281,6 +281,7 @@ class cycif:
         x_initial = tile_points_xy['x'][0]
         y_initial = tile_points_xy['y'][0]
 
+
         for x in range(1, num_points):
             x_point = tile_points_xy['x'][x]
             y_point = tile_points_xy['y'][x]
@@ -291,16 +292,17 @@ class cycif:
             z_offset_x = x_diff * x_slide_slope
             z_offset_y = y_diff * y_slide_slope
             z_offset = z_offset_y + z_offset_x
+            adjusted_z = z_center_initial + z_offset
+            z_centers.append(adjusted_z)
 
-            z_centers.append(z_center_initial + z_offset)
 
-            return z_centers
+        return z_centers
 
 
     def long_range_z(self, tile_points_xy, first_cycle_z, core):
 
-        x_point = tile_points_xy['x'][x]
-        y_point = tile_points_xy['y'][x]
+        x_point = tile_points_xy['x'][0]
+        y_point = tile_points_xy['y'][0]
 
         core.set_xy_position(x_point, y_point)
         z = first_cycle_z
@@ -323,6 +325,7 @@ class cycif:
         :return: XZY points where XY are stage coords and Z is in focus coordinate. {{x:(int)}, {y:(int)}, {z:(float)}}
         :rtype: dictionary
         '''
+
         z_temp = []
         num = len(tile_points_xy['x'])
         for q in range(0, num):
@@ -387,8 +390,9 @@ class cycif:
         acq_settings.set_acquisition_space_type('2d_surface')
         acq_settings.set_xy_position_source(original_surface_name)
         acq_settings.set_surface(surface_name)
-        acq_settings.set_bottom_surface(surface_name)
-        acq_settings.set_top_surface(surface_name)
+        #acq_settings.set_z_position(surface_name)
+        #acq_settings.set_bottom_surface(surface_name)
+        #acq_settings.set_top_surface(surface_name)
         acq_settings.set_saving_dir(r'C:\Users\CyCIF PC\Desktop\test_images\tiled_images')  # standard saving directory
         acq_settings.set_channel_group('Color')
         acq_settings.set_use_channel('DAPI', True)  # channel_name, use
@@ -398,7 +402,7 @@ class cycif:
         acq_settings.set_channel_exposure('A647', int(exposure[3]))  # channel_name, exposure in ms
         acq_settings.set_channel_z_offset('DAPI', 0)  # channel_name, offset in um
 
-    def surf2focused_surf(self, core, magellan_object):
+    def surf2focused_surf(self, core, magellan_object, cycle_number):
         '''
         Takes generated micro-magellan surface with name: surface_name and generates new micro-magellan surface with name:
         new_focus_surface_name and makes an acquistion event after latter surface and auto exposes DAPI, A488, A555 and A647 channels.
@@ -426,7 +430,7 @@ class cycif:
 
             tile_surface_xy = self.tile_xy_pos(surface_name,magellan_object)  # pull center tile coords from manually made surface
 
-            z_centers = self.z_range(tile_surface_xy, surface_name, magellan_object, x)
+            z_centers = self.z_range(tile_surface_xy, surface_name, magellan_object, core, cycle_number)
 
             start = time.perf_counter()
             surface_points_xyz = self.focus_tile(tile_surface_xy, z_centers, core)  # go to each tile coord and autofocus and populate associated z with result

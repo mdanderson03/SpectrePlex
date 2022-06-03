@@ -4,16 +4,18 @@ from pycromanager import Core, Magellan
 core = Core()
 magellan = Magellan() # magellan class object
 microscope = cycif() # initialize cycif object
-arduino = arduino('COM3')
+#arduino = arduino('COM3')
 import numpy as np
 import time
 import serial
 
+microscope.surf2focused_surf(core, magellan, 1)
 
 
-time.sleep(5)
 
-arduino.bleach_cycle()
+#time.sleep(5)
+
+#arduino.bleach_cycle()
 
 #arduino.prim_secondary_cycle(0,1,microscope)
 #arduino.post_acquistion_cycle(0, microscope)
