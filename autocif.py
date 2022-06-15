@@ -88,10 +88,35 @@ class cycif:
         return
 
     def num_surfaces_count(self, magellan):
+        '''
+        Looks at magellan surfaces that start with New Surface in its name, ie. 'New Surface 1' as that is the default generated prefix.
+
+        :param object magellan: magellan object from magellan = Magellan() in pycromanager
+
+        :return: surface_count
+        :rtype: int
+        '''
         x = 1
         while magellan.get_surface("New Surface " + str(x)) != None:
             x += 1
-        return x - 1
+        surface_count = x - 1
+        return surface_count
+
+    def surface_exist_check(self, magellan, surface_name):
+        '''
+        Checks name of surface to see if exists. If it does, returns 1, if not returns 0
+
+        :param object magellan: magellan object from magellan = Magellan() in pycromanager
+        :param str surface_name: name of surface to check if exists
+
+        :return: status
+        :rtype: int
+        '''
+
+        status = 0
+        if magellan.get_surface(surface_name) != None:
+            status += 1
+        return status
 
 ############ All in section are functions for the autofocus function
     def image_process_hook(self, image, metadata):
@@ -191,12 +216,13 @@ class cycif:
         #plt.show()
         return parameters[1]
 #################################################
-    def auto_focus(self, z_range):
+    def auto_focus(self, z_range, channel = 'DAPI'):
         '''
         Runs entire auto focus algorithm in current XY position. Gives back predicted
         in focus z position via focus_score method which is the Brenner score.
 
         :param list[int, int, int] z_range: defines range and stepsize with [z start, z end, z step]
+        :param str channel: channel to autofocus with
 
         :return: z coordinate for in focus plane
         :rtype: float
@@ -212,7 +238,7 @@ class cycif:
                          show_display=False,
                          image_process_fn=self.image_process_hook) as acq:
             events = multi_d_acquisition_events(channel_group='Color',
-                                                channels=['DAPI'],
+                                                channels=[channel],
                                                 z_start=z_range[0],
                                                 z_end=z_range[1],
                                                 z_step=z_range[2],
@@ -320,9 +346,9 @@ class cycif:
 
         :param dictionary tile_points_xy: dictionary containing all XY coordinates. In the form: {{x:(int)}, {y:(int)}}
         :param MMCore_Object core: Object made from Bridge.core()
-        :param z_centers: list of z points associated with xy points where the slide tilt was compensated for
+        :param list z_centers: list of z points associated with xy points where the slide tilt was compensated for
 
-        :return: XZY points where XY are stage coords and Z is in focus coordinate. {{x:(int)}, {y:(int)}, {z:(float)}}
+        :return: XYZ points where XY are stage coords and Z is in focus coordinate. {{x:(int)}, {y:(int)}, {z:(float)}}
         :rtype: dictionary
         '''
 
@@ -336,7 +362,6 @@ class cycif:
             new_x = tile_points_xy['x'][q]
             new_y = tile_points_xy['y'][q]
             core.set_xy_position(new_x, new_y)
-            #time.sleep(2)  # wait long enough for stage to translate to new location
             z_focused = self.auto_focus(z_range)  # here is where autofocus results go. = auto_focus()
             z_temp.append(z_focused)
         tile_points_xy['z'] = z_temp
@@ -344,17 +369,19 @@ class cycif:
 
         return surface_points_xyz
 
-    def focused_surface_generate(self, surface_points_xyz, magellan_object, new_surface_name):  # only get 1/2 points anticipated, dont know why
+    def focused_surface_generate(self, surface_points_xyz, magellan_object, new_surface_name):
         '''
         Generates new micro-magellan surface with name new_surface_name and uses all points in surface_points_xyz dictionary
-        as interpolation points.
+        as interpolation points. If surface already exists, then it checks for it and updates its xyz points.
 
         :param dictionary surface_points_xyz: all paired-wise points of XYZ where XY are stage coords and Z is in focus. {{x:(int)}, {y:(int)}, {z:(float)}}
         :param str new_surface_name: name that generated surface will have
 
         :return: Nothing
         '''
-        magellan_object.create_surface(new_surface_name)  # need to make naming convention
+        creation_status = self.surface_exist_check(new_surface_name) # 0 if surface with that name doesnt exist, 1 if it does
+        if creation_status == 0:
+            magellan_object.create_surface(new_surface_name)  # make surface if it doesnt alreay exist
         focused_surface = magellan_object.get_surface(new_surface_name)
         num = len(surface_points_xyz['x'])
         for q in range(0, num):
@@ -363,46 +390,87 @@ class cycif:
 
     def auto_expose(self):
         '''
-        Autoexposure algorithm. Currently, just sets each exposure to 100ms
+        Autoexposure algorithm. Currently, just sets each exposure to 100ms to determine exposure times.
+        It also goes to center of micromagellan surface and finds channel offsets with respect to the nuclei/DAPI channel.
 
-        :param: Nothing
+        :param: str surface_name: string of name of magellan surface to use
+        :param list z_centers: list of z points associated with xy points where the slide tilt was compensated for
+        :param: list of str channels: list that contains strings with channel names
 
         :return: exposure times: [dapi_exposure, a488_exposure, a555_exposure, a647_exposure]
         :rtype: numpy array
         '''
+
         exposure = np.array([10, 100, 100, 100])  # exposure time in milliseconds
+
         return exposure
 
-    def focused_surface_acq_settings(self, exposure, original_surface_name, surface_name, magellan_object, acq_surface_num):
+    def channel_offsets(self, surface_name, z_centers, channels):
+        '''
+        Offset algorithm It goes to center of micromagellan surface and finds channel offsets with respect to the nuclei/DAPI channel.
+
+        :param: str surface_name: string of name of magellan surface to use
+        :param list[int] z_centers: list of z points associated with xy points where the slide tilt was compensated for
+        :param: list[str] channels: list that contains strings with channel names
+
+        :return: channel offsets: [dapi_offset a488_offset, a555_offset, a647_offset]
+        :rtype: numpy array
+        '''
+
+        z_center = z_centers[q]
+        z_range = [z_center - 15, z_center + 15, 2]
+
+        center_xy = self.tissue_center(surface_name)
+        core.set_xy_position(center_xy[0], center_xy[1])
+
+        num_channels = len(channels)
+        channel_offsets = np.empty(num_channels)
+
+        for x in range(0, num_channels):
+            z_focused = self.auto_focus(z_range, channels[x])
+            channel_offsets[x] = z_focused
+
+        return channel_offsets
+
+    def focused_surface_acq_settings(self, exposure, original_surface_name, surface_name, magellan_object, channel_offsets, acq_surface_num,):
         '''
         Takes already generated micro-magellan surface with name surface_name, sets it as a 2D surface, what channel group
         to use, sets exposure levels for all 4 channels and where to make the savings directory.
 
         :param numpy array exposure: a numpy array of [dapi_exposure, a488_exposure, a555_exposure, a647_exposure] with exposure times in milliseconds
         :param str surface_name: name of micro-magellan surface that is to be used as the space coordinates for this acquistion event
+        :param object magellan: magellan object from magellan = Magellan() in pycromanager
+        :param list[int] channel_offsets: list of offsets with respect to nuclei. Order is [DAPI, A488, A555, A647]
+        :param int acq_surface_num: number that corresponds to the surface number ie. 1 in 'New Surface 1' and so on
 
         :return: Nothing
         '''
-        magellan_object.create_acquisition_settings()
+        try: # look to see if list contains acquistion setting. If it doesnt, it creates one.
+            acq_settings = magellan_object.get_acquisition_settings(acq_surface_num - 1)
+        except:
+            magellan_object.create_acquisition_settings()
+            acq_settings = magellan_object.get_acquisition_settings(acq_surface_num - 1)
 
-        acq_settings = magellan_object.get_acquisition_settings(acq_surface_num)
         acq_settings.set_acquisition_name(surface_name)  # make same name as in focused_surface_generate function (all below as well too)
         acq_settings.set_acquisition_space_type('2d_surface')
         acq_settings.set_xy_position_source(original_surface_name)
         acq_settings.set_surface(surface_name)
-        #acq_settings.set_z_position(surface_name)
-        #acq_settings.set_bottom_surface(surface_name)
-        #acq_settings.set_top_surface(surface_name)
         acq_settings.set_saving_dir(r'C:\Users\CyCIF PC\Desktop\test_images\tiled_images')  # standard saving directory
         acq_settings.set_channel_group('Color')
         acq_settings.set_use_channel('DAPI', True)  # channel_name, use
+        acq_settings.set_use_channel('A488', True)  # channel_name, use
+        acq_settings.set_use_channel('A555', True)  # channel_name, use
+        acq_settings.set_use_channel('A647', True)  # channel_name, use
         acq_settings.set_channel_exposure('DAPI', int(exposure[0]))  # channel_name, exposure in ms can auto detect channel names and iterate names with exposure times
         acq_settings.set_channel_exposure('A488', int(exposure[1]))  # channel_name, exposure in ms
         acq_settings.set_channel_exposure('A555', int(exposure[2]))  # channel_name, exposure in ms
         acq_settings.set_channel_exposure('A647', int(exposure[3]))  # channel_name, exposure in ms
-        acq_settings.set_channel_z_offset('DAPI', 0)  # channel_name, offset in um
+        acq_settings.set_channel_z_offset('DAPI', channel_offsets[0])  # channel_name, offset in um
+        acq_settings.set_channel_z_offset('A488', channel_offsets[1])  # channel_name, offset in um
+        acq_settings.set_channel_z_offset('A555', channel_offsets[2])  # channel_name, offset in um
+        acq_settings.set_channel_z_offset('A647', channel_offsets[3])  # channel_name, offset in um
 
-    def surf2focused_surf(self, core, magellan_object, cycle_number):
+    def surf2focused_surf(self, core, magellan_object, cycle_number, channels = ['DAPI', 'A488', 'A555', 'A647']):
         '''
         Takes generated micro-magellan surface with name: surface_name and generates new micro-magellan surface with name:
         new_focus_surface_name and makes an acquistion event after latter surface and auto exposes DAPI, A488, A555 and A647 channels.
@@ -410,18 +478,14 @@ class cycif:
 
         :param MMCore_Object core: Object made from Bridge.core()
         :param object magellan_object: object created via = bridge.get_magellan()
-
+        :param int cycle_number: object created via = bridge.get_magellan()
+        :param: list[str] channels: list that contains strings with channel names
 
         :return: Nothing
         '''
 
-        num_surfaces = self.num_surfaces_count(magellan_object)
+        num_surfaces = self.num_surfaces_count(magellan_object) # checks how many 'New Surface #' surfaces exist. Not actual total
         elapsed_time_array = []
-
-
-
-
-
 
         for x in range(1,num_surfaces + 1):
 
@@ -437,9 +501,10 @@ class cycif:
             end = time.perf_counter()
             elapsed_time = end - start
 
-            self.focused_surface_generate(surface_points_xyz, magellan_object, new_focus_surface_name)
+            self.focused_surface_generate(surface_points_xyz, magellan_object, new_focus_surface_name) # will generate surface if not exist, update z points if exists
             exposure_array = self.auto_expose()
-            self.focused_surface_acq_settings(exposure_array, surface_name, new_focus_surface_name, magellan_object, x)
+            offset_array = self.channel_offsets(surface_name, z_centers, channels)
+            self.focused_surface_acq_settings(exposure_array, surface_name, new_focus_surface_name, magellan_object, offset_array, x)
 
             elapsed_time_array.append(elapsed_time)
 
@@ -465,6 +530,7 @@ class cycif:
         angle_y = np.arctan([(corners_ideal_z[1] - corners_ideal_z[0]) + (corners_ideal_z[3] - corners_ideal_z[2])][0]/ 1272) * 1000 * 57.32  # angle in millidegrees
         print('angle X: ' + str(angle_x) + ' millidegrees', 'angle Y: ' + str(angle_y) + ' millidegrees')
         print(corners_ideal_z)
+
 
 
 
@@ -509,32 +575,7 @@ class arduino:
                     exit = 1
         return
 
-    def prim_secondary_cycle(self, prim_syringe_num, secondary_syringe_num, microscope_object):
-        '''
-        First cycle of CyCIF consists of primary and secondaries.
-
-        :param int prim_syringe_num: Number on autopipettor revolver that the primary antibody is in
-        :param int secondary_syringe_num: Number on autopipettor revolver that the secdonary antibody is in
-        :param object microscope_object: pycromanager Class object that controls micromanager core API
-
-        :return: Nothing
-        '''
-        prim_syringe_command = str(str(1) + str(prim_syringe_num))
-        second_syringe_command = str(str(1) + str(secondary_syringe_num))
-        #microscope_object.syr_obj_switch(1)
-        list_of_orders = [70, prim_syringe_command, 21, 34, 20, 61]
-        self.order_execute(list_of_orders)
-        time.sleep(3600)
-        list_of_orders = [49, 71, 85, 70, 49, 60, second_syringe_command, 21, 34, 20, 61]
-        self.order_execute(list_of_orders)
-        time.sleep(2700)
-        list_of_orders = [49, 71, 85, 70, 49, 60, 71]
-        self.order_execute(list_of_orders)
-        microscope_object.syr_obj_switch(0)
-
-        return
-
-    def post_acquistion_cycle(self, syringe_num, cycif_object):
+    def prim_secondary_cycle(self, valve_num_prim, valve_num_secondary, inc_time_prim, inc_time_secdonary):
         '''
         Normal directly conjugated cycle. It bleaches sample, restains and washes sample.
 
@@ -542,14 +583,10 @@ class arduino:
 
         :return: Nothing
         '''
-        syringe_command = int(str(1) + str(syringe_num))
-        cycif_object.syr_obj_switch(1)
-        list_of_orders = [70, 53, 49, 49, syringe_command, 21, 34, 20, 61]
+        prim_command = int(str(5) + str(valve_num_prim) + str(inc_time_prim))
+        second_command = int(str(5) + str(valve_num_secondary) + str(inc_time_secdonary))
+        list_of_orders = [452, prim_command, 452, 452, second_command, 452, 452]
         self.order_execute(list_of_orders)
-        time.sleep(2700)
-        list_of_orders = [49, 49, 60, 71]
-        self.order_execute(list_of_orders)
-        cycif_object.syr_obj_switch(0)
 
         return
 
@@ -561,15 +598,11 @@ class arduino:
 
         :return: Nothing
         '''
-        core = Core()
-        z = core.get_position()
-        core.set_position(z + 15000)
-        list_of_orders = [70, 53, 53, 49, 49, 71]
+        list_of_orders = [230,452,452]
         self.order_execute(list_of_orders)
-        core.set_position(z - 15000)
         return
 
-    def stain_cycle(self, syringe_num, cycif_object):
+    def stain_cycle(self, valve_num, inc_time):
         '''
         Normal directly conjugated cycle. It bleaches sample, restains and washes sample.
 
@@ -577,13 +610,8 @@ class arduino:
 
         :return: Nothing
         '''
-        syringe_command = int(str(1) + str(syringe_num))
-        cycif_object.syr_obj_switch(1)
-        list_of_orders = [syringe_command, 21, 34, 20, 61]
+        stain_command = int(str(5)+ str(valve_num) + str(inc_time))
+        list_of_orders = [452, stain_command, 452, 452]
         self.order_execute(list_of_orders)
-        time.sleep(2700)
-        list_of_orders = [49, 49, 60, 71]
-        self.order_execute(list_of_orders)
-        cycif_object.syr_obj_switch(0)
 
         return

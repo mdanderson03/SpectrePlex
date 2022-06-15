@@ -1,5 +1,13 @@
 from autocif import *
-import time
+from pycromanager import Core, Magellan
+import numpy as np
+
+core = Core()
+magellan = Magellan() # initialize magellan object
+microscope = cycif() # initialize cycif object
+robotics = arduino('COM5') # initialize arduino controlled robotics object at defined COM terminal number
+
+time.sleep(3) # wait for ardiuno to reboot and connect with computer
 
 #mm_app_path = 'C:/Program Files/Micro-Manager-2.0gamma'
 #config_file = 'C:/Users/CyCIF PC/Desktop/backup config files/auto_cycif.cfg'
@@ -7,11 +15,7 @@ import time
 
 
 
-#bridge = Bridge()
-#core = bridge.get_core()
-#microscope = cycif() # initialize cycif object
-#robotics = arduino('COM3') # initialize arduino controlled robotics object at defined COM terminal number
-#magellan = bridge.get_magellan()
+
 
 #time.sleep(3)
 
