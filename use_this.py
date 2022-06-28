@@ -1,5 +1,6 @@
 from autocif import *
 from pycromanager import Core, Magellan
+microscope = cycif() # initialize cycif object
 import numpy as np
 
 core = Core()
@@ -16,10 +17,10 @@ microscope = cycif() # initialize cycif object
 
 
 
-
+print(microscope.tissue_center('Focused Surface DAPI',magellan))
 #time.sleep(3)
 
-microscope.surf2focused_surf(core, magellan)
+microscope.surf2focused_surf(core, magellan, 1, ['DAPI'])
 
 
 

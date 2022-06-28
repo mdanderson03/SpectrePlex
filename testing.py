@@ -1,5 +1,6 @@
+import AutoCIF.conf
 from autocif import *
-from pycromanager import Core, Magellan
+from pycromanager import Core, Magellan, Acquisition
 
 core = Core()
 magellan = Magellan() # magellan class object
@@ -17,13 +18,15 @@ import serial
 #microscope.surf2focused_surf(core, magellan, 1, auto_focus_exposure_times, seed_plane)
 
 
+#microscope.auto_expose(10print()
 
-
+print(microscope.auto_expose(core, magellan, 40, 6500, ['A488'], 'none'))
 
 
 
 
 #time.sleep(5)
+
 
 #arduino.bleach_cycle()
 

@@ -21,6 +21,11 @@ class brenner:
         brenner.value = []
         return
 
+class exp_level:
+    def __init__(self, number):
+        exp_level.value = number
+        return
+
 class cycif:
 
     def __init__(self):
@@ -29,29 +34,18 @@ class cycif:
 
 
 
-    def tissue_center(mag_surface):
-        surface_points = {}
-        interp_points = (mag_surface.get_points())  # pull all points that are contained in micromagellan surface
-        x_temp = []
-        y_temp = []
-        z_temp = []
-
-        for i in range(interp_points.size()):
-            point = interp_points.get(i)
-            x_temp.append(point.x)
-            y_temp.append(point.y)
-            z_temp.append(point.z)
-        surface_points["x"] = x_temp  ## put all points in dictionary to ease use
-        surface_points["y"] = y_temp
-        surface_points["z"] = z_temp
-        x_middle = (max(surface_points["x"]) - min(surface_points["x"])) / 2 + min(
-            surface_points["x"]
-        )  # finds center of tissue in X and below in Y
-        y_middle = (max(surface_points["y"]) - min(surface_points["y"])) / 2 + min(
-            surface_points["y"]
-        )
-        xy_pos = list((x_middle, y_middle))
-        return xy_pos
+    def tissue_center(self, mag_surface, magellan_object):
+        '''
+        take magellan surface and find the xy coordinates of the center of the surface
+        :param mag_surface:
+        :param magellan_object:
+        :return: x tissue center position and y tissue center position
+        :rtype: list[float, float]
+        '''
+        xy_pos = self.tile_xy_pos(mag_surface, magellan_object)
+        x_center = (max(xy_pos['x']) + min(xy_pos['x']))/2
+        y_center = (max(xy_pos['y']) + min(xy_pos['y']))/2
+        return x_center, y_center
 
     def syr_obj_switch(self, state):
         '''
@@ -278,7 +272,7 @@ class cycif:
 
         return tile_points_xy
 
-    def z_range(self, tile_points_xy, surface_name, magellan_object, core, cycle_number, seed_plane):
+    def z_range(self, tile_points_xy, surface_name, magellan_object, core, cycle_number):
 
         '''
         takes all tile points and starts with the first position (upper left corner of surface) and adds on an amount to shift the center of the z range
@@ -296,8 +290,8 @@ class cycif:
 
         z_centers = []
         if cycle_number == 1:
-            #z_center_initial = magellan_object.get_surface(surface_name).get_points().get(0).z
-            z_center_initial = seed_plane
+            z_center_initial = magellan_object.get_surface(surface_name).get_points().get(0).z
+            #z_center_initial = seed_plane
         if cycle_number != 1:
             first_cycle_z = magellan_object.get_surface(surface_name).get_points().get(0).z
             z_center_initial = self.long_range_z(tile_points_xy, first_cycle_z, core)
@@ -389,7 +383,7 @@ class cycif:
             focused_surface.add_point(surface_points_xyz['x'][q], surface_points_xyz['y'][q], surface_points_xyz['z'][q])
             # access point_list and add on relevent points to surface
 
-    def auto_expose(self):
+    def auto_expose(self, core, magellan_object, seed_expose, benchmark_threshold, channels = ['DAPI', 'A488', 'A555', 'A647'], surface_name = 'none'):
         '''
         Autoexposure algorithm. Currently, just sets each exposure to 100ms to determine exposure times.
         It also goes to center of micromagellan surface and finds channel offsets with respect to the nuclei/DAPI channel.
@@ -401,10 +395,50 @@ class cycif:
         :return: exposure times: [dapi_exposure, a488_exposure, a555_exposure, a647_exposure]
         :rtype: numpy array
         '''
+        if surface_name != 'none':
+            new_x, new_y = self.tissue_center(surface_name, magellan_object)
+            core.set_xy_position(new_x, new_y)
+            z_pos = magellan_object.get_surface(surface_name).get_points().get(0).z
+            core.set_position(z_pos)
 
-        exposure = np.array([10, 100, 100, 100])  # exposure time in milliseconds
+        bandwidth = 0.1
+        sat_max = 65000
+        exp_time_limit = 1000
+        exposure_array = [10,10,10,10] #dapi, a488, a555, a647
 
-        return exposure
+        for fluor_channel in channels:
+
+            intensity = self.expose(seed_expose, fluor_channel)
+            new_exp = seed_expose
+            while intensity < (1 - bandwidth)*benchmark_threshold or intensity > (1 + bandwidth)*benchmark_threshold:
+                if intensity < benchmark_threshold:
+                    new_exp = benchmark_threshold/intensity * new_exp
+                    if new_exp >= exp_time_limit:
+                        new_exp = exp_time_limit
+                        break
+                    else:
+                        intensity = self.expose(new_exp, fluor_channel)
+                elif intensity > benchmark_threshold and intensity < sat_max:
+                    new_exp = benchmark_threshold/intensity * new_exp
+                    intensity = self.expose(new_exp, fluor_channel)
+                elif intensity > sat_max:
+                    new_exp = new_exp/10
+                    intensity = self.expose(new_exp, fluor_channel)
+                elif new_exp >= sat_max:
+                    new_exp = sat_max
+                    break
+
+            if fluor_channel == 'DAPI':
+                exposure_array[0] = new_exp
+            elif fluor_channel == 'A488':
+                exposure_array[1] = new_exp
+            elif fluor_channel == 'A555':
+                exposure_array[2] = new_exp
+            elif fluor_channel == 'A647':
+                exposure_array[3] = new_exp
+
+        return exposure_array
+
 
     def channel_offsets(self, surface_name, z_centers, core, channels):
         '''
@@ -482,7 +516,7 @@ class cycif:
         acq_settings.set_channel_exposure('A647', int(exposure[3]))  # channel_name, exposure in ms
 
 
-    def surf2focused_surf(self, core, magellan_object, cycle_number, auto_exposure_list, seed_plane, channels = ['DAPI', 'A488', 'A555', 'A647']):
+    def surf2focused_surf(self, core, magellan_object, cycle_number, auto_exposure_list = [50,10,10,10], channels = ['DAPI', 'A488', 'A555', 'A647']):
         '''
         Takes generated micro-magellan surface with name: surface_name and generates new micro-magellan surface with name:
         new_focus_surface_name and makes an acquistion event after latter surface and auto exposes DAPI, A488, A555 and A647 channels.
@@ -503,7 +537,7 @@ class cycif:
 
             channel_index = channels.index(channel)
             exposure_time = auto_exposure_list[channel_index]
-            core.set_exposure(exposure_time)
+            #core.set_exposure(exposure_time)
 
             for x in range(1,num_surfaces + 1):
 
@@ -512,7 +546,7 @@ class cycif:
 
                 tile_surface_xy = self.tile_xy_pos(surface_name,magellan_object)  # pull center tile coords from manually made surface
 
-                z_centers = self.z_range(tile_surface_xy, surface_name, magellan_object, core, cycle_number, seed_plane)
+                z_centers = self.z_range(tile_surface_xy, surface_name, magellan_object, core, cycle_number)
 
                 start = time.perf_counter()
                 surface_points_xyz = self.focus_tile(tile_surface_xy, z_centers, core, channel)  # go to each tile coord and autofocus and populate associated z with result
@@ -520,8 +554,7 @@ class cycif:
                 elapsed_time = end - start
 
                 self.focused_surface_generate(surface_points_xyz, magellan_object, new_focus_surface_name) # will generate surface if not exist, update z points if exists
-                exposure_array = self.auto_expose()
-                #offset_array = self.channel_offsets(surface_name, z_centers, channels)
+                exposure_array = self.auto_expose(core, magellan_object, 50, 6500, [channel], new_focus_surface_name)
                 self.focused_surface_acq_settings(exposure_array, surface_name, new_focus_surface_name, magellan_object, x, channel)
 
                 elapsed_time_array.append(elapsed_time)
@@ -529,25 +562,50 @@ class cycif:
         return elapsed_time_array
 
 
-    def tilt_angle_chip(self, core):
-        x_0 = core.get_x_position()
-        y_0 = core.get_y_position()
-        z_0 = core.get_position(core.get_focus_device())
-        z_range= [z_0 - 10, z_0 + 10, 2]
-        corners_ideal_z = []
-        for x in range(0,2):
-            for y in range(0,2):
-                core.set_roi(x * 842, y * 493, 421, 246)
-                core.set_xy_position(x_0 - x * 636, y_0 - y * 372)
-                z_focused = self.auto_focus(z_range)  # here is where autofocus results go. = auto_focus()
-                corners_ideal_z.append(z_focused)
-                print(z_focused)
-        core.set_xy_position(x_0, y_0)
-        core.clear_roi()
-        angle_x = np.arctan([(corners_ideal_z[3] - corners_ideal_z[1]) + (corners_ideal_z[2] - corners_ideal_z[0])][0]/1272) * 1000 * 57.32 #angle in millidegrees
-        angle_y = np.arctan([(corners_ideal_z[1] - corners_ideal_z[0]) + (corners_ideal_z[3] - corners_ideal_z[2])][0]/ 1272) * 1000 * 57.32  # angle in millidegrees
-        print('angle X: ' + str(angle_x) + ' millidegrees', 'angle Y: ' + str(angle_y) + ' millidegrees')
-        print(corners_ideal_z)
+    def image_percentile_level(self, image, cut_off_threshold):
+        '''
+        Takes in image and cut off threshold and finds pixel value that exists at that threshold point.
+
+        :param numpy array image: numpy array image
+        :param float cut_off_threshold: percentile for cut off. For example a 0.99 would disregaurd the top 1% of pixels from calculations
+        :return: intensity og pixel that resides at the cut off fraction that was entered in the image
+        :rtype: int
+        '''
+        pixel_values = np.sort(image, axis=None)
+        pixel_count = int(np.size(pixel_values))
+        cut_off_index = int(pixel_count * cut_off_threshold)
+        tail_intensity = pixel_values[cut_off_index]
+
+
+        return tail_intensity
+
+    def exposure_hook(self, image, metadata):
+        global level
+        level = self.image_percentile_level(image, 0.85)
+
+        return
+
+
+    def expose(self, seed_exposure, channel = 'DAPI'):
+        '''
+        Runs entire auto focus algorithm in current XY position. Gives back predicted
+        in focus z position via focus_score method which is the Brenner score.
+
+        :param list[int, int, int] z_range: defines range and stepsize with [z start, z end, z step]
+        :param str channel: channel to autofocus with
+
+        :return: z coordinate for in focus plane
+        :rtype: float
+        '''
+
+
+        with Acquisition(directory ='C:/Users/CyCIF PC/Desktop/test_images' , name = 'throw_away', show_display=False ,image_process_fn=self.exposure_hook) as acq:
+            # Create some acquisition events here:
+
+            event =  {'channel': {'group': 'Color', 'config': channel},'exposure': seed_exposure}
+            acq.acquire(event)
+
+        return level
 
 
 
