@@ -278,7 +278,7 @@ class cycif:
 
         return tile_points_xy
 
-    def z_range(self, tile_points_xy, surface_name, magellan_object, core, cycle_number):
+    def z_range(self, tile_points_xy, surface_name, magellan_object, core, cycle_number, seed_plane):
 
         '''
         takes all tile points and starts with the first position (upper left corner of surface) and adds on an amount to shift the center of the z range
@@ -296,7 +296,8 @@ class cycif:
 
         z_centers = []
         if cycle_number == 1:
-            z_center_initial = magellan_object.get_surface(surface_name).get_points().get(0).z
+            #z_center_initial = magellan_object.get_surface(surface_name).get_points().get(0).z
+            z_center_initial = seed_plane
         if cycle_number != 1:
             first_cycle_z = magellan_object.get_surface(surface_name).get_points().get(0).z
             z_center_initial = self.long_range_z(tile_points_xy, first_cycle_z, core)
@@ -339,7 +340,7 @@ class cycif:
 
 
 
-    def focus_tile(self, tile_points_xy, z_centers, core):
+    def focus_tile(self, tile_points_xy, z_centers, core, channel):
         '''
         Takes dictionary of XY coordinates, moves to each of them, executes autofocus algorithm from method
         auto_focus and outputs the paired in focus z coordinate
@@ -362,7 +363,7 @@ class cycif:
             new_x = tile_points_xy['x'][q]
             new_y = tile_points_xy['y'][q]
             core.set_xy_position(new_x, new_y)
-            z_focused = self.auto_focus(z_range)  # here is where autofocus results go. = auto_focus()
+            z_focused = self.auto_focus(z_range, channel)  # here is where autofocus results go. = auto_focus()
             z_temp.append(z_focused)
         tile_points_xy['z'] = z_temp
         surface_points_xyz = tile_points_xy
@@ -379,7 +380,7 @@ class cycif:
 
         :return: Nothing
         '''
-        creation_status = self.surface_exist_check(new_surface_name) # 0 if surface with that name doesnt exist, 1 if it does
+        creation_status = self.surface_exist_check(magellan_object, new_surface_name) # 0 if surface with that name doesnt exist, 1 if it does
         if creation_status == 0:
             magellan_object.create_surface(new_surface_name)  # make surface if it doesnt alreay exist
         focused_surface = magellan_object.get_surface(new_surface_name)
@@ -405,7 +406,7 @@ class cycif:
 
         return exposure
 
-    def channel_offsets(self, surface_name, z_centers, channels):
+    def channel_offsets(self, surface_name, z_centers, core, channels):
         '''
         Offset algorithm It goes to center of micromagellan surface and finds channel offsets with respect to the nuclei/DAPI channel.
 
@@ -417,7 +418,7 @@ class cycif:
         :rtype: numpy array
         '''
 
-        z_center = z_centers[q]
+        z_center = z_centers[0]
         z_range = [z_center - 15, z_center + 15, 2]
 
         center_xy = self.tissue_center(surface_name)
@@ -432,7 +433,7 @@ class cycif:
 
         return channel_offsets
 
-    def focused_surface_acq_settings(self, exposure, original_surface_name, surface_name, magellan_object, channel_offsets, acq_surface_num,):
+    def focused_surface_acq_settings(self, exposure, original_surface_name, surface_name, magellan_object, acq_surface_num, channel):
         '''
         Takes already generated micro-magellan surface with name surface_name, sets it as a 2D surface, what channel group
         to use, sets exposure levels for all 4 channels and where to make the savings directory.
@@ -445,32 +446,43 @@ class cycif:
 
         :return: Nothing
         '''
-        try: # look to see if list contains acquistion setting. If it doesnt, it creates one.
-            acq_settings = magellan_object.get_acquisition_settings(acq_surface_num - 1)
+        acquisition_name = channel + ' surface ' + str(acq_surface_num)  #make name always be channel + surface number
+
+        i = 0
+        error = 0
+        acquisition_name_array = []
+        while error == 0:   #create an array of all names contained in acquistion events in MM
+            try:
+                acquisition_name_array.append(magellan_object.get_acquisition_settings(i).name_)
+                i += 1
+            except:
+                error = 1
+
+        try:  # see if acquistion name is within that array, if not create new event
+            name_index = acquisition_name_array.index(acquisition_name)
+            acq_settings = magellan_object.get_acquisition_settings(name_index)
         except:
             magellan_object.create_acquisition_settings()
-            acq_settings = magellan_object.get_acquisition_settings(acq_surface_num - 1)
+            acq_settings = magellan_object.get_acquisition_settings(i)
 
-        acq_settings.set_acquisition_name(surface_name)  # make same name as in focused_surface_generate function (all below as well too)
+        acq_settings.set_acquisition_name(acquisition_name)  # make same name as in focused_surface_generate function (all below as well too)
         acq_settings.set_acquisition_space_type('2d_surface')
         acq_settings.set_xy_position_source(original_surface_name)
         acq_settings.set_surface(surface_name)
         acq_settings.set_saving_dir(r'C:\Users\CyCIF PC\Desktop\test_images\tiled_images')  # standard saving directory
         acq_settings.set_channel_group('Color')
-        acq_settings.set_use_channel('DAPI', True)  # channel_name, use
-        acq_settings.set_use_channel('A488', True)  # channel_name, use
-        acq_settings.set_use_channel('A555', True)  # channel_name, use
-        acq_settings.set_use_channel('A647', True)  # channel_name, use
+        acq_settings.set_use_channel('DAPI', False)  # channel_name, use
+        acq_settings.set_use_channel('A488', False)  # channel_name, use
+        acq_settings.set_use_channel('A555', False)  # channel_name, use
+        acq_settings.set_use_channel('A647', False)  # channel_name, use
+        acq_settings.set_use_channel(channel, True)  # channel_name, use
         acq_settings.set_channel_exposure('DAPI', int(exposure[0]))  # channel_name, exposure in ms can auto detect channel names and iterate names with exposure times
         acq_settings.set_channel_exposure('A488', int(exposure[1]))  # channel_name, exposure in ms
         acq_settings.set_channel_exposure('A555', int(exposure[2]))  # channel_name, exposure in ms
         acq_settings.set_channel_exposure('A647', int(exposure[3]))  # channel_name, exposure in ms
-        acq_settings.set_channel_z_offset('DAPI', channel_offsets[0])  # channel_name, offset in um
-        acq_settings.set_channel_z_offset('A488', channel_offsets[1])  # channel_name, offset in um
-        acq_settings.set_channel_z_offset('A555', channel_offsets[2])  # channel_name, offset in um
-        acq_settings.set_channel_z_offset('A647', channel_offsets[3])  # channel_name, offset in um
 
-    def surf2focused_surf(self, core, magellan_object, cycle_number, channels = ['DAPI', 'A488', 'A555', 'A647']):
+
+    def surf2focused_surf(self, core, magellan_object, cycle_number, auto_exposure_list, seed_plane, channels = ['DAPI', 'A488', 'A555', 'A647']):
         '''
         Takes generated micro-magellan surface with name: surface_name and generates new micro-magellan surface with name:
         new_focus_surface_name and makes an acquistion event after latter surface and auto exposes DAPI, A488, A555 and A647 channels.
@@ -487,26 +499,32 @@ class cycif:
         num_surfaces = self.num_surfaces_count(magellan_object) # checks how many 'New Surface #' surfaces exist. Not actual total
         elapsed_time_array = []
 
-        for x in range(1,num_surfaces + 1):
+        for channel in channels:
 
-            surface_name = 'New Surface ' + str(x)
-            new_focus_surface_name = 'Focused Surface ' + str(x)
+            channel_index = channels.index(channel)
+            exposure_time = auto_exposure_list[channel_index]
+            core.set_exposure(exposure_time)
 
-            tile_surface_xy = self.tile_xy_pos(surface_name,magellan_object)  # pull center tile coords from manually made surface
+            for x in range(1,num_surfaces + 1):
 
-            z_centers = self.z_range(tile_surface_xy, surface_name, magellan_object, core, cycle_number)
+                surface_name = 'New Surface ' + str(x)
+                new_focus_surface_name = 'Focused Surface ' + str(channel)
 
-            start = time.perf_counter()
-            surface_points_xyz = self.focus_tile(tile_surface_xy, z_centers, core)  # go to each tile coord and autofocus and populate associated z with result
-            end = time.perf_counter()
-            elapsed_time = end - start
+                tile_surface_xy = self.tile_xy_pos(surface_name,magellan_object)  # pull center tile coords from manually made surface
 
-            self.focused_surface_generate(surface_points_xyz, magellan_object, new_focus_surface_name) # will generate surface if not exist, update z points if exists
-            exposure_array = self.auto_expose()
-            offset_array = self.channel_offsets(surface_name, z_centers, channels)
-            self.focused_surface_acq_settings(exposure_array, surface_name, new_focus_surface_name, magellan_object, offset_array, x)
+                z_centers = self.z_range(tile_surface_xy, surface_name, magellan_object, core, cycle_number, seed_plane)
 
-            elapsed_time_array.append(elapsed_time)
+                start = time.perf_counter()
+                surface_points_xyz = self.focus_tile(tile_surface_xy, z_centers, core, channel)  # go to each tile coord and autofocus and populate associated z with result
+                end = time.perf_counter()
+                elapsed_time = end - start
+
+                self.focused_surface_generate(surface_points_xyz, magellan_object, new_focus_surface_name) # will generate surface if not exist, update z points if exists
+                exposure_array = self.auto_expose()
+                #offset_array = self.channel_offsets(surface_name, z_centers, channels)
+                self.focused_surface_acq_settings(exposure_array, surface_name, new_focus_surface_name, magellan_object, x, channel)
+
+                elapsed_time_array.append(elapsed_time)
 
         return elapsed_time_array
 

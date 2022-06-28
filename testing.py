@@ -9,7 +9,17 @@ import numpy as np
 import time
 import serial
 
-microscope.surf2focused_surf(core, magellan, 1)
+
+
+
+#auto_focus_exposure_times = [10,50,100,200]  #[DAPI, A488, A555, A647] in ms
+#seed_plane = x   # z position when DAPI is in focus
+#microscope.surf2focused_surf(core, magellan, 1, auto_focus_exposure_times, seed_plane)
+
+
+
+
+
 
 
 
