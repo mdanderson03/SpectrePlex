@@ -1,5 +1,5 @@
 import openpyxl
-from pycromanager import Core, Acquisition, multi_d_acquisition_events, Dataset
+from pycromanager import Core, Acquisition, multi_d_acquisition_events, Dataset, MagellanAcquisition
 import numpy as np
 import matplotlib.pyplot as plt
 import math
@@ -22,8 +22,8 @@ class brenner:
         return
 
 class exp_level:
-    def __init__(self, number):
-        exp_level.value = number
+    def __init__(self):
+        exp_level.value = []
         return
 
 class cycif:
@@ -210,7 +210,27 @@ class cycif:
         #plt.show()
         return parameters[1]
 #################################################
-    def auto_focus(self, z_range, channel = 'DAPI'):
+    ###This section is the hook for the initial exposure function
+
+    def z_scan_exposure_hook(self, image, metadata):
+        '''
+        Method that hooks from autofocus image acquistion calls. It takes image, calculates a focus score for it
+        via focus_score method and exports a list that contains both the focus score and the z position it was taken at
+
+        :param numpy image: single image from hooked from acquistion
+        :param list[float] metadata: metadata for image
+
+        :return: Nothing
+        '''
+
+        z_intensity_level = self.image_percentile_level(image, 0.99)
+        intensity.value.append(z_intensity_level)
+
+        return
+
+
+##############################################
+    def auto_focus(self, z_range, exposure_time, channel = 'DAPI'):
         '''
         Runs entire auto focus algorithm in current XY position. Gives back predicted
         in focus z position via focus_score method which is the Brenner score.
@@ -236,12 +256,94 @@ class cycif:
                                                 z_start=z_range[0],
                                                 z_end=z_range[1],
                                                 z_step=z_range[2],
-                                                order='zc')
+                                                order='zc',exposure = exposure_time)
             acq.acquire(events)
 
         z_ideal = self.autofocus_fit()
 
         return z_ideal
+
+    def z_scan_exposure(self, z_range, seed_exposure, channel = 'DAPI'):
+        '''
+        Goes through z scan to over z range to determine maximum intensity value in said range and step size.
+
+        :param list[int, int, int] z_range: defines range and stepsize with [z start, z end, z step]
+        :param str channel: channel to autofocus with
+
+        :return: z coordinate for in focus plane
+        :rtype: float
+        '''
+
+        intensity = autocif.exp_level() # found using class for exp_level was far superior to using it as a global variable.
+        # I had issues with the image process hook function not updating brenner as a global variable
+
+
+
+        with Acquisition(directory='C:/Users/CyCIF PC/Desktop/test_images',
+                         name='z_stack_DAPI',
+                         show_display=False,
+                         image_process_fn=self.z_scan_exposure_hook) as acq:
+            events = multi_d_acquisition_events(channel_group='Color',
+                                                channels=[channel],
+                                                z_start=z_range[0],
+                                                z_end=z_range[1],
+                                                z_step=z_range[2],
+                                                order='zc',exposure = seed_exposure)
+            acq.acquire(events)
+
+        z_level_brightest = max(intensity)
+
+
+        return z_level_brightest
+
+    def auto_initial_expose(self, core, magellan_object, seed_expose, benchmark_threshold, tile_points_xy, channel, surface_name):
+        '''
+        Autoexposure algorithm to be executed before auto focus is used. This function scans over the entire z range that is to be used with auto focus
+        and determines what the brightest intensity values are up to 99%. It then takes that and determines what is the correct
+        exposure time to use via the benchmark_threshold. It automatically executes this in the upper left hand corner of the inputted MM surface.
+
+        :param: str surface_name: string of name of magellan surface to use
+        :param list z_centers: list of z points associated with xy points where the slide tilt was compensated for
+        :param: str channels: list that contains strings with channel names, for example 'DAPI'
+
+        :return: exposure time: time for inputted channels exposure to be used for autofocus
+        :rtype: int
+        '''
+
+        x_initial = tile_points_xy['x'][0]
+        y_initial = tile_points_xy['y'][0]
+        core.set_xy_position(x_initial, y_initial)
+        z_center_initial = magellan_object.get_surface(surface_name).get_points().get(0).z
+        z_range = [z_center_initial - 50, z_center_initial + 50, 5]
+
+        bandwidth = 0.1
+        sat_max = 65000
+        exp_time_limit = 1000
+
+
+        intensity = self.z_scan_exposure(z_range, seed_expose, channel)
+        new_exp = seed_expose
+        while intensity < (1 - bandwidth)*benchmark_threshold or intensity > (1 + bandwidth)*benchmark_threshold:
+            if intensity < benchmark_threshold:
+                new_exp = benchmark_threshold/intensity * new_exp
+                if new_exp >= exp_time_limit:
+                    new_exp = exp_time_limit
+                    break
+                else:
+                    intensity = self.z_scan_exposure(z_range, new_exp, channel)
+            elif intensity > benchmark_threshold and intensity < sat_max:
+                new_exp = benchmark_threshold/intensity * new_exp
+                intensity = self.z_scan_exposure(z_range, new_exp, channel)
+            elif intensity > sat_max:
+                new_exp = new_exp/10
+                intensity = self.z_scan_exposure(z_range, new_exp, channel)
+            elif new_exp >= sat_max:
+                new_exp = sat_max
+                break
+
+        return new_exp
+
+
 
     def tile_xy_pos(self, surface_name, magellan_object):
         '''
@@ -272,7 +374,7 @@ class cycif:
 
         return tile_points_xy
 
-    def z_range(self, tile_points_xy, surface_name, magellan_object, core, cycle_number):
+    def z_range(self, tile_points_xy, surface_name, magellan_object, core, cycle_number, channel, auto_focus_exposure_time):
 
         '''
         takes all tile points and starts with the first position (upper left corner of surface) and adds on an amount to shift the center of the z range
@@ -294,7 +396,7 @@ class cycif:
             #z_center_initial = seed_plane
         if cycle_number != 1:
             first_cycle_z = magellan_object.get_surface(surface_name).get_points().get(0).z
-            z_center_initial = self.long_range_z(tile_points_xy, first_cycle_z, core)
+            z_center_initial = self.long_range_z(tile_points_xy, first_cycle_z, core, channel, auto_focus_exposure_time)
 
         z_centers.append(z_center_initial)
 
@@ -320,7 +422,7 @@ class cycif:
         return z_centers
 
 
-    def long_range_z(self, tile_points_xy, first_cycle_z, core):
+    def long_range_z(self, tile_points_xy, first_cycle_z, core, channel, auto_focus_exposure_time):
 
         x_point = tile_points_xy['x'][0]
         y_point = tile_points_xy['y'][0]
@@ -328,7 +430,7 @@ class cycif:
         core.set_xy_position(x_point, y_point)
         z = first_cycle_z
         z_range = [z - 50, z + 50, 2]
-        z_focused = self.auto_focus(z_range)
+        z_focused = self.auto_focus(z_range, channel, auto_focus_exposure_time)
 
         return z_focused
 
@@ -439,6 +541,51 @@ class cycif:
 
         return exposure_array
 
+    def image_percentile_level(self, image, cut_off_threshold):
+        '''
+        Takes in image and cut off threshold and finds pixel value that exists at that threshold point.
+
+        :param numpy array image: numpy array image
+        :param float cut_off_threshold: percentile for cut off. For example a 0.99 would disregaurd the top 1% of pixels from calculations
+        :return: intensity og pixel that resides at the cut off fraction that was entered in the image
+        :rtype: int
+        '''
+        pixel_values = np.sort(image, axis=None)
+        pixel_count = int(np.size(pixel_values))
+        cut_off_index = int(pixel_count * cut_off_threshold)
+        tail_intensity = pixel_values[cut_off_index]
+
+
+        return tail_intensity
+
+    def exposure_hook(self, image, metadata):
+        global level
+        level = self.image_percentile_level(image, 0.85)
+
+        return
+
+
+    def expose(self, seed_exposure, channel = 'DAPI'):
+        '''
+        Runs entire auto focus algorithm in current XY position. Gives back predicted
+        in focus z position via focus_score method which is the Brenner score.
+
+        :param list[int, int, int] z_range: defines range and stepsize with [z start, z end, z step]
+        :param str channel: channel to autofocus with
+
+        :return: z coordinate for in focus plane
+        :rtype: float
+        '''
+
+
+        with Acquisition(directory ='C:/Users/CyCIF PC/Desktop/test_images' , name = 'throw_away', show_display=False ,image_process_fn=self.exposure_hook) as acq:
+            # Create some acquisition events here:
+
+            event =  {'channel': {'group': 'Color', 'config': channel},'exposure': seed_exposure}
+            acq.acquire(event)
+
+        return level
+
 
     def channel_offsets(self, surface_name, z_centers, core, channels):
         '''
@@ -516,7 +663,7 @@ class cycif:
         acq_settings.set_channel_exposure('A647', int(exposure[3]))  # channel_name, exposure in ms
 
 
-    def surf2focused_surf(self, core, magellan_object, cycle_number, auto_exposure_list = [50,10,10,10], channels = ['DAPI', 'A488', 'A555', 'A647']):
+    def surf2focused_surf(self, core, magellan_object, cycle_number, channels = ['DAPI', 'A488', 'A555', 'A647']):
         '''
         Takes generated micro-magellan surface with name: surface_name and generates new micro-magellan surface with name:
         new_focus_surface_name and makes an acquistion event after latter surface and auto exposes DAPI, A488, A555 and A647 channels.
@@ -531,13 +678,8 @@ class cycif:
         '''
 
         num_surfaces = self.num_surfaces_count(magellan_object) # checks how many 'New Surface #' surfaces exist. Not actual total
-        elapsed_time_array = []
 
         for channel in channels:
-
-            channel_index = channels.index(channel)
-            exposure_time = auto_exposure_list[channel_index]
-            #core.set_exposure(exposure_time)
 
             for x in range(1,num_surfaces + 1):
 
@@ -545,67 +687,29 @@ class cycif:
                 new_focus_surface_name = 'Focused Surface ' + str(channel)
 
                 tile_surface_xy = self.tile_xy_pos(surface_name,magellan_object)  # pull center tile coords from manually made surface
+                auto_focus_exposure_time = self.auto_initial_expose(core, magellan_object, seed_expose, 6500, tile_surface_xy, channel, surface_name)
+                z_centers = self.z_range(tile_surface_xy, surface_name, magellan_object, core, cycle_number, channel, auto_focus_exposure_time)
 
-                z_centers = self.z_range(tile_surface_xy, surface_name, magellan_object, core, cycle_number)
-
-                start = time.perf_counter()
                 surface_points_xyz = self.focus_tile(tile_surface_xy, z_centers, core, channel)  # go to each tile coord and autofocus and populate associated z with result
-                end = time.perf_counter()
-                elapsed_time = end - start
 
                 self.focused_surface_generate(surface_points_xyz, magellan_object, new_focus_surface_name) # will generate surface if not exist, update z points if exists
-                exposure_array = self.auto_expose(core, magellan_object, 50, 6500, [channel], new_focus_surface_name)
+                exposure_array = self.auto_expose(core, magellan_object, auto_focus_exposure_time, 6500, [channel], new_focus_surface_name)
                 self.focused_surface_acq_settings(exposure_array, surface_name, new_focus_surface_name, magellan_object, x, channel)
-
-                elapsed_time_array.append(elapsed_time)
-
-        return elapsed_time_array
-
-
-    def image_percentile_level(self, image, cut_off_threshold):
-        '''
-        Takes in image and cut off threshold and finds pixel value that exists at that threshold point.
-
-        :param numpy array image: numpy array image
-        :param float cut_off_threshold: percentile for cut off. For example a 0.99 would disregaurd the top 1% of pixels from calculations
-        :return: intensity og pixel that resides at the cut off fraction that was entered in the image
-        :rtype: int
-        '''
-        pixel_values = np.sort(image, axis=None)
-        pixel_count = int(np.size(pixel_values))
-        cut_off_index = int(pixel_count * cut_off_threshold)
-        tail_intensity = pixel_values[cut_off_index]
-
-
-        return tail_intensity
-
-    def exposure_hook(self, image, metadata):
-        global level
-        level = self.image_percentile_level(image, 0.85)
 
         return
 
+    def micro_magellan_acq(self):
+        for x in range(0,100):
+            try:
+                acq = MagellanAcquisition(magellan_acq_index=0)
+            except:
+                return
 
-    def expose(self, seed_exposure, channel = 'DAPI'):
-        '''
-        Runs entire auto focus algorithm in current XY position. Gives back predicted
-        in focus z position via focus_score method which is the Brenner score.
-
-        :param list[int, int, int] z_range: defines range and stepsize with [z start, z end, z step]
-        :param str channel: channel to autofocus with
-
-        :return: z coordinate for in focus plane
-        :rtype: float
-        '''
+            acq.await_completion()
+            print('acq ' + str(x) + ' finished')
 
 
-        with Acquisition(directory ='C:/Users/CyCIF PC/Desktop/test_images' , name = 'throw_away', show_display=False ,image_process_fn=self.exposure_hook) as acq:
-            # Create some acquisition events here:
 
-            event =  {'channel': {'group': 'Color', 'config': channel},'exposure': seed_exposure}
-            acq.acquire(event)
-
-        return level
 
 
 
