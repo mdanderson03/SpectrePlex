@@ -17,10 +17,11 @@ microscope = cycif() # initialize cycif object
 
 
 
-print(microscope.tissue_center('Focused Surface DAPI',magellan))
-#time.sleep(3)
-
-microscope.surf2focused_surf(core, magellan, 1, ['DAPI'])
+A = [[1, 2], [1,3], [1,4]]
+list = [x[1] for x in A]
+result = max([x[1] for x in A])
+index = list.index(result)
+print(A[index][1])
 
 
 

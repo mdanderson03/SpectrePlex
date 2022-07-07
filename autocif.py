@@ -222,9 +222,9 @@ class cycif:
 
         :return: Nothing
         '''
-
+        z = metadata.pop('ZPosition_um_Intended')  # moves up while taking z stack
         z_intensity_level = self.image_percentile_level(image, 0.99)
-        intensity.value.append(z_intensity_level)
+        intensity.value.append([z_intensity_level, z])
 
         return
 
@@ -256,7 +256,7 @@ class cycif:
                                                 z_start=z_range[0],
                                                 z_end=z_range[1],
                                                 z_step=z_range[2],
-                                                order='zc',exposure = exposure_time)
+                                                order='zc',channel_exposures_ms = [exposure_time])
             acq.acquire(events)
 
         z_ideal = self.autofocus_fit()
@@ -273,14 +273,15 @@ class cycif:
         :return: z coordinate for in focus plane
         :rtype: float
         '''
-
+        global intensity
         intensity = autocif.exp_level() # found using class for exp_level was far superior to using it as a global variable.
         # I had issues with the image process hook function not updating brenner as a global variable
 
 
 
+
         with Acquisition(directory='C:/Users/CyCIF PC/Desktop/test_images',
-                         name='z_stack_DAPI',
+                         name='throw_away',
                          show_display=False,
                          image_process_fn=self.z_scan_exposure_hook) as acq:
             events = multi_d_acquisition_events(channel_group='Color',
@@ -288,11 +289,12 @@ class cycif:
                                                 z_start=z_range[0],
                                                 z_end=z_range[1],
                                                 z_step=z_range[2],
-                                                order='zc',exposure = seed_exposure)
+                                                order='zc',channel_exposures_ms = [seed_exposure])
             acq.acquire(events)
-
-        z_level_brightest = max(intensity)
-
+        intensity_list = [x[0] for x in intensity.value]
+        brightest = max(intensity_list)
+        z_level_brightest_index = intensity_list.index(brightest)
+        z_level_brightest = intensity.value[z_level_brightest_index][1]
 
         return z_level_brightest
 
@@ -321,7 +323,9 @@ class cycif:
         exp_time_limit = 1000
 
 
-        intensity = self.z_scan_exposure(z_range, seed_expose, channel)
+        z_brightest = self.z_scan_exposure(z_range, seed_expose, channel)
+        core.set_position(z_brightest)
+        intensity = self.expose(seed_expose, channel)
         new_exp = seed_expose
         while intensity < (1 - bandwidth)*benchmark_threshold or intensity > (1 + bandwidth)*benchmark_threshold:
             if intensity < benchmark_threshold:
@@ -330,13 +334,13 @@ class cycif:
                     new_exp = exp_time_limit
                     break
                 else:
-                    intensity = self.z_scan_exposure(z_range, new_exp, channel)
+                    intensity = self.expose(new_exp, channel)
             elif intensity > benchmark_threshold and intensity < sat_max:
                 new_exp = benchmark_threshold/intensity * new_exp
-                intensity = self.z_scan_exposure(z_range, new_exp, channel)
+                intensity = self.expose(new_exp, channel)
             elif intensity > sat_max:
                 new_exp = new_exp/10
-                intensity = self.z_scan_exposure(z_range, new_exp, channel)
+                intensity = self.expose(new_exp, channel)
             elif new_exp >= sat_max:
                 new_exp = sat_max
                 break
@@ -436,7 +440,7 @@ class cycif:
 
 
 
-    def focus_tile(self, tile_points_xy, z_centers, core, channel):
+    def focus_tile(self, tile_points_xy, z_centers, core, exposure_time, channel):
         '''
         Takes dictionary of XY coordinates, moves to each of them, executes autofocus algorithm from method
         auto_focus and outputs the paired in focus z coordinate
@@ -459,7 +463,7 @@ class cycif:
             new_x = tile_points_xy['x'][q]
             new_y = tile_points_xy['y'][q]
             core.set_xy_position(new_x, new_y)
-            z_focused = self.auto_focus(z_range, channel)  # here is where autofocus results go. = auto_focus()
+            z_focused = self.auto_focus(z_range, exposure_time, channel)  # here is where autofocus results go. = auto_focus()
             z_temp.append(z_focused)
         tile_points_xy['z'] = z_temp
         surface_points_xyz = tile_points_xy
@@ -687,10 +691,10 @@ class cycif:
                 new_focus_surface_name = 'Focused Surface ' + str(channel)
 
                 tile_surface_xy = self.tile_xy_pos(surface_name,magellan_object)  # pull center tile coords from manually made surface
-                auto_focus_exposure_time = self.auto_initial_expose(core, magellan_object, seed_expose, 6500, tile_surface_xy, channel, surface_name)
+                auto_focus_exposure_time = self.auto_initial_expose(core, magellan_object, 50, 6500, tile_surface_xy, channel, surface_name)
                 z_centers = self.z_range(tile_surface_xy, surface_name, magellan_object, core, cycle_number, channel, auto_focus_exposure_time)
 
-                surface_points_xyz = self.focus_tile(tile_surface_xy, z_centers, core, channel)  # go to each tile coord and autofocus and populate associated z with result
+                surface_points_xyz = self.focus_tile(tile_surface_xy, z_centers, core, auto_focus_exposure_time, channel)  # go to each tile coord and autofocus and populate associated z with result
 
                 self.focused_surface_generate(surface_points_xyz, magellan_object, new_focus_surface_name) # will generate surface if not exist, update z points if exists
                 exposure_array = self.auto_expose(core, magellan_object, auto_focus_exposure_time, 6500, [channel], new_focus_surface_name)

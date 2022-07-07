@@ -20,7 +20,16 @@ import serial
 
 #microscope.auto_expose(10print()
 
-print(microscope.auto_expose(core, magellan, 40, 6500, ['A488'], 'none'))
+#microscope.surf2focused_surf(core, magellan, 1, ['DAPI'])
+
+tile_surface_xy =  microscope.tile_xy_pos('New Surface 1',magellan)
+#auto_focus_exposure_time = microscope.auto_initial_expose(core, magellan, 50, 6500, tile_surface_xy, 'DAPI', 'New Surface 1')
+
+
+intensity = microscope.auto_expose(core, magellan, 50, 6500, 'DAPI', 'New Surface 1')
+print(intensity)
+
+#z_centers = microscope.z_range(tile_surface_xy, 'New Surface 1', magellan, core, 1, 'DAPI', auto_focus_exposure_time)
 
 
 
