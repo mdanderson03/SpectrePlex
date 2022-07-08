@@ -1,5 +1,5 @@
 import openpyxl
-from pycromanager import Core, Acquisition, multi_d_acquisition_events, Dataset, MagellanAcquisition
+from pycromanager import Core, Acquisition, multi_d_acquisition_events, Dataset, MagellanAcquisition, Magellan
 import numpy as np
 import matplotlib.pyplot as plt
 import math
@@ -247,8 +247,7 @@ class cycif:
 
 
 
-        with Acquisition(directory='C:/Users/CyCIF PC/Desktop/test_images',
-                         name='z_stack_DAPI',
+        with Acquisition(directory = 'C:/Users/CyCIF PC/Desktop/test_images', name='trash',
                          show_display=False,
                          image_process_fn=self.image_process_hook) as acq:
             events = multi_d_acquisition_events(channel_group='Color',
@@ -280,8 +279,7 @@ class cycif:
 
 
 
-        with Acquisition(directory='C:/Users/CyCIF PC/Desktop/test_images',
-                         name='throw_away',
+        with Acquisition(directory = 'C:/Users/CyCIF PC/Desktop/test_images', name='trash',
                          show_display=False,
                          image_process_fn=self.z_scan_exposure_hook) as acq:
             events = multi_d_acquisition_events(channel_group='Color',
@@ -582,11 +580,12 @@ class cycif:
         '''
 
 
-        with Acquisition(directory ='C:/Users/CyCIF PC/Desktop/test_images' , name = 'throw_away', show_display=False ,image_process_fn=self.exposure_hook) as acq:
+        with Acquisition(directory = 'C:/Users/CyCIF PC/Desktop/test_images', name='trash', show_display=False ,image_process_fn=self.exposure_hook) as acq:
             # Create some acquisition events here:
 
             event =  {'channel': {'group': 'Color', 'config': channel},'exposure': seed_exposure}
             acq.acquire(event)
+
 
         return level
 
