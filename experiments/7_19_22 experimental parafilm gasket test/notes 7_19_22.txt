@@ -1,0 +1,30 @@
+testing for V3.5 a gasket top SLA printed and volumes measured and calculated.
+
+How much volume is in the screw in luer locks?
+
+1. place screw in luer lock in weigh boat and weigh before adding water
+2. fill up screw up luer lock with water and remeasure
+
+result = 0.2g = 20uL
+
+
+
+calulated volume:
+
+opening in parafilm gasket = 13x32mm = 416 mm^2
+parafilm thickness = 0.12mm (might be compressed to 0.1mm though)
+volume in parafilm gasket = 50 uL
+
+volume in screw in luer locks + volume in gasket = 90uL
+
+
+to test this:
+
+1. place gasket on glass plate
+2. add on the upper with installed screw in luer locks
+3. place on scale and zero out
+4. add in fluid to tops of screw in luer locks
+5. weight again to find volume of water. doesnt matter with this if water fell out of the gasket.
+
+result = 50uL of water to fill up
+

@@ -29,6 +29,7 @@ void setup() {
 // activate TTL pins as outputs
 for(int i=0; i<=7; i++){
   pinMode(ttl_pins[i], OUTPUT);
+  
 }
 
 // activate pins for stepper peristaltic pump as outputs
@@ -58,8 +59,9 @@ Serial.begin(9600);
 
 void loop() {
   // put your main code here, to run repeatedly:
-
-
+//digitalWrite(A7, HIGH);
+//step(100, pump_step, 2);
+digitalWrite(13, HIGH);
   if (Serial.available()>0){
     i = 0;
     while (i <= 2){
