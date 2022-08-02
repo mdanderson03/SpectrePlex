@@ -389,8 +389,8 @@ class cycif:
         :rtype: list[float]
         '''
 
-        x_slide_slope = 0.0014 #rise over run of z focus change over x change in microns
-        y_slide_slope = -0.0007 #rise over run of z focus change over y change in microns
+        x_slide_slope = 0.00 #rise over run of z focus change over x change in microns
+        y_slide_slope = 0.00 #rise over run of z focus change over y change in microns
 
         z_centers = []
         if cycle_number == 1:
@@ -456,12 +456,12 @@ class cycif:
         for q in range(0, num):
 
             z_center = z_centers[q]
-            z_range = [z_center - 15, z_center + 15, 2]
+            z_range = [z_center - 50, z_center + 50, 20]
 
             new_x = tile_points_xy['x'][q]
             new_y = tile_points_xy['y'][q]
             core.set_xy_position(new_x, new_y)
-            z_focused = self.auto_focus(z_range, exposure_time, channel)  # here is where autofocus results go. = auto_focus()
+            z_focused = self.auto_focus(z_range, exposure_time, channel)  # here is where autofocus results go. = auto_focus
             z_temp.append(z_focused)
         tile_points_xy['z'] = z_temp
         surface_points_xyz = tile_points_xy
@@ -696,6 +696,7 @@ class cycif:
                 surface_points_xyz = self.focus_tile(tile_surface_xy, z_centers, core, auto_focus_exposure_time, channel)  # go to each tile coord and autofocus and populate associated z with result
 
                 self.focused_surface_generate(surface_points_xyz, magellan_object, new_focus_surface_name) # will generate surface if not exist, update z points if exists
+                time.sleep(5)
                 exposure_array = self.auto_expose(core, magellan_object, auto_focus_exposure_time, 6500, [channel], new_focus_surface_name)
                 self.focused_surface_acq_settings(exposure_array, surface_name, new_focus_surface_name, magellan_object, x, channel)
 

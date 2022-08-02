@@ -1,0 +1,24 @@
+spot repeatibility experiment with autofocus
+
+obsdervation auto focus typically works very well. In final image, seemingly random tiles are out of focus. Why? 
+
+Experiment:
+
+1. In one spot autofocus 3 times
+2. wait 5 mintues
+3. auto focus 3 times
+4. move 3mm x 3mm 
+5. wait 5 mintues
+6. move back to original location and autofocus 3 times
+7. move 3mmx3mm
+8. move back to original spot autofocus 3 times
+9. repeat 7 and 8 3 more times. 
+
+spot location x: -8919, Y: 6513
+displacement vector = X: -3mm, Y:-3mm
+
+z range:
+center = 1100
+scan range = +-50um
+
+
