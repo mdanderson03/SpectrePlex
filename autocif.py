@@ -1,4 +1,3 @@
-import openpyxl
 from pycromanager import Core, Acquisition, multi_d_acquisition_events, Dataset, MagellanAcquisition, Magellan
 import numpy as np
 import matplotlib.pyplot as plt
@@ -11,7 +10,8 @@ from scipy.io import loadmat
 from scipy.optimize import curve_fit
 import pandas as pd
 import serial
-from openpyxl import Workbook
+core = Core()
+
 
 import autocif
 
@@ -468,7 +468,7 @@ class cycif:
 
         return surface_points_xyz
 
-    def focused_surface_generate(self, surface_points_xyz, magellan_object, new_surface_name):
+    def focused_surface_generate(self, magellan_object, new_surface_name):
         '''
         Generates new micro-magellan surface with name new_surface_name and uses all points in surface_points_xyz dictionary
         as interpolation points. If surface already exists, then it checks for it and updates its xyz points.
@@ -481,13 +481,15 @@ class cycif:
         creation_status = self.surface_exist_check(magellan_object, new_surface_name) # 0 if surface with that name doesnt exist, 1 if it does
         if creation_status == 0:
             magellan_object.create_surface(new_surface_name)  # make surface if it doesnt alreay exist
+        '''
         focused_surface = magellan_object.get_surface(new_surface_name)
         num = len(surface_points_xyz['x'])
         for q in range(0, num):
             focused_surface.add_point(surface_points_xyz['x'][q], surface_points_xyz['y'][q], surface_points_xyz['z'][q])
             # access point_list and add on relevent points to surface
+        '''
 
-    def auto_expose(self, core, magellan_object, seed_expose, benchmark_threshold, channels = ['DAPI', 'A488', 'A555', 'A647'], surface_name = 'none'):
+    def auto_expose(self, core, magellan_object, seed_expose, benchmark_threshold, z_focoused_pos, channels = ['DAPI', 'A488', 'A555', 'A647'], surface_name = 'none'):
         '''
         Autoexposure algorithm. Currently, just sets each exposure to 100ms to determine exposure times.
         It also goes to center of micromagellan surface and finds channel offsets with respect to the nuclei/DAPI channel.
@@ -502,7 +504,8 @@ class cycif:
         if surface_name != 'none':
             new_x, new_y = self.tissue_center(surface_name, magellan_object)
             core.set_xy_position(new_x, new_y)
-            z_pos = magellan_object.get_surface(surface_name).get_points().get(0).z
+            z_pos = z_focoused_pos
+            #z_pos = magellan_object.get_surface(surface_name).get_points().get(0).z
             core.set_position(z_pos)
 
         bandwidth = 0.1
@@ -652,7 +655,7 @@ class cycif:
         acq_settings.set_acquisition_name(acquisition_name)  # make same name as in focused_surface_generate function (all below as well too)
         acq_settings.set_acquisition_space_type('2d_surface')
         acq_settings.set_xy_position_source(original_surface_name)
-        acq_settings.set_surface(surface_name)
+        acq_settings.set_surface(original_surface_name)
         acq_settings.set_saving_dir(r'C:\Users\CyCIF PC\Desktop\test_images\tiled_images')  # standard saving directory
         acq_settings.set_channel_group('Color')
         acq_settings.set_use_channel('DAPI', False)  # channel_name, use
@@ -691,21 +694,42 @@ class cycif:
 
                 tile_surface_xy = self.tile_xy_pos(surface_name,magellan_object)  # pull center tile coords from manually made surface
                 auto_focus_exposure_time = self.auto_initial_expose(core, magellan_object, 50, 6500, tile_surface_xy, channel, surface_name)
-                z_centers = self.z_range(tile_surface_xy, surface_name, magellan_object, core, cycle_number, channel, auto_focus_exposure_time)
+                #z_centers = self.z_range(tile_surface_xy, surface_name, magellan_object, core, cycle_number, channel, auto_focus_exposure_time)
 
-                surface_points_xyz = self.focus_tile(tile_surface_xy, z_centers, core, auto_focus_exposure_time, channel)  # go to each tile coord and autofocus and populate associated z with result
 
-                self.focused_surface_generate(surface_points_xyz, magellan_object, new_focus_surface_name) # will generate surface if not exist, update z points if exists
+                [x_pos, y_pos] = self.tissue_center(surface_name,magellan_object)
+                core.set_xy_position(x_pos, y_pos)
+                z_center = magellan_object.get_surface(surface_name).get_points().get(0).z
+                z_range = [z_center - 50, z_center + 50, 20]
+                z_focused = self.auto_focus(z_range, auto_focus_exposure_time,channel)  # here is where autofocus results go. = auto_focus
+
+
+
+
+
+                #surface_points_xyz = self.focus_tile(tile_surface_xy, z_centers, core, auto_focus_exposure_time, channel)  # go to each tile coord and autofocus and populate associated z with result
+                self.focused_surface_generate(magellan_object, new_focus_surface_name) # will generate surface if not exist, update z points if exists
                 time.sleep(5)
-                exposure_array = self.auto_expose(core, magellan_object, auto_focus_exposure_time, 6500, [channel], new_focus_surface_name)
+                exposure_array = self.auto_expose(core, magellan_object, auto_focus_exposure_time, 6500, z_focused, [channel], surface_name)
                 self.focused_surface_acq_settings(exposure_array, surface_name, new_focus_surface_name, magellan_object, x, channel)
 
         return
 
+    def mm_focus_hook(self, event):
+
+        z_center = core.get_position()
+        z_range = [z_center - 50, z_center + 50, 20]
+        exposure_time = core.get_exposure()
+        z_focused_position = self.auto_focus(z_range, exposure_time, 'DAPI')
+        core.set_position(z_focused_position)
+        time.sleep(0.5)
+
+
+
     def micro_magellan_acq(self):
         for x in range(0,100):
             try:
-                acq = MagellanAcquisition(magellan_acq_index=0)
+                acq = MagellanAcquisition(magellan_acq_index=x, post_hardware_hook_fn=self.mm_focus_hook)
             except:
                 return
 
