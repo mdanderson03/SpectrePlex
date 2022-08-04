@@ -1,0 +1,3 @@
+8_4_2022 test auto is folder for experiment
+
+2 surfaces, 1 color, 7 tiles and 6 tiles respectively. Took 2.5 minutes to complete. 
