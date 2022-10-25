@@ -26,8 +26,8 @@ int status = WL_IDLE_STATUS;     // the WiFi radio's status
 const char broker[] = "192.168.1.196"; // Address of the MQTT server
 int        port     = 1883;
 const char topic[]  = "control/#";
-const char IR1[]  = "control/IR1";
-const char IR2[]  = "control/IR2";
+const char IR1[]  = "readings/IR1";
+const char IR2[]  = "readings/IR2";
 
 WiFiClient wifiClient;
 MqttClient mqttClient(wifiClient);
@@ -50,9 +50,9 @@ int pump_delay = 2;
 void setup() {
   //Initialize serial and wait for port to open:
   Serial.begin(9600);
-  while (!Serial) {
-    ; // wait for serial port to connect. Needed for native USB port only
-  }
+  //while (!Serial) {
+ //   ; // wait for serial port to connect. Needed for native USB port only
+  //}
 
   // attempt to connect to WiFi network:
   Serial.print("Attempting to connect to WPA SSID: ");
