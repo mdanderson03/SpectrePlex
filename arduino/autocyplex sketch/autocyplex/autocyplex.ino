@@ -15,15 +15,15 @@
 
 
 
-#define SECRET_SSID "FiOS-KDPZB" // your WiFi access point name
-#define SECRET_PASS "pod24near9799binds" // your WiFi password 
+#define SECRET_SSID "raspi-webgui" // your WiFi access point name
+#define SECRET_PASS "ChangeMe" // your WiFi password 
 ///////please enter your sensitive data in the Secret tab/arduino_secrets.h
 char ssid[] = SECRET_SSID;        // your network SSID (name)
 char pass[] = SECRET_PASS;    // your network password (use for WPA, or use as key for WEP)
 int status = WL_IDLE_STATUS;     // the WiFi radio's status
 
 
-const char broker[] = "192.168.1.196"; // Address of the MQTT server
+const char broker[] = "10.3.141.1"; // Address of the MQTT server
 int        port     = 1883;
 const char topic[]  = "control/#";
 const char IR1[]  = "readings/IR1";
