@@ -8,10 +8,10 @@ microscope = cycif() # initialize cycif object
 magellan_acq = MagellanAcquisition() # intialize mag acq object
 robotics = arduino('COM5') # initialize arduino controlled robotics object at defined COM terminal number
 
-time.sleep(3) # wait for ardiuno to reboot and connect with computer
+client = mqtt.Client('autocyplex_server')
 
-total_cycles = 3 # type in total amount of cycles to be done
-for x in range(1, total_cycles + 1):
-    microscope.surf2focused_surf(core, magellan, cycle_number)
-    magellan_acq()
+client.connect('192.168.1.232', 1883)
 
+client.loop_start()
+client.publish("control/valve", 214)
+client.loop_stop()

@@ -10,6 +10,7 @@ from scipy.io import loadmat
 from scipy.optimize import curve_fit
 import pandas as pd
 import serial
+import paho.mqtt.client as mqtt
 
 core = Core()
 magellan = Magellan()
@@ -500,6 +501,30 @@ class cycif:
 
         return surface_points_xyz
 
+    def tile_xyz_gen(self, tile_points_xy, z_focused):
+        '''
+        Takes dictionary of XY coordinates applies inputted same focused z postion to all of them to make an xyz array
+
+        :param dictionary tile_points_xy: dictionary containing all XY coordinates. In the form: {{x:(int)}, {y:(int)}}
+
+        :return: XYZ points where XY are stage coords and Z is in focus coordinate. {{x:(int)}, {y:(int)}, {z:(float)}}
+        :rtype: dictionary
+        '''
+
+        z_temp = []
+        num = len(tile_points_xy['x'])
+        for q in range(0, num):
+
+            z_center = z_focused[q]
+
+            new_x = tile_points_xy['x'][q]
+            new_y = tile_points_xy['y'][q]
+            z_temp.append(z_focused)
+        tile_points_xy['z'] = z_temp
+        surface_points_xyz = tile_points_xy
+
+        return surface_points_xyz
+
     def focused_surface_generate(self, magellan_object, new_surface_name):
         '''
         Generates new micro-magellan surface with name new_surface_name and uses all points in surface_points_xyz dictionary
@@ -520,6 +545,27 @@ class cycif:
             focused_surface.add_point(surface_points_xyz['x'][q], surface_points_xyz['y'][q], surface_points_xyz['z'][q])
             # access point_list and add on relevent points to surface
         '''
+
+    def focused_surface_generate_xyz(self, magellan_object, new_surface_name, surface_points_xyz):
+        '''
+        Generates new micro-magellan surface with name new_surface_name and uses all points in surface_points_xyz dictionary
+        as interpolation points. If surface already exists, then it checks for it and updates its xyz points.
+
+        :param dictionary surface_points_xyz: all paired-wise points of XYZ where XY are stage coords and Z is in focus. {{x:(int)}, {y:(int)}, {z:(float)}}
+        :param str new_surface_name: name that generated surface will have
+
+        :return: Nothing
+        '''
+        creation_status = self.surface_exist_check(magellan_object, new_surface_name) # 0 if surface with that name doesnt exist, 1 if it does
+        if creation_status == 0:
+            magellan_object.create_surface(new_surface_name)  # make surface if it doesnt alreay exist
+        
+        focused_surface = magellan_object.get_surface(new_surface_name)
+        num = len(surface_points_xyz['x'])
+        for q in range(0, num):
+            focused_surface.add_point(surface_points_xyz['x'][q], surface_points_xyz['y'][q], surface_points_xyz['z'][q])
+            # access point_list and add on relevent points to surface
+        
 
     def auto_expose(self, core, magellan_object, seed_expose, tile_points_xy, benchmark_threshold, z_focused_pos, channels = ['DAPI', 'A488', 'A555', 'A647'], surface_name = 'none'):
         '''
@@ -750,6 +796,38 @@ class cycif:
 
         return
 
+    def surface_acquire(self, core, magellan_object, channels = ['DAPI', 'A488', 'A555', 'A647']):
+        '''
+        Takes generated micro-magellan surface with name: surface_name and generates new micro-magellan surface with name:
+        new_focus_surface_name and makes an acquistion event after latter surface and auto exposes DAPI, A488, A555 and A647 channels.
+        Takes auto focus from center tile in surface and applies value to every other tile in surface
+
+        :param MMCore_Object core: Object made from Bridge.core()
+        :param object magellan_object: object created via = bridge.get_magellan()
+        :param int cycle_number: object created via = bridge.get_magellan()
+        :param: list[str] channels: list that contains strings with channel names
+
+        :return: Nothing
+        '''
+
+        num_surfaces = self.num_surfaces_count(magellan_object) # checks how many 'New Surface #' surfaces exist. Not actual total
+
+        for channel in channels:
+
+            for x in range(1,num_surfaces + 1):
+
+                surface_name = 'New Surface ' + str(x)
+                new_focus_surface_name = 'Focused Surface ' + str(channel)
+
+                tile_surface_xy = self.tile_xy_pos(surface_name,magellan_object)  # pull center tile coords from manually made surface
+                auto_focus_exposure_time = self.auto_initial_expose(core, magellan_object, 50, 6500, tile_surface_xy, channel, surface_name)
+                z_center = magellan_object.get_surface(surface_name).get_points().get(0).z
+                z_range = [z_center - 10, z_center + 10, 1]
+                z_focused = self.auto_focus(z_range, auto_focus_exposure_time,channel)  # here is where autofocus results go. = auto_focus
+                surface_points_xyz = self.focus_tile(tile_surface_xy, z_focused)  # go to each tile coord and autofocus and populate associated z with result
+                self.focused_surface_generate_xyz(magellan_object, new_focus_surface_name, surface_points_xyz) # will generate surface if not exist, update z points if exists
+
+
     def mm_focus_hook(self, event):
         z_center = core.get_position()
         core.snap_image()
@@ -766,7 +844,10 @@ class cycif:
 
 
 
-    def micro_magellan_acq(self):
+    def micro_magellan_acq_auto_focus(self):
+        '''
+        going through micromagellan list and acquire each one while autofocusing at each tile
+        '''
 
         for x in range(0,100):
             try:
@@ -779,7 +860,21 @@ class cycif:
 
             print('acq ' + str(x) + ' finished')
 
+    def micro_magellan_acq(self):
+        '''
+        go through micromagellan list and acquire each one
+        '''
 
+        for x in range(0,100):
+            try:
+                acq = MagellanAcquisition(magellan_acq_index=x)
+                acq.await_completion()
+                print('acq ' + str(x) + ' finished')
+            except:
+                continue
+
+
+            print('acqs ' + ' finished')
 
 
 
@@ -802,6 +897,14 @@ class arduino:
         self.connection = serial.Serial(port=com_address, baudrate=baudrate, timeout=timeout)
 
         return
+
+    def mqtt_publish(message, subtopic, client = client, topic = "control"):
+
+        full_topic = topic + "/" + subtopic
+
+        client.loop_start()
+        client.publish(full_topic, message)
+        client.loop_stop()
 
     def order_execute(self, orders):
         '''
