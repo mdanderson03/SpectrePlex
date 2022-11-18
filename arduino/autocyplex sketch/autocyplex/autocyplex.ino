@@ -120,6 +120,8 @@ pinMode(13, OUTPUT);
 pinMode(A0, INPUT);
 pinMode(A2, INPUT);
 
+digitalWrite(A7, HIGH);
+
 }
 
 
@@ -154,12 +156,16 @@ void loop() {
 
       if (subtopic == "peristaltic"){
         if (cmd1 == 1){
+          Serial.println(" turned pump on");
           digitalWrite(A7, HIGH);
         }
-        if (cmd1 == 0){
+        if (cmd1 == 0 && cmd2 != 0){
+          Serial.println("pump off");
           digitalWrite(A7, LOW);
         }
+        if (cmd2 > 0){
         pump_delay = cmd2;
+        }
       }
 
       if (subtopic == "valve"){

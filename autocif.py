@@ -12,8 +12,8 @@ import pandas as pd
 import serial
 import paho.mqtt.client as mqtt
 
-core = Core()
-magellan = Magellan()
+#core = Core()
+#magellan = Magellan()
 
 import autocif
 
@@ -898,7 +898,7 @@ class arduino:
 
         return
 
-    def mqtt_publish(message, subtopic, client = client, topic = "control"):
+    def mqtt_publish(message, subtopic, client, topic = "control"):
 
         full_topic = topic + "/" + subtopic
 
