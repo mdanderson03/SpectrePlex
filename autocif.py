@@ -806,7 +806,6 @@ class cycif:
 
         :param MMCore_Object core: Object made from Bridge.core()
         :param object magellan_object: object created via = bridge.get_magellan()
-        :param int cycle_number: object created via = bridge.get_magellan()
         :param: list[str] channels: list that contains strings with channel names
 
         :return: Nothing
@@ -823,8 +822,10 @@ class cycif:
 
                 tile_surface_xy = self.tile_xy_pos(surface_name,magellan_object)  # pull center tile coords from manually made surface
                 auto_focus_exposure_time = self.auto_initial_expose(core, magellan_object, 50, 6500, tile_surface_xy, channel, surface_name)
+
                 z_center = magellan_object.get_surface(surface_name).get_points().get(0).z
                 z_range = [z_center - 10, z_center + 10, 1]
+
                 z_focused = self.auto_focus(z_range, auto_focus_exposure_time,channel)  # here is where autofocus results go. = auto_focus
                 surface_points_xyz = self.focus_tile(tile_surface_xy, z_focused)  # go to each tile coord and autofocus and populate associated z with result
                 self.focused_surface_generate_xyz(magellan_object, new_focus_surface_name, surface_points_xyz) # will generate surface if not exist, update z points if exists
