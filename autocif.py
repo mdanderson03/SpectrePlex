@@ -12,6 +12,8 @@ import pandas as pd
 import serial
 import paho.mqtt.client as mqtt
 
+client = mqtt.Client('autocyplex_server')
+client.connect('10.3.141.1', 1883)
 #core = Core()
 #magellan = Magellan()
 
@@ -883,22 +885,15 @@ class cycif:
 
 class arduino:
 
-    def __init__(self, com_address, baudrate = 9600, timeout = 5):
+    def mqtt_publish(message, subtopic, topic = "control", client = client):
         '''
-        Establishes connection to arduino
+        takes message and publishes message to server defined by client and under topic of topic/subtopic
 
-        :param str com_address: address of com port that arduino is connected to. Example: 'COM5'
-        :param int baudrate: baudrate that connection to arduino is. Defaults to 9600.
-        :param int timeout: how long to wait to check for information in line in ms. Defaults to 5
-
-        :return: Nothing
+        :param str subtopic: second tier of topic heirarchy
+        :param str topic: first tier of topic heirarchy
+        :param object client: client that MQTT server is on. Established in top of module
+        :return:
         '''
-
-        self.connection = serial.Serial(port=com_address, baudrate=baudrate, timeout=timeout)
-
-        return
-
-    def mqtt_publish(message, subtopic, client, topic = "control"):
 
         full_topic = topic + "/" + subtopic
 
@@ -906,66 +901,171 @@ class arduino:
         client.publish(full_topic, message)
         client.loop_stop()
 
-    def order_execute(self, orders):
+    def auto_load(self, time_small = 22.7, time_large = 35):
         '''
-        input list of commands for arduino and executes them one at a time, left to right. See serial command decoder file for info.
+        Load in all 8 liquids into multiplexer. Numbers 2-7 just reach multiplexer while 1 and 8 flow through more.
 
-        :param list[int, int, ...] orders: List of all commands to be sent to arduino. This list has no limit in length.
-
-        :return: Nothing
+        :param float time_small: time in secs to pump liquid from Eppendorf to multiplexer given a speed of 7ms per step.
+        :param float time_large: time in secs to load larger volume liquids of 1 and 8 into multiplexer. Will make default for both.
+        :return: nothing
         '''
-        # input list of serial codes for arduino and executes them one at a time, left to right. See serial command decoder for info.
-        for order in orders:
-            exit = 1
-            command = str(order)
-            command = command.encode()
-            self.connection.write(command)
-            while exit != 0:  # this part reads the finished command from arduino to know that the entered command was fully executed
-                exit = self.connection.readline()
-                exit = exit.decode()
-                try:
-                    exit = int(exit)
-                except:
-                    exit = 1
-        return
 
-    def prim_secondary_cycle(self, valve_num_prim, valve_num_secondary, inc_time_prim, inc_time_secdonary):
+        self.mqtt_publish(170, 'peristaltic') # turn pump on
+
+        for x in range(2,8):
+            on_command = (x * 100) + 10   # multiplication by 100 forces x value into the 1st spot on a 3 digit code.
+            off_command = (x * 100) + 00  # multiplication by 100 forces x value into the 1st spot on a 3 digit code.
+            self.mqtt_publish(on_command, 'valve')
+            time.sleep(time_small)
+            self.mqtt_publish(off_command, 'valve')
+
+        for x in range(1,9,7):
+            on_command = (x * 100) + 10   # multiplication by 100 forces x value into the 1st spot on a 3 digit code.
+            off_command = (x * 100) + 00  # multiplication by 100 forces x value into the 1st spot on a 3 digit code.
+            self.mqtt_publish(on_command, 'valve')
+            time.sleep(time_large)
+            self.mqtt_publish(off_command, 'valve')
+
+        self.mqtt_publish(0o70, 'peristaltic') # turn pump off
+
+    def dispense(self, liquid_selection, volume, plex_chamber_time = 24):
         '''
-        Normal directly conjugated cycle. It bleaches sample, restains and washes sample.
+        Moves volume defined of liquid selected into chamber.
+        Acts different if volume requested is larger than volume from multiplexer through chamber.
+        Difference being PBS flow is not activated if volume is larger, but is if not.
+        Make sure to have volume be greater than chamber volume of 60uL
 
-        :param int syringe_num: Number on autopipettor revolver that the direct conjugated stain is in
-
-        :return: Nothing
+        :param int liquid_selection: liquid number to be dispensed
+        :param int volume: volume of chosen liquid to be dispensed in uL
+        :param float plex_chamber_time: time in secs to flow from multiplexer to chambers end.
+        :return: nothing
         '''
-        prim_command = int(str(5) + str(valve_num_prim) + str(inc_time_prim))
-        second_command = int(str(5) + str(valve_num_secondary) + str(inc_time_secdonary))
-        list_of_orders = [452, prim_command, 452, 452, second_command, 452, 452]
-        self.order_execute(list_of_orders)
 
-        return
+        on_command = (liquid_selection * 100) + 10  # multiplication by 100 forces x value into the 1st spot on a 3 digit code.
+        off_command = (liquid_selection * 100) + 00  # multiplication by 100 forces x value into the 1st spot on a 3 digit code.
+        speed = 11 # in uL per second
+        time_dispense_volume = volume/speed
+        transition_zone_time = 6  #time taken at 7ms steps to move past transition zone in liquid front
 
-    def bleach_cycle(self):
+        if time_dispense_volume >= (plex_chamber_time + transition_zone_time):
+            self.mqtt_publish(on_command, 'valve')
+            self.mqtt_publish(170, 'peristaltic')  # turn pump on
+            time.sleep(time_dispense_volume)
+            self.mqtt_publish(0o70, 'peristaltic') # turn pump off
+            self.mqtt_publish(off_command, 'valve')
+
+        elif time_dispense_volume < (plex_chamber_time + transition_zone_time):
+            self.mqtt_publish(on_command, 'valve')
+            self.mqtt_publish(170, 'peristaltic')  # turn pump on
+            time.sleep(time_dispense_volume)
+            self.mqtt_publish(off_command, 'valve')
+
+            self.mqtt_publish(810, 'valve') # start PBS flow
+            time.sleep(plex_chamber_time + transition_zone_time - time_dispense_volume*3/4) # adjust time to get front 1/4 into chamber drain line
+            self.mqtt_publish(0o70, 'peristaltic') # turn pump off
+            self.mqtt_publish(800, 'valve') # end PBS flow
+
+    def flow(self, liquid_selection, time = -1, chamber_volume = 60, plex_chamber_time = 24):
         '''
-        Normal directly conjugated cycle. It bleaches sample, restains and washes sample.
+        Flow liquid selected through chamber. If defaults are used, flows through chamber volume 4x plus volume to reach chamber from multiplexer.
+        If time is used, it overrides the last two parameters of chamber_volume and plex_chamber_time.
 
-        :param cycif_object: Number on autopipettor revolver that the direct conjugated stain is in
-
-        :return: Nothing
+        :param int liquid_selection: liquid number to be dispensed
+        :param int time: time in secs to flow fluid in absolute total
+        :param float chamber_volume: volume in uL that chamber holds
+        :param float plex_chamber_time: time in secs for liquid to go from multiplexer to end of chamber
+        :return: nothing
         '''
-        list_of_orders = [230,452,452]
-        self.order_execute(list_of_orders)
-        return
 
-    def stain_cycle(self, valve_num, inc_time):
+        on_command = (liquid_selection * 100) + 10  # multiplication by 100 forces x value into the 1st spot on a 3 digit code.
+        off_command = (liquid_selection * 100) + 00  # multiplication by 100 forces x value into the 1st spot on a 3 digit code.
+        speed = 11 # in uL per second
+        time_chamber_volume = chamber_volume/speed
+        transition_zone_time = 6  # time taken at 7ms steps to move past transition zone in liquid front
+
+        if time == -1:
+            self.mqtt_publish(on_command, 'valve')
+            self.mqtt_publish(170, 'peristaltic')  # turn pump on
+            time.sleep(plex_chamber_time + transition_zone_time + 4*time_chamber_volume)
+            self.mqtt_publish(0o70, 'peristaltic') # turn pump off
+            self.mqtt_publish(off_command, 'valve')
+
+        else:
+            self.mqtt_publish(on_command, 'valve')
+            self.mqtt_publish(170, 'peristaltic')  # turn pump on
+            time.sleep(time)
+            self.mqtt_publish(0o70, 'peristaltic') # turn pump off
+            self.mqtt_publish(off_command, 'valve')
+
+    def bleach(self, time):
         '''
-        Normal directly conjugated cycle. It bleaches sample, restains and washes sample.
+        Flows bleach solution into chamber and keeps it on for time amount of time. Uses flow function as backbone.
 
-        :param int syringe_num: Number on autopipettor revolver that the direct conjugated stain is in
-
-        :return: Nothing
+        :param int time: time in secs for bleach solution to rest on sample
+        :return: nothing
         '''
-        stain_command = int(str(5)+ str(valve_num) + str(inc_time))
-        list_of_orders = [452, stain_command, 452, 452]
-        self.order_execute(list_of_orders)
 
-        return
+        self.flow(8) # flow bleach solution through chamber. Should be at number 8 slot.
+        time.sleep(time)
+        self.flow(1) # Flow wash with PBS
+
+    def stain(self, liquid_selection, time = 300):
+        '''
+        Flows stain solution into chamber and keeps it on for time amount of time. Uses dispense function as backbone.
+
+        :param int liquid_selection: liquid number to be dispensed
+        :param int time: time in secs for bleach solution to rest on sample
+        :return: nothing
+        '''
+
+        self.dispense(liquid_selection, 200)
+        time.sleep(time)
+        self.flow(1) # flow wash with PBS
+
+    def chamber(self, fill_drain, time = 30):
+        '''
+        Aquarium pumps to fill or drain outer chamber with water. Uses dispense function as backbone.
+
+        :param str fill_drain: fill = fills chamber, drain = drains chamber
+        :param int time: time in secs to fill chamber and conversely drain it
+        :return: nothing
+        '''
+
+        if fill_drain == 'drain':
+            self.mqtt_publish(110, 'dc_pump')
+            time.sleep(time)
+            self.mqtt_publish(010, 'dc_pump')
+
+        elif fill_drain == 'fill':
+            self.mqtt_publish(111, 'dc_pump')
+            time.sleep(time)
+            self.mqtt_publish(011, 'dc_pump')
+
+    def nuc_touch_up(self, liquid_selection, time = 60):
+        '''
+        Flows hoescht solution into chamber and keeps it on for time amount of time. Uses dispense function as backbone.
+
+        :param int liquid_selection: liquid number to be dispensed
+        :param int time: time hoescht solution rests on sample
+        :return: nothing
+        '''
+
+        self.dispense(liquid_selection, 200)
+        time.sleep(time)
+        self.flow(1) # flow wash with PBS
+
+    def primary_secondary_cycle(self, primary_liq_selection, secondary_liquid_selection):
+        '''
+        Puts primary stain on and then secondary stain.
+
+        :param int primary_liq_selection: slot that contains primary antibody solution
+        :param int secondary_liquid_selection: slot that contains secondary antibody solution
+        :return: nothing
+        '''
+        self.stain(primary_liq_selection)
+        self.stain(secondary_liquid_selection)
+
+
+
+
+

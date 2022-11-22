@@ -10,7 +10,6 @@ import numpy as np
 
 
 client = mqtt.Client('autocyplex_server')
-
 client.connect('10.3.141.1', 1883)
 '''
 client.loop_start()
