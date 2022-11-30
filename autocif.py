@@ -98,6 +98,7 @@ class cycif:
         while magellan.get_surface("New Surface " + str(x)) != None:
             x += 1
         surface_count = x - 1
+        time.sleep(1)
         return surface_count
 
     def surface_exist_check(self, magellan, surface_name):
@@ -472,6 +473,27 @@ class cycif:
         return z_focused
 
 
+    def focus_tile_center(self, tile_points_xy, z_focused):
+        '''
+        Takes dictionary of XY coordinates, moves to each of them, executes autofocus algorithm from method
+        auto_focus and outputs the paired in focus z coordinate
+
+        :param dictionary tile_points_xy: dictionary containing all XY coordinates. In the form: {{x:(int)}, {y:(int)}}
+        :param MMCore_Object core: Object made from Bridge.core()
+        :param list z_centers: list of z points associated with xy points where the slide tilt was compensated for
+
+        :return: XYZ points where XY are stage coords and Z is in focus coordinate. {{x:(int)}, {y:(int)}, {z:(float)}}
+        :rtype: dictionary
+        '''
+
+        z_temp = []
+        num = len(tile_points_xy['x'])
+        for q in range(0, num):
+            z_temp.append(z_focused)
+        tile_points_xy['z'] = z_temp
+        surface_points_xyz = tile_points_xy
+
+        return surface_points_xyz
 
     def focus_tile(self, tile_points_xy, z_centers, core, exposure_time, channel):
         '''
@@ -647,6 +669,7 @@ class cycif:
         return tail_intensity
 
     def exposure_hook(self, image, metadata):
+
         global level
         level = self.image_percentile_level(image, 0.85)
 
@@ -664,6 +687,7 @@ class cycif:
         :return: z coordinate for in focus plane
         :rtype: float
         '''
+
 
 
         with Acquisition(directory = 'C:/Users/CyCIF PC/Desktop/test_images', name='trash', show_display=False ,image_process_fn=self.exposure_hook) as acq:
@@ -738,18 +762,19 @@ class cycif:
         acq_settings.set_acquisition_name(acquisition_name)  # make same name as in focused_surface_generate function (all below as well too)
         acq_settings.set_acquisition_space_type('2d_surface')
         acq_settings.set_xy_position_source(original_surface_name)
-        acq_settings.set_surface(original_surface_name)
-        #acq_settings.set_saving_dir(r'C:\Users\CyCIF PC\Desktop\test_images\tiled_images')  # standard saving directory
+        acq_settings.set_surface(surface_name)
         acq_settings.set_channel_group('Color')
         acq_settings.set_use_channel('DAPI', False)  # channel_name, use
         acq_settings.set_use_channel('A488', False)  # channel_name, use
         acq_settings.set_use_channel('A555', False)  # channel_name, use
         acq_settings.set_use_channel('A647', False)  # channel_name, use
+        acq_settings.set_use_channel('A750', False)  # channel_name, use
         acq_settings.set_use_channel(channel, True)  # channel_name, use
         acq_settings.set_channel_exposure('DAPI', int(exposure[0]))  # channel_name, exposure in ms can auto detect channel names and iterate names with exposure times
         acq_settings.set_channel_exposure('A488', int(exposure[1]))  # channel_name, exposure in ms
         acq_settings.set_channel_exposure('A555', int(exposure[2]))  # channel_name, exposure in ms
         acq_settings.set_channel_exposure('A647', int(exposure[3]))  # channel_name, exposure in ms
+        acq_settings.set_channel_exposure('A750', 0)  # channel_name, exposure in ms
 
 
     def surf2focused_surf(self, core, magellan_object, channels = ['DAPI', 'A488', 'A555', 'A647']):
@@ -827,8 +852,13 @@ class cycif:
                 z_range = [z_center - 10, z_center + 10, 1]
 
                 z_focused = self.auto_focus(z_range, auto_focus_exposure_time,channel)  # here is where autofocus results go. = auto_focus
-                surface_points_xyz = self.focus_tile(tile_surface_xy, z_focused)  # go to each tile coord and autofocus and populate associated z with result
+                surface_points_xyz = self.focus_tile_center(tile_surface_xy, z_focused)  # go to each tile coord and autofocus and populate associated z with result
                 self.focused_surface_generate_xyz(magellan_object, new_focus_surface_name, surface_points_xyz) # will generate surface if not exist, update z points if exists
+                print('generated focused surface')
+                exposure_array = self.auto_expose(core, magellan_object, auto_focus_exposure_time, tile_surface_xy,6500, z_focused, [channel], surface_name)
+                print(exposure_array)
+                self.focused_surface_acq_settings(exposure_array, surface_name, new_focus_surface_name, magellan_object,x, channel)
+                print('made acq surface')
 
 
     def mm_focus_hook(self, event):
@@ -886,7 +916,10 @@ class cycif:
 
 class arduino:
 
-    def mqtt_publish(message, subtopic, topic = "control", client = client):
+    def __init__(self):
+        return
+
+    def mqtt_publish(self, message, subtopic, topic = "control", client = client):
         '''
         takes message and publishes message to server defined by client and under topic of topic/subtopic
 
@@ -902,7 +935,7 @@ class arduino:
         client.publish(full_topic, message)
         client.loop_stop()
 
-    def auto_load(self, time_small = 22.7, time_large = 35):
+    def auto_load(self, time_small = 26, time_large = 40):
         '''
         Load in all 8 liquids into multiplexer. Numbers 2-7 just reach multiplexer while 1 and 8 flow through more.
 
@@ -913,7 +946,7 @@ class arduino:
 
         self.mqtt_publish(170, 'peristaltic') # turn pump on
 
-        for x in range(2,8):
+        for x in range(3,8):
             on_command = (x * 100) + 10   # multiplication by 100 forces x value into the 1st spot on a 3 digit code.
             off_command = (x * 100) + 00  # multiplication by 100 forces x value into the 1st spot on a 3 digit code.
             self.mqtt_publish(on_command, 'valve')
@@ -926,6 +959,10 @@ class arduino:
             self.mqtt_publish(on_command, 'valve')
             time.sleep(time_large)
             self.mqtt_publish(off_command, 'valve')
+
+        self.mqtt_publish(810, 'valve')
+        time.sleep(60)
+        self.mqtt_publish(800, 'valve')
 
         self.mqtt_publish(0o70, 'peristaltic') # turn pump off
 
@@ -966,7 +1003,7 @@ class arduino:
             self.mqtt_publish(0o70, 'peristaltic') # turn pump off
             self.mqtt_publish(800, 'valve') # end PBS flow
 
-    def flow(self, liquid_selection, time = -1, chamber_volume = 60, plex_chamber_time = 24):
+    def flow(self, liquid_selection, run_time = -1, chamber_volume = 60, plex_chamber_time = 24):
         '''
         Flow liquid selected through chamber. If defaults are used, flows through chamber volume 4x plus volume to reach chamber from multiplexer.
         If time is used, it overrides the last two parameters of chamber_volume and plex_chamber_time.
@@ -984,7 +1021,7 @@ class arduino:
         time_chamber_volume = chamber_volume/speed
         transition_zone_time = 6  # time taken at 7ms steps to move past transition zone in liquid front
 
-        if time == -1:
+        if run_time == -1:
             self.mqtt_publish(on_command, 'valve')
             self.mqtt_publish(170, 'peristaltic')  # turn pump on
             time.sleep(plex_chamber_time + transition_zone_time + 4*time_chamber_volume)
@@ -998,7 +1035,7 @@ class arduino:
             self.mqtt_publish(0o70, 'peristaltic') # turn pump off
             self.mqtt_publish(off_command, 'valve')
 
-    def bleach(self, time):
+    def bleach(self, run_time):
         '''
         Flows bleach solution into chamber and keeps it on for time amount of time. Uses flow function as backbone.
 
@@ -1007,10 +1044,10 @@ class arduino:
         '''
 
         self.flow(8) # flow bleach solution through chamber. Should be at number 8 slot.
-        time.sleep(time)
+        time.sleep(run_time)
         self.flow(1) # Flow wash with PBS
 
-    def stain(self, liquid_selection, time = 300):
+    def stain(self, liquid_selection, run_time = 2700):
         '''
         Flows stain solution into chamber and keeps it on for time amount of time. Uses dispense function as backbone.
 
@@ -1020,10 +1057,10 @@ class arduino:
         '''
 
         self.dispense(liquid_selection, 200)
-        time.sleep(time)
+        time.sleep(run_time)
         self.flow(1) # flow wash with PBS
 
-    def chamber(self, fill_drain, time = 30):
+    def chamber(self, fill_drain, run_time = 27):
         '''
         Aquarium pumps to fill or drain outer chamber with water. Uses dispense function as backbone.
 
@@ -1034,15 +1071,15 @@ class arduino:
 
         if fill_drain == 'drain':
             self.mqtt_publish(110, 'dc_pump')
-            time.sleep(time)
-            self.mqtt_publish(010, 'dc_pump')
+            time.sleep(run_time + 3)
+            self.mqtt_publish(100, 'dc_pump')
 
         elif fill_drain == 'fill':
             self.mqtt_publish(111, 'dc_pump')
-            time.sleep(time)
-            self.mqtt_publish(011, 'dc_pump')
+            time.sleep(run_time)
+            self.mqtt_publish(101, 'dc_pump')
 
-    def nuc_touch_up(self, liquid_selection, time = 60):
+    def nuc_touch_up(self, liquid_selection, run_time = 60):
         '''
         Flows hoescht solution into chamber and keeps it on for time amount of time. Uses dispense function as backbone.
 
@@ -1052,7 +1089,7 @@ class arduino:
         '''
 
         self.dispense(liquid_selection, 200)
-        time.sleep(time)
+        time.sleep(run_time)
         self.flow(1) # flow wash with PBS
 
     def primary_secondary_cycle(self, primary_liq_selection, secondary_liquid_selection):
