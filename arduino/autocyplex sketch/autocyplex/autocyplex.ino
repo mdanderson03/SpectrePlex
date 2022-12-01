@@ -104,6 +104,7 @@ void setup() {
 
 pinMode(A7, OUTPUT);
 pinMode(A6, OUTPUT);
+pinMode(A5, OUTPUT);
 pinMode(2, OUTPUT);
 pinMode(3, OUTPUT);
 pinMode(4, OUTPUT);
@@ -121,6 +122,7 @@ pinMode(A0, INPUT);
 pinMode(A2, INPUT);
 
 digitalWrite(A7, HIGH);
+digitalWrite(A5, LOW);
 
 }
 
