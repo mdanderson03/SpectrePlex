@@ -12,9 +12,9 @@ import pandas as pd
 import serial
 import paho.mqtt.client as mqtt
 
-#client = mqtt.Client('autocyplex_server')
-#client.connect('10.3.141.1', 1883)
-client = 1
+client = mqtt.Client('autocyplex_server')
+client.connect('10.3.141.1', 1883)
+
 core = Core()
 magellan = Magellan()
 
@@ -26,7 +26,6 @@ class brenner:
     def __init__(self):
         brenner.value = []
         return
-
 class exp_level:
     def __init__(self):
         exp_level.value = []
@@ -37,8 +36,6 @@ class cycif:
     def __init__(self):
 
         return
-
-
 
     def tissue_center(self, mag_surface, magellan_object):
         '''
@@ -346,7 +343,7 @@ class cycif:
         :return: exposure time: time for inputted channels exposure to be used for autofocus
         :rtype: int
         '''
-        #[x_pos, y_pos] = self.tissue_center(surface_name, magellan_object)
+        #[x_pos, y_pos] = self.tissue_center(surface_name, magellan)
         #core.set_xy_position(x_pos, y_pos)
         x_initial = tile_points_xy['x'][0]
         y_initial = tile_points_xy['y'][0]
@@ -565,7 +562,7 @@ class cycif:
         if creation_status == 0:
             magellan_object.create_surface(new_surface_name)  # make surface if it doesnt alreay exist
         '''
-        focused_surface = magellan_object.get_surface(new_surface_name)
+        focused_surface = magellan.get_surface(new_surface_name)
         num = len(surface_points_xyz['x'])
         for q in range(0, num):
             focused_surface.add_point(surface_points_xyz['x'][q], surface_points_xyz['y'][q], surface_points_xyz['z'][q])
@@ -609,10 +606,10 @@ class cycif:
             x_initial = tile_points_xy['x'][0]
             y_initial = tile_points_xy['y'][0]
             core.set_xy_position(x_initial, y_initial)
-            #new_x, new_y = self.tissue_center(surface_name, magellan_object)
+            #new_x, new_y = self.tissue_center(surface_name, magellan)
             #core.set_xy_position(new_x, new_y)
             z_pos = z_focused_pos
-            #z_pos = magellan_object.get_surface(surface_name).get_points().get(0).z
+            #z_pos = magellan.get_surface(surface_name).get_points().get(0).z
             core.set_position(z_pos)
 
         bandwidth = 0.1
@@ -801,10 +798,10 @@ class cycif:
 
                 tile_surface_xy = self.tile_xy_pos(surface_name,magellan_object)  # pull center tile coords from manually made surface
                 auto_focus_exposure_time = self.auto_initial_expose(core, magellan_object, 50, 6500, tile_surface_xy, channel, surface_name)
-                #z_centers = self.z_range(tile_surface_xy, surface_name, magellan_object, core, cycle_number, channel, auto_focus_exposure_time)
+                #z_centers = self.z_range(tile_surface_xy, surface_name, magellan, core, cycle_number, channel, auto_focus_exposure_time)
 
 
-                #[x_pos, y_pos] = self.tissue_center(surface_name,magellan_object)
+                #[x_pos, y_pos] = self.tissue_center(surface_name,magellan)
                 #core.set_xy_position(x_pos, y_pos)
                 z_center = magellan_object.get_surface(surface_name).get_points().get(0).z
                 z_range = [z_center - 50, z_center + 50, 20]
@@ -815,7 +812,7 @@ class cycif:
 
 
                 #surface_points_xyz = self.focus_tile(tile_surface_xy, z_centers, core, auto_focus_exposure_time, channel)  # go to each tile coord and autofocus and populate associated z with result
-                #self.focused_surface_generate(magellan_object, new_focus_surface_name) # will generate surface if not exist, update z points if exists
+                #self.focused_surface_generate(magellan, new_focus_surface_name) # will generate surface if not exist, update z points if exists
                 time.sleep(5)
                 exposure_array = self.auto_expose(core, magellan_object, auto_focus_exposure_time, tile_surface_xy, 6500, z_focused, [channel], surface_name)
                 self.focused_surface_acq_settings(exposure_array, surface_name, new_focus_surface_name, magellan_object, x, channel)
