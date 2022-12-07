@@ -1,4 +1,4 @@
-from pycromanager import Core, Acquisition, multi_d_acquisition_events, Dataset, MagellanAcquisition, Magellan, \start_headless
+from pycromanager import Core, Acquisition, multi_d_acquisition_events, Dataset, MagellanAcquisition, Magellan, start_headless
 import numpy as np
 import time
 from scipy.optimize import curve_fit
