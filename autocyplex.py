@@ -1,16 +1,7 @@
-from pycromanager import Core, Acquisition, multi_d_acquisition_events, Dataset, MagellanAcquisition, Magellan, \
-    start_headless
+from pycromanager import Core, Acquisition, multi_d_acquisition_events, Dataset, MagellanAcquisition, Magellan, \start_headless
 import numpy as np
-import matplotlib.pyplot as plt
-import math
-import os
 import time
-from scipy import stats
-from skimage import io
-from scipy.io import loadmat
 from scipy.optimize import curve_fit
-import pandas as pd
-import serial
 import paho.mqtt.client as mqtt
 
 client = mqtt.Client('autocyplex_server')
