@@ -1,9 +1,8 @@
-from autocif import *
+from autocyplex import *
 from pycromanager import Core, Magellan, MagellanAcquisition
 import numpy as np
 
-#core = Core() # initialize core object
-#magellan = Magellan() # initialize magellan object
+
 microscope = cycif() # initialize cycif object
 #magellan_acq = MagellanAcquisition() # intialize mag acq object
 

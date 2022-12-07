@@ -4,8 +4,12 @@ import time
 from scipy.optimize import curve_fit
 import paho.mqtt.client as mqtt
 
-client = mqtt.Client('autocyplex_server')
-client.connect('10.3.141.1', 1883)
+try:
+    client = mqtt.Client('autocyplex_server')
+    client.connect('10.3.141.1', 1883)
+except:
+    client = 1
+
 
 core = Core()
 magellan = Magellan()
