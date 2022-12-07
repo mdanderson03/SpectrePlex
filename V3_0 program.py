@@ -4,11 +4,11 @@ import numpy as np
 
 #core = Core() # initialize core object
 #magellan = Magellan() # initialize magellan object
-#microscope = cycif() # initialize cycif object
+microscope = cycif() # initialize cycif object
 #magellan_acq = MagellanAcquisition() # intialize mag acq object
 
 
-arduino = arduino()
+#arduino = arduino()
 #arduino.nuc_touch_up(5,360)
 #arduino.dispense(7, 400)
 #arduino.primary_secondary_cycle(3, 4)
@@ -54,4 +54,5 @@ print(tile_surface_xy)
 print(surface_points_xyz)
 print(exposure_array)
 '''
-arduino.chamber('drain')
+level = microscope.expose(200, 'DAPI')
+print(level)

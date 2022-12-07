@@ -12,12 +12,14 @@ import pandas as pd
 import serial
 import paho.mqtt.client as mqtt
 
-client = mqtt.Client('autocyplex_server')
-client.connect('10.3.141.1', 1883)
-#core = Core()
-#magellan = Magellan()
+#client = mqtt.Client('autocyplex_server')
+#client.connect('10.3.141.1', 1883)
+client = 1
+core = Core()
+magellan = Magellan()
 
-import autocif
+global level
+level = 100
 
 
 class brenner:
@@ -238,7 +240,7 @@ class cycif:
 
     def core_snap_auto_focus(self, event):
 
-        brenner = autocif.brenner()
+        brenner = self.brenner()
         z_center = event['z']
         channel = event['channel']['config']
         core.set_config("Color", channel)
@@ -277,7 +279,7 @@ class cycif:
         :rtype: float
         '''
 
-        brenner = autocif.brenner() # found using class for brenner was far superior to using it as a global variable.
+        brenner = self.brenner() # found using class for brenner was far superior to using it as a global variable.
         # I had issues with the image process hook function not updating brenner as a global variable
 
 
@@ -308,7 +310,7 @@ class cycif:
         :rtype: float
         '''
         global intensity
-        intensity = autocif.exp_level() # found using class for exp_level was far superior to using it as a global variable.
+        intensity = self.exp_level() # found using class for exp_level was far superior to using it as a global variable.
         # I had issues with the image process hook function not updating brenner as a global variable
 
 
@@ -688,14 +690,11 @@ class cycif:
         :rtype: float
         '''
 
-
-
-        with Acquisition(directory = 'C:/Users/CyCIF PC/Desktop/test_images', name='trash', show_display=False ,image_process_fn=self.exposure_hook) as acq:
+        with Acquisition(directory = 'C:/Users/mike/Desktop/demo_images_pycro', name='trash', show_display=False ,image_process_fn=self.exposure_hook) as acq:
             # Create some acquisition events here:
 
-            event =  {'channel': {'group': 'Color', 'config': channel},'exposure': seed_exposure}
+            event =  {'channel': {'group': 'Channel', 'config': channel},'exposure': seed_exposure}
             acq.acquire(event)
-
 
         return level
 
