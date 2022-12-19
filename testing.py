@@ -1,17 +1,10 @@
-import math
-'''
-from autocif import *
-microscope = autocif.cycif()
+import numpy as np
 
-
-microscope.surf2focused_surf(core, magellan, ['DAPI'])
-microscope.micro_magellan_acq()
-'''
-time = 3850
-
-
-double_value = 43237*(1* math.exp(-0.0009504* time) + 0*math.exp(-0.008874 * time)) + 20568
-
-threshold = 0.05 *(43237 - 20568)
-print(double_value - 20568, threshold)
+single = np.array([[1,2,3], [3,4,5]])
+single2 = np.array([[8,7,3], [2,1,6]])
+double = []
+double.append(single)
+double.append(single2)
+print(single2)
+print(double[1])
 
