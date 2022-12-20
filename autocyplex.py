@@ -1,21 +1,22 @@
-from pycromanager import Core, Acquisition, multi_d_acquisition_events, Dataset, MagellanAcquisition, Magellan, start_headless
+from pycromanager import Core, Acquisition, multi_d_acquisition_events, Dataset, MagellanAcquisition, Magellan, start_headless, XYTiledAcquisition
 import numpy as np
 import time
 from scipy.optimize import curve_fit
 import paho.mqtt.client as mqtt
+import os
 
-try:
-    client = mqtt.Client('autocyplex_server')
-    client.connect('10.3.141.1', 1883)
-except:
-    client = 1
+
+client = mqtt.Client('autocyplex_server')
+client.connect('10.3.141.1', 1883)
+
 
 
 core = Core()
 magellan = Magellan()
 
 global level
-level = 100
+level = []
+
 
 class brenner:
     def __init__(self):
@@ -33,7 +34,7 @@ class cycif:
 
         return
 
-    def tissue_center(self, mag_surface, magellan):
+    def tissue_center(self, mag_surface):
         '''
         take magellan surface and find the xy coordinates of the center of the surface
         :param mag_surface:
@@ -41,12 +42,12 @@ class cycif:
         :return: x tissue center position and y tissue center position
         :rtype: list[float, float]
         '''
-        xy_pos = self.tile_xy_pos(mag_surface, magellan)
+        xy_pos = self.tile_xy_pos(mag_surface)
         x_center = (max(xy_pos['x']) + min(xy_pos['x'])) / 2
         y_center = (max(xy_pos['y']) + min(xy_pos['y'])) / 2
         return x_center, y_center
 
-    def num_surfaces_count(self, magellan):
+    def num_surfaces_count(self):
         '''
         Looks at magellan surfaces that start with New Surface in its name, ie. 'New Surface 1' as that is the default generated prefix.
 
@@ -62,7 +63,7 @@ class cycif:
 
         return surface_count
 
-    def surface_exist_check(self, magellan, surface_name):
+    def surface_exist_check(self, surface_name):
         '''
         Checks name of surface to see if exists. If it does, returns 1, if not returns 0
 
@@ -95,8 +96,7 @@ class cycif:
 
         z = metadata.pop('ZPosition_um_Intended')  # moves up while taking z stack
         image_focus_score = self.focus_score(image)
-        brenner.value.append([image_focus_score, z])
-        image[:, :] = []
+        brenner_scores.value.append([image_focus_score, z])
 
         return
 
@@ -138,8 +138,8 @@ class cycif:
             y = y0 + (A * np.exp(-((x - x0) / sig) ** 2))
             return y
 
-        f_score_temp = [l[0] for l in brenner.value[0:-1]]
-        z = [l[1] for l in brenner.value[0:-1]]
+        f_score_temp = [l[0] for l in brenner_scores.value[0:-1]]
+        z = [l[1] for l in brenner_scores.value[0:-1]]
 
         # curve fitted with bounds relating to the inputs
         # let's force it such that z_ideal is within our range.
@@ -160,8 +160,8 @@ class cycif:
         :return: z coordinate for in focus plane
         :rtype: float
         '''
-
-        brenner = self.brenner()  # found using class for brenner was far superior to using it as a global variable.
+        global brenner_scores
+        brenner_scores = brenner()  # found using class for brenner was far superior to using it as a global variable.
         # I had issues with the image process hook function not updating brenner as a global variable
 
         with Acquisition(directory='C:/Users/CyCIF PC/Desktop/test_images', name='trash',
@@ -225,16 +225,16 @@ class cycif:
         :rtype: float
         '''
 
-        with Acquisition(directory='C:/Users/mike/Desktop/demo_images_pycro', name='trash', show_display=False,
+        with Acquisition(directory='C:/Users/CyCIF PC/Desktop/test_images/', name='trash', show_display=False,
                          image_process_fn=self.exposure_hook) as acq:
             # Create some acquisition events here:
 
-            event = {'channel': {'group': 'Channel', 'config': channel}, 'exposure': seed_exposure}
+            event = {'channel': {'group': 'Color', 'config': channel}, 'exposure': seed_exposure}
             acq.acquire(event)
 
         return level
 
-    def auto_expose(self, core, magellan, seed_expose, benchmark_threshold, z_focused_pos, channels=['DAPI', 'A488', 'A555', 'A647'], surface_name='none'):
+    def auto_expose(self, seed_expose, benchmark_threshold, z_focused_pos, channels=['DAPI', 'A488', 'A555', 'A647'], surface_name='none'):
         '''
 
         :param object core: core object from Core() in pycromananger
@@ -249,7 +249,7 @@ class cycif:
         '''
 
         if surface_name != 'none':
-            new_x, new_y = self.tissue_center(surface_name, magellan) #uncomment if want center of tissue to expose
+            new_x, new_y = self.tissue_center(surface_name)  # uncomment if want center of tissue to expose
             core.set_xy_position(new_x, new_y)
             z_pos = z_focused_pos
             # z_pos = magellan.get_surface(surface_name).get_points().get(0).z
@@ -283,16 +283,7 @@ class cycif:
                     new_exp = sat_max
                     break
 
-            if fluor_channel == 'DAPI':
-                exposure_array[0] = new_exp
-            elif fluor_channel == 'A488':
-                exposure_array[1] = new_exp
-            elif fluor_channel == 'A555':
-                exposure_array[2] = new_exp
-            elif fluor_channel == 'A647':
-                exposure_array[3] = new_exp
-
-        return exposure_array
+        return new_exp
 
     def z_scan_exposure_hook(self, image, metadata):
         '''
@@ -321,7 +312,7 @@ class cycif:
         :rtype: float
         '''
         global intensity
-        intensity = self.exp_level()  # found using class for exp_level was far superior to using it as a global variable.
+        intensity = exp_level()  # found using class for exp_level was far superior to using it as a global variable.
         # I had issues with the image process hook function not updating brenner as a global variable
 
         with Acquisition(directory='C:/Users/CyCIF PC/Desktop/test_images', name='trash',
@@ -341,7 +332,7 @@ class cycif:
 
         return z_level_brightest
 
-    def auto_initial_expose(self, core, magellan, seed_expose, benchmark_threshold, channel, surface_name):
+    def auto_initial_expose(self, seed_expose, benchmark_threshold, channel, surface_name):
         '''
         Scans z levels around surface z center and finds brightest z position via z_scan_exposure method.
         Moves machine to that z plane and executes auto_expose method to determine proper exposure. This is meant for
@@ -355,7 +346,7 @@ class cycif:
         :rtype: int
         '''
 
-        [x_pos, y_pos] = self.tissue_center(surface_name, magellan)
+        [x_pos, y_pos] = self.tissue_center(surface_name)
         core.set_xy_position(x_pos, y_pos)
 
         z_center_initial = magellan.get_surface(surface_name).get_points().get(0).z
@@ -364,23 +355,13 @@ class cycif:
         z_brightest = self.z_scan_exposure(z_range, seed_expose, channel)
         core.set_position(z_brightest)
 
-        new_exp_array = self.auto_expose(core, magellan, seed_expose, benchmark_threshold, z_brightest, [channel])
-        new_exp = new_exp_array[0]
-
-        if channel == 'DAPI':
-            new_exp = new_exp_array[0]
-        elif channel == 'A488':
-            new_exp = new_exp_array[1]
-        elif channel == 'A555':
-            new_exp = new_exp_array[2]
-        elif channel == 'A647':
-            new_exp = new_exp_array[3]
+        new_exp = self.auto_expose(seed_expose, benchmark_threshold, z_brightest, [channel])
 
         return new_exp
 
     ##############################################
 
-    def tile_xy_pos(self, surface_name, magellan):
+    def tile_xy_pos(self, surface_name):
         '''
         imports previously generated micro-magellan surface with name surface_name and outputs
         the coordinates of the center of each tile from it.
@@ -429,6 +410,28 @@ class cycif:
 
         return surface_points_xyz
 
+    def numpy_xyz_gen(self, tile_points_xy, z_focused):
+        '''
+        Takes dictionary of XY coordinates applies inputted same focused z postion to all of them to make a xyz array
+
+        :param dictionary tile_points_xy: dictionary containing all XY coordinates. In the form: {{x:(int)}, {y:(int)}}
+        :param float z_focused: z position where surface is in focus
+
+        :return: XYZ points where XY are stage coords and Z is in focus coordinate. {{x:(int)}, {y:(int)}, {z:(float)}}
+        :rtype: numpy array
+        '''
+
+        z_temp = []
+        x_temp = np.array(tile_points_xy['x'])
+        y_temp = np.array(tile_points_xy['y'])
+        num = len(tile_points_xy['x'])
+        for q in range(0, num):
+            z_temp.append(z_focused)
+        z_temp_numpy = np.array(z_temp)
+
+        xyz = np.hstack([x_temp[:,None], y_temp[:,None], z_temp_numpy[:,None]])
+
+        return xyz
 
 ############################################################################################
 #####focus_tile is depreciated. Need to convert this to not go to every tile, but an even sampling of them
@@ -466,7 +469,7 @@ class cycif:
 
  ########################################################################################################################
 
-    def focused_surface_generate_xyz(self, magellan, new_surface_name, surface_points_xyz):
+    def focused_surface_generate_xyz(self, new_surface_name, surface_points_xyz):
         '''
         Generates new micro-magellan surface with name new_surface_name and uses all points in surface_points_xyz dictionary
         as interpolation points. If surface already exists, then it checks for it and updates its xyz points.
@@ -487,7 +490,7 @@ class cycif:
 
         return
 
-    def focused_surface_acq_settings(self, exposure, original_surface_name, surface_name, magellan, acq_surface_num, channel):
+    def focused_surface_acq_settings(self, exposure, original_surface_name, surface_name, acq_surface_num, channel):
         '''
         Takes already generated micro-magellan surface with name surface_name, sets it as a 2D surface, what channel group
         to use, sets exposure levels for all 4 channels and where to make the savings directory.
@@ -540,7 +543,7 @@ class cycif:
 
         return
 
-    def surface_acquire(self, core, magellan, channels=['DAPI', 'A488', 'A555', 'A647']):
+    def surface_acquire(self, channels=['DAPI', 'A488', 'A555', 'A647']):
         '''
         Takes generated micro-magellan surface with name: surface_name and generates new micro-magellan surface with name:
         new_focus_surface_name and makes an acquistion event after latter surface and auto exposes DAPI, A488, A555 and A647 channels.
@@ -576,7 +579,99 @@ class cycif:
 
         return
 
-##################################################################
+
+
+    def xyz_acquire(self, xyz_array, channel, exposure_time, cycle_number, directory_name='E:/images/'):
+        '''
+        :param numpy xyz_array: numpy array 3xN where is N number of points that contain all xyz coords of positions
+        :param str channel: channel name ie. DAPI, A488, A555, A647, etc.
+        :param str exposure_time: exposure time required for channel in ms
+        :param str directory_name: highest level folder name to store all images in
+        :param int cycle_number: cycle number
+        :return:  nothing
+        '''
+
+        add_on_folder = 'cycle_/' + str(cycle_number)
+        full_directory_path = os.path.join(directory_name, add_on_folder)
+        if os.path.exists(full_directory_path) == 'False':
+            os.mkdir(full_directory_path)
+
+        with Acquisition(directory=full_directory_path, name=channel) as acq:
+            events = multi_d_acquisition_events(channel_group='Color', channels=[channel], xyz_positions=xyz_array,
+                                                channel_exposures_ms=[exposure_time])
+            acq.acquire(events)
+            acq.await_completion()
+
+    def tiled_acquire(self, xy_points, z_focused, channel, exposure_time, cycle_number, directory_name='E://test_control_staining'):
+
+        add_on_folder = 'cycle_' + str(cycle_number)
+        full_directory_path = directory_name + add_on_folder
+        if os.path.exists(full_directory_path) == 'False':
+            os.mkdir(full_directory_path)
+        time.sleep(0.5)
+
+        numpy_x = np.array(xy_points['x'])
+        numpy_y = np.array(xy_points['y'])
+        x_tile_count = np.unique(numpy_x).size
+        y_tile_count = np.unique(numpy_y).size
+
+        core.set_xy_position(numpy_x[0], numpy_y[0])
+        core.set_position(z_focused)
+
+        with XYTiledAcquisition(directory=full_directory_path, name=channel, show_display=False, tile_overlap=10) as acq:
+            for y in range(0, y_tile_count):
+                if y % 2 != 0:
+                    for x in range(x_tile_count, 0, -1):
+                        event = {'channel': {'group': 'Color', 'config': channel}, 'exposure': exposure_time, 'row': y,
+                                 'col': x}
+                        acq.acquire(event)
+
+                elif y % 2 == 0:
+                    for x in range(0, x_tile_count):
+                        event = {'channel': {'group': 'Color', 'config': channel}, 'exposure': exposure_time, 'row': y,
+                                 'col': x}
+                        acq.acquire(event)
+
+
+
+    def mmsurface_2_acquire(self, cycle_number, channel=['DAPI', 'A488', 'A555', 'A647'], directory_name='E:/test_control_staining/'):
+        '''
+        Takes generated micro-magellan surface with name: surface_name and extracts all points from it.
+        uses multi_d_acquistion to acquire all images in defined surface via xyz_acquire method,  auto exposes DAPI, A488, A555 and A647 channels.
+        Takes autofocus from center tile in surface and applies value to every other tile in surface
+
+        :param int cycle_number: cycle number
+        ::param str directory_name: highest level folder name to store all images in
+        :param: list[str] channels: list that contains strings with channel names
+        :return: Nothing
+        '''
+
+        surface_name = 'New Surface 1'
+        #num_channels = len(channels)  # checks how many 'New Surface #' surfaces exist. Not actual total
+        tile_surface_xy = self.tile_xy_pos(surface_name)  # pull center tile coords from manually made surface
+        z_center = magellan.get_surface(surface_name).get_points().get(0).z
+        z_range = [z_center - 20, z_center + 20, 2]
+
+        z_focused_array = []
+        exp_time_array = []
+
+
+        auto_focus_exposure_time = self.auto_initial_expose(50, 6500, channel, surface_name)
+        [x_pos, y_pos] = self.tissue_center(surface_name)
+        core.set_xy_position(x_pos, y_pos)
+        z_focused = self.auto_focus(z_range, auto_focus_exposure_time,channel)  # here is where autofocus results go. = auto_focus
+
+        exp_time = self.auto_expose(auto_focus_exposure_time, 6500, z_focused, [channel], surface_name)
+
+        self.tiled_acquire(tile_surface_xy, z_focused, channel, exp_time, cycle_number, directory_name)
+
+        return
+
+    def acquire_all_tiled_surfaces(self, cycle_number, channels=['DAPI', 'A488', 'A555', 'A647'], directory_name='E://test_control_staining/'):
+        for channel in channels:
+            self.mmsurface_2_acquire(cycle_number, channel, directory_name)
+
+    ##################################################################
 ######Acquire all MM acquistion surfaces and autofocus each one right before taking image
 ##################################################################
 
@@ -766,9 +861,9 @@ class arduino:
         :return: nothing
         '''
 
-        self.flow(8)  # flow bleach solution through chamber. Should be at number 8 slot.
+        self.flow(1)  # flow bleach solution through chamber. Should be at number 8 slot.
         time.sleep(run_time)
-        self.flow(1)  # Flow wash with PBS
+        self.flow(8)  # Flow wash with PBS
 
     def stain(self, liquid_selection, run_time=2700):
         '''
@@ -779,9 +874,9 @@ class arduino:
         :return: nothing
         '''
 
-        self.dispense(liquid_selection, 200)
+        self.dispense(liquid_selection, 275)
         time.sleep(run_time)
-        self.flow(1)  # flow wash with PBS
+        self.flow(8)  # flow wash with PBS
 
     def chamber(self, fill_drain, run_time=27):
         '''
@@ -813,7 +908,7 @@ class arduino:
 
         self.dispense(liquid_selection, 200)
         time.sleep(run_time)
-        self.flow(1)  # flow wash with PBS
+        self.flow(8)  # flow wash with PBS
 
     def primary_secondary_cycle(self, primary_liq_selection, secondary_liquid_selection):
         '''

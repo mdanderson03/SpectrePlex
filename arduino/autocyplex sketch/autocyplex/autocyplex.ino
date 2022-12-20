@@ -121,7 +121,7 @@ pinMode(13, OUTPUT);
 pinMode(A0, INPUT);
 pinMode(A2, INPUT);
 
-digitalWrite(A7, HIGH);
+digitalWrite(A7, LOW);
 digitalWrite(A5, LOW);
 
 }

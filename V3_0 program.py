@@ -4,10 +4,8 @@ import numpy as np
 
 
 microscope = cycif() # initialize cycif object
-#magellan_acq = MagellanAcquisition() # intialize mag acq object
-
-
-#arduino = arduino()
+arduino = arduino()
+#arduino.auto_load()
 #arduino.nuc_touch_up(5,360)
 #arduino.dispense(7, 400)
 #arduino.primary_secondary_cycle(3, 4)
@@ -53,5 +51,28 @@ print(tile_surface_xy)
 print(surface_points_xyz)
 print(exposure_array)
 '''
-level = microscope.expose(200, 'DAPI')
-print(level)
+#arduino.chamber('drain')
+
+'''
+arduino.stain(3)
+microscope.acquire_all_tiled_surfaces(3)
+arduino.bleach(1700)
+arduino.bleach(1700)
+microscope.acquire_all_tiled_surfaces(4)
+arduino.stain(4)
+microscope.acquire_all_tiled_surfaces(5)
+arduino.bleach(300)
+microscope.acquire_all_tiled_surfaces(6)
+arduino.nuc_touch_up(6,360)
+arduino.stain(5)
+microscope.acquire_all_tiled_surfaces(7)
+arduino.bleach(300)
+microscope.acquire_all_tiled_surfaces(8)
+'''
+#arduino.nuc_touch_up(6,360)
+arduino.bleach(1700)
+arduino.bleach(1700)
+microscope.acquire_all_tiled_surfaces(4)
+arduino.stain(3)
+arduino.nuc_touch_up(6,360)
+microscope.acquire_all_tiled_surfaces(5)
