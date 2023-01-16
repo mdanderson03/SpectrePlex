@@ -3,6 +3,8 @@ import numpy as np
 import time
 from scipy.optimize import curve_fit
 import paho.mqtt.client as mqtt
+import matplotlib.pyplot as plt
+from skimage import io
 import os
 
 
@@ -95,12 +97,12 @@ class cycif:
         '''
 
         z = metadata.pop('ZPosition_um_Intended')  # moves up while taking z stack
-        image_focus_score = self.focus_score(image)
+        image_focus_score = self.focus_score(image, 16)
         brenner_scores.value.append([image_focus_score, z])
 
         return
 
-    def focus_score(self, image):
+    def focus_score(self, image, bin_level):
         '''
         Calculates focus score on image with Brenners algorithm on downsampled image.
 
@@ -112,43 +114,58 @@ class cycif:
         '''
         # Note: Uniform background is a bit mandatory
 
-        binning_size = 4
+        binning_size = bin_level
         image_binned = image[::binning_size, ::binning_size]
 
         # do Brenner score
         a = image_binned[2:, :]
+        a = a.astype('int64')
         b = image_binned[:-2, :]
+        b = b.astype('int64')
         c = a - b
         c = c * c
-        f_score_shadow = c.sum()
+        f_score_shadow = c.sum()(dtype = np.int64)
 
-        return f_score_shadow
+        return 1/f_score_shadow
 
-    def autofocus_fit(self):
+    def gauss_jordan_solver(self):
         '''
-        Takes focus scores and its associated z and fits data with gaussian. Gives back position of the fitted gaussian's middle
-        (x0 parameter) which is the ideal/ in focus z plane
+        Takes 3 points and solves quadratic equation in a generic fashion and returns constants and
+        solves for x in its derivative=0 equation
 
         :param list[float, float] brenner: list that contains pairs of [focus_score, z]
         :results: z coordinate for in focus plane
         :rtype: float
         '''
 
-        def gauss(x, A, x0, sig, y0):
-            y = y0 + (A * np.exp(-((x - x0) / sig) ** 2))
-            return y
+        x1 = brenner_scores.value[0][1]
+        x2 = brenner_scores.value[1][1]
+        x3 = brenner_scores.value[2][1]
+        score_0 = brenner_scores.value[0][0]
+        score_1 = brenner_scores.value[1][0]
+        score_2 = brenner_scores.value[2][0]
 
-        f_score_temp = [l[0] for l in brenner_scores.value[0:-1]]
-        z = [l[1] for l in brenner_scores.value[0:-1]]
+        aug_matrix = np.array([[x1 * x1, x1, 1, score_0], [x2 * x2, x2, 1, score_1], [x3 * x3, x3, 1, score_2]])
 
-        # curve fitted with bounds relating to the inputs
-        # let's force it such that z_ideal is within our range.
-        parameters, covariance = curve_fit(gauss, z, f_score_temp,
-                                           bounds=[(min(f_score_temp) / 4, min(z), 0, 0),
-                                                   (max(f_score_temp) * 4, max(z), (max(z) - min(z)),
-                                                    max(f_score_temp))])
+        aug_matrix[0] = aug_matrix[0] / (aug_matrix[0, 0] + 0.000001)
+        aug_matrix[1] = -(aug_matrix[1, 0]) * aug_matrix[0] + aug_matrix[1]
+        aug_matrix[2] = -(aug_matrix[2, 0]) * aug_matrix[0] + aug_matrix[2]
 
-        return parameters[1]
+        aug_matrix[1] = -(aug_matrix[1, 1] - 1) / (aug_matrix[2, 1] + 0.0000001) * aug_matrix[2] + aug_matrix[1]
+        aug_matrix[0] = -aug_matrix[0, 1] * aug_matrix[1] + aug_matrix[0]
+        aug_matrix[2] = -aug_matrix[2, 1] * aug_matrix[1] + aug_matrix[2]
+
+        aug_matrix[2] = aug_matrix[2] / (aug_matrix[2, 2] + 0.000001)
+        aug_matrix[0] = -aug_matrix[0, 2] * aug_matrix[2] + aug_matrix[0]
+        aug_matrix[1] = -aug_matrix[1, 2] * aug_matrix[2] + aug_matrix[1]
+
+        a = aug_matrix[0, 3]
+        b = aug_matrix[1, 3]
+        c = aug_matrix[2, 3]
+
+        derivative = -b / (2 * a)
+
+        return a,b,c,derivative
 
     def auto_focus(self, z_range, exposure_time, channel='DAPI'):
         '''
@@ -175,7 +192,8 @@ class cycif:
                                                 order='zc', channel_exposures_ms=[exposure_time])
             acq.acquire(events)
 
-        z_ideal = self.autofocus_fit()
+        [a,b,c, derivative] = self.guass_jordan_solver()
+        z_ideal = derivative
 
         return z_ideal
 
@@ -332,7 +350,7 @@ class cycif:
 
         return z_level_brightest
 
-    def auto_initial_expose(self, seed_expose, benchmark_threshold, channel, surface_name):
+    def auto_initial_expose(self, seed_expose, benchmark_threshold, channel, z_range, surface_name):
         '''
         Scans z levels around surface z center and finds brightest z position via z_scan_exposure method.
         Moves machine to that z plane and executes auto_expose method to determine proper exposure. This is meant for
@@ -350,7 +368,6 @@ class cycif:
         core.set_xy_position(x_pos, y_pos)
 
         z_center_initial = magellan.get_surface(surface_name).get_points().get(0).z
-        z_range = [z_center_initial - 20, z_center_initial + 20, 5]
 
         z_brightest = self.z_scan_exposure(z_range, seed_expose, channel)
         core.set_position(z_brightest)
@@ -437,35 +454,33 @@ class cycif:
 #####focus_tile is depreciated. Need to convert this to not go to every tile, but an even sampling of them
     #######################################################################################
 
-    # def focus_tile(self, tile_points_xy, z_centers, core, exposure_time, channel):
-    #     '''
-    #     Takes dictionary of XY coordinates, moves to each of them, executes autofocus algorithm from method
-    #     auto_focus and outputs the paired in focus z coordinate
-    #
-    #     :param dictionary tile_points_xy: dictionary containing all XY coordinates. In the form: {{x:(int)}, {y:(int)}}
-    #     :param MMCore_Object core: Object made from Bridge.core()
-    #     :param list z_centers: list of z points associated with xy points where the slide tilt was compensated for
-    #
-    #     :return: XYZ points where XY are stage coords and Z is in focus coordinate. {{x:(int)}, {y:(int)}, {z:(float)}}
-    #     :rtype: dictionary
-    #     '''
-    #
-    #     z_temp = []
-    #     num = len(tile_points_xy['x'])
-    #     for q in range(0, num):
-    #         z_center = z_centers[q]
-    #         z_range = [z_center - 50, z_center + 50, 20]
-    #
-    #         new_x = tile_points_xy['x'][q]
-    #         new_y = tile_points_xy['y'][q]
-    #         core.set_xy_position(new_x, new_y)
-    #         z_focused = self.auto_focus(z_range, exposure_time,
-    #                                     channel)  # here is where autofocus results go. = auto_focus
-    #         z_temp.append(z_focused)
-    #     tile_points_xy['z'] = z_temp
-    #     surface_points_xyz = tile_points_xy
-    #
-    #     return surface_points_xyz
+    def focus_tile(self, tile_points_xy, z_range, offset, exposure_time, channel):
+         '''
+         Takes dictionary of XY coordinates, moves to each of them, executes autofocus algorithm from method
+         auto_focus and outputs the paired in focus z coordinate
+
+         :param dictionary tile_points_xy: dictionary containing all XY coordinates. In the form: {{x:(int)}, {y:(int)}}
+         :param MMCore_Object core: Object made from Bridge.core()
+         :param list z_centers: list of z points associated with xy points where the slide tilt was compensated for
+
+         :return: XYZ points where XY are stage coords and Z is in focus coordinate. {{x:(int)}, {y:(int)}, {z:(float)}}
+         :rtype: dictionary
+         '''
+
+         z_temp = []
+         num = len(tile_points_xy['x'])
+         for q in range(0, num):
+             z_range = [z_range[0] + offset, z_range[1] + offset, z_range[2]]
+
+             new_x = tile_points_xy['x'][q]
+             new_y = tile_points_xy['y'][q]
+             core.set_xy_position(new_x, new_y)
+             z_focused = self.auto_focus(z_range, exposure_time,channel)  # here is where autofocus results go. = auto_focus
+             z_temp.append(z_focused)
+         tile_points_xy['z'] = z_temp
+         surface_points_xyz = tile_points_xy
+
+         return surface_points_xyz
 
  ########################################################################################################################
 
@@ -602,7 +617,7 @@ class cycif:
             acq.acquire(events)
             acq.await_completion()
 
-    def tiled_acquire(self, xy_points, z_focused, channel, exposure_time, cycle_number, directory_name='E://test_control_staining'):
+    def tiled_acquire(self, xyz_points, channel, exposure_time, cycle_number, directory_name='E://test_control_staining'):
 
         add_on_folder = 'cycle_' + str(cycle_number)
         full_directory_path = directory_name + add_on_folder
@@ -610,20 +625,23 @@ class cycif:
             os.mkdir(full_directory_path)
         time.sleep(0.5)
 
-        numpy_x = np.array(xy_points['x'])
-        numpy_y = np.array(xy_points['y'])
+        numpy_x = np.array(xyz_points['x'])
+        numpy_y = np.array(xyz_points['y'])
+        numpy_z = np.array(xyz_points['z'])
         x_tile_count = np.unique(numpy_x).size
         y_tile_count = np.unique(numpy_y).size
 
         core.set_xy_position(numpy_x[0], numpy_y[0])
-        core.set_position(z_focused)
+        core.set_position(numpy_z[0])
 
         with XYTiledAcquisition(directory=full_directory_path, name=channel, show_display=False, tile_overlap=10) as acq:
             for y in range(0, y_tile_count):
                 if y % 2 != 0:
-                    for x in range(x_tile_count, 0, -1):
+                    for x in range(x_tile_count -1, -1, -1):
                         event = {'channel': {'group': 'Color', 'config': channel}, 'exposure': exposure_time, 'row': y,
                                  'col': x}
+                        #need to experiment here and see how y and x are packed together to make sure we are getting the right z
+                        #associated with the right xy
                         acq.acquire(event)
 
                 elif y % 2 == 0:
@@ -656,14 +674,12 @@ class cycif:
         exp_time_array = []
 
 
-        auto_focus_exposure_time = self.auto_initial_expose(50, 6500, channel, surface_name)
-        [x_pos, y_pos] = self.tissue_center(surface_name)
-        core.set_xy_position(x_pos, y_pos)
-        z_focused = self.auto_focus(z_range, auto_focus_exposure_time,channel)  # here is where autofocus results go. = auto_focus
-
+        auto_focus_exposure_time = self.auto_initial_expose(50, 6500, channel, z_range, surface_name)
+        tile_surface_xyz = self.focus_tile( tile_surface_xy, z_range, 0, auto_focus_exposure_time, channel)
+        z_focused = tile_surface_xyz['z'][0]
         exp_time = self.auto_expose(auto_focus_exposure_time, 6500, z_focused, [channel], surface_name)
 
-        self.tiled_acquire(tile_surface_xy, z_focused, channel, exp_time, cycle_number, directory_name)
+        self.tiled_acquire(tile_surface_xyz, channel, exp_time, cycle_number, directory_name)
 
         return
 
