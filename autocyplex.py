@@ -667,7 +667,7 @@ class cycif:
 
         return
 
-    def acquire_all_tiled_surfaces(self, cycle_number, channels=['DAPI', 'A488', 'A555', 'A647'], directory_name='E://test_control_staining/'):
+    def acquire_all_tiled_surfaces(self, cycle_number, channels=['DAPI', 'A488', 'A555', 'A647'], directory_name='E://12-20-22 test slide s_16_00078620/'):
         for channel in channels:
             self.mmsurface_2_acquire(cycle_number, channel, directory_name)
 
@@ -748,7 +748,7 @@ class arduino:
         client.publish(full_topic, message)
         client.loop_stop()
 
-    def auto_load(self, time_small=26, time_large=40):
+    def auto_load(self, time_small=27, time_large=50):
         '''
         Load in all 8 liquids into multiplexer. Numbers 2-7 just reach multiplexer while 1 and 8 flow through more.
 
