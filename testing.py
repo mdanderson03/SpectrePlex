@@ -1,10 +1,13 @@
-import numpy as np
+from autocyplex import *
 
-single = np.array([[1,2,3], [3,4,5]])
-single2 = np.array([[8,7,3], [2,1,6]])
-double = []
-double.append(single)
-double.append(single2)
-print(single2)
-print(double[1])
+
+microscope = cycif()
+
+max_z = 5415
+min_z = 5380
+
+z_range = [min_z, max_z, (max_z-min_z)/2]
+z_ideal = microscope.auto_focus(z_range, 25, 'DAPI')
+print(z_ideal)
+
 

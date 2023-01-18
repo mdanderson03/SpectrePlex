@@ -97,10 +97,49 @@ class cycif:
         '''
 
         z = metadata.pop('ZPosition_um_Intended')  # moves up while taking z stack
-        image_focus_score = self.focus_score(image, 16)
-        brenner_scores.value.append([image_focus_score, z])
+        image_focus_scores = self.focus_bin_generator(image)
+        brenner_scores.value.append([image_focus_scores, z])
 
         return
+
+    def bin_selector(self):
+        '''
+        takes array of brenner scores and determines optimal bin level and outputs corresponding focus scores with z positions
+        :return: list [optimal bin focus score1, z position1], [], [], ...
+        '''
+
+        bin_levels = [4, 8, 16, 32, 64, 128]
+        range_array = []
+
+        for x in range(0, len(brenner_scores.value[0][0]) ):
+            score_array = [brenner_scores.value[0][0][x], brenner_scores.value[1][0][x], brenner_scores.value[2][0][x]]
+            max_value = max(score_array)
+            min_value = min(score_array)
+            range_array.append(max_value - min_value)
+
+        max_range = max(range_array)
+        max_index = range_array.index(max_range)
+        print(bin_levels[max_index])
+
+        optimal_score_array = [[brenner_scores.value[0][0][max_index], brenner_scores.value[0][1]], [brenner_scores.value[1][0][max_index], brenner_scores.value[1][1]], [brenner_scores.value[2][0][max_index], brenner_scores.value[2][1]]]
+
+        return optimal_score_array
+
+    def focus_bin_generator(self, image):
+        '''
+        takes image and calculates brenner scores for various bin levels of 64, 32, 16, 8 and 4 and outputs them.
+        :param image: numpy array 2D
+        :return: list of brenner scores of binned images
+        '''
+
+        bin_levels = [4,8,16,32,64]
+        focus_scores = [0]*len(bin_levels)
+
+
+        for x in range(0, len(focus_scores)):
+            focus_scores[x] = self.focus_score(image, bin_levels[x])
+
+        return focus_scores
 
     def focus_score(self, image, bin_level):
         '''
@@ -124,26 +163,26 @@ class cycif:
         b = b.astype('int64')
         c = a - b
         c = c * c
-        f_score_shadow = c.sum()(dtype = np.int64)
+        f_score_shadow = c.sum()
 
         return 1/f_score_shadow
 
-    def gauss_jordan_solver(self):
+    def gauss_jordan_solver(self, three_point_array):
         '''
         Takes 3 points and solves quadratic equation in a generic fashion and returns constants and
         solves for x in its derivative=0 equation
 
-        :param list[float, float] brenner: list that contains pairs of [focus_score, z]
+        :param list[float, float] three_point_array: list that contains pairs of [focus_score, z]
         :results: z coordinate for in focus plane
         :rtype: float
         '''
 
-        x1 = brenner_scores.value[0][1]
-        x2 = brenner_scores.value[1][1]
-        x3 = brenner_scores.value[2][1]
-        score_0 = brenner_scores.value[0][0]
-        score_1 = brenner_scores.value[1][0]
-        score_2 = brenner_scores.value[2][0]
+        x1 = three_point_array[0][1]
+        x2 = three_point_array[1][1]
+        x3 = three_point_array[2][1]
+        score_0 = three_point_array[0][0]
+        score_1 = three_point_array[1][0]
+        score_2 = three_point_array[2][0]
 
         aug_matrix = np.array([[x1 * x1, x1, 1, score_0], [x2 * x2, x2, 1, score_1], [x3 * x3, x3, 1, score_2]])
 
@@ -192,7 +231,8 @@ class cycif:
                                                 order='zc', channel_exposures_ms=[exposure_time])
             acq.acquire(events)
 
-        [a,b,c, derivative] = self.guass_jordan_solver()
+        optimal_score_array = self.bin_selector()
+        [a,b,c, derivative] = self.gauss_jordan_solver(optimal_score_array)
         z_ideal = derivative
 
         return z_ideal
