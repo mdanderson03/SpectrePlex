@@ -1,3 +1,0 @@
-4_14_22 notes
-
-I found set_roi in the core API of MM controls chip readout. Function does x,y, x_size, y_size. x and y are starting points in the upper left corner and x and y size are the side lengths of the rectangular ROI. 
