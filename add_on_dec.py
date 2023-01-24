@@ -65,3 +65,24 @@ def surface_acquire(self, cycle_number, directory_name='E:/images/', channels=['
 
 
 
+from pykuwahara import kuwahara
+from skimage import io, measure
+import numpy as np
+import matplotlib.pyplot as plt
+import math
+import time
+from datetime import datetime
+
+a = np.array([1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20])
+
+def  tile_pattern(numpy_array, x_tiles, y_tiles):
+    numpy_array = numpy_array.reshape(x_tiles, y_tiles)
+    numpy_array = numpy_array.transpose()
+    numpy_array[::, 1:y_tiles:2] = np.flipud(numpy_array[::, 1:y_tiles:2])
+
+    return numpy_array
+
+a = tile_pattern(a, 4, 5)
+print(a)
+
+
