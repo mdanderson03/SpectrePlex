@@ -508,7 +508,7 @@ class cycif:
 #####focus_tile is depreciated. Need to convert this to not go to every tile, but an even sampling of them
     #######################################################################################
 
-    def tile_pattern(self, numpy_array, x_tiles, y_tiles):
+    def tile_pattern(self, numpy_array):
         '''
         Takes numpy array with N rows and known tile pattern and casts into new array that follows
         south-north, west-east snake pattern.
@@ -519,7 +519,8 @@ class cycif:
         :param y_tiles: number y tiles in pattern
         :return: numpy array with dimensions [N,x_tiles,y_tiles] with above snake pattern
         '''
-
+        y_tiles = np.unique(numpy_array[1]).size
+        x_tiles = np.unique(numpy_array[0]).size
         layers = np.shape(numpy_array)[0]
         numpy_array = numpy_array.reshape(layers, x_tiles, y_tiles)
         dummy = numpy_array.reshape(layers, y_tiles, x_tiles)
@@ -776,9 +777,10 @@ class cycif:
 
         auto_focus_exposure_time = self.auto_initial_expose(50, 2500, channel, z_range, surface_name)
         tile_surface_xyz = self.focus_tile( tile_surface_xy, z_range, 0, auto_focus_exposure_time, channel)
+        tile_surface_xyz = self.tile_pattern(tile_surface_xyz)
+        tile_surface_xyz = self.median_fm_filter(tile_surface_xyz)
         z_focused = tile_surface_xyz[2][0][0]
         exp_time = self.auto_expose(auto_focus_exposure_time, 2500, z_focused, [channel], surface_name)
-        tile_surface_xyz = self.median_fm_filter(tile_surface_xyz)
 
         self.tiled_acquire(tile_surface_xyz, channel, exp_time, cycle_number, directory_name)
 
