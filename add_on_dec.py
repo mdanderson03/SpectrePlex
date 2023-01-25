@@ -86,3 +86,179 @@ a = tile_pattern(a, 4, 5)
 print(a)
 
 
+
+
+
+
+
+
+
+
+from pykuwahara import kuwahara
+from skimage import io, measure
+import numpy as np
+import matplotlib.pyplot as plt
+from scipy.interpolate import RegularGridInterpolator
+from scipy.interpolate import griddata
+from skimage.filters import threshold_otsu, butterworth, median
+import math
+import time
+from datetime import datetime
+
+a = np.array([[0,0,0,0,0,1000,1000,1000,1000,1000,2000,2000,2000,2000,2000,3000,3000,3000,3000,3000],
+[0,600,1200,1800,2400,2400,1800,1200,600,0,0,600,1200,1800,2400,2400,1800,1200,600,0],
+[50,51,52,80,53,52,57,52,62,50,53,50,40,53,60,52,51,55,52,52]])
+
+def  tile_pattern(numpy_array, x_tiles, y_tiles):
+    '''
+    Takes numpy array with N rows and known tile pattern and casts into new array that follows
+    south-north, west-east snake pattern.
+
+
+    :param numpy_array: dimensions [N, x_tiles*y_tiles]
+    :param x_tiles: number x tiles in pattern
+    :param y_tiles: number y tiles in pattern
+    :return: numpy array with dimensions [N,x_tiles,y_tiles] with above snake pattern
+    '''
+
+    layers = np.shape(numpy_array)[0]
+    numpy_array = numpy_array.reshape(layers, x_tiles, y_tiles)
+    dummy = numpy_array.reshape(layers, 5, 4)
+    new_numpy = np.empty_like(dummy)
+    for x in range(0,layers):
+
+        new_numpy[x] = numpy_array[x].transpose()
+        new_numpy[x,::, 1:y_tiles:2] = np.flipud(new_numpy[x,::, 1:y_tiles:2])
+
+    return new_numpy
+
+def fm_outlier_identifier(full_array):
+    fm = full_array[2]
+    em = np.empty_like(fm)
+    max_derivative = 4
+    y_dim = np.shape(fm)[0]
+    x_dim = np.shape(fm)[1]
+
+
+    for x in range(0,x_dim):
+        for y in range(0,y_dim):
+
+
+            score = np.array([0,0,0,0])
+
+            h = np.array([0, 0, 0, 0])
+            above = y + 1
+            below = y - 1
+            right = x + 1
+            left = x - 1
+            directional_array = np.array([above, below, right, left])
+            h[0:2] = directional_array[0:2] < y_dim
+            h[2:4] = directional_array[2:4] < x_dim
+            directional_array = directional_array >= 0
+            directional_array = directional_array * h
+
+            score[0] = directional_array[0]*(fm[y][x] - fm[directional_array[0]*above][x])
+            score[1] = directional_array[1] * (fm[y][x] - fm[directional_array[1]*below][x])
+            score[2] = directional_array[2] * (fm[y][x] - fm[y][directional_array[2]*right])
+            score[3] = directional_array[3] * (fm[y][x] - fm[y][directional_array[3]*left])
+            score = score * score
+            score = score > max_derivative
+
+            em[y][x] = int(np.sum(score)/np.sum(directional_array))
+
+
+    j, i = np.where(em == 1)
+    #io.imshow(em)
+    #plt.show()
+    em = np.expand_dims(em, axis=0)
+    full_array = np.append(full_array, em, axis = 0)
+
+    return i,j,full_array
+
+def interpolator_maxtrix_generator(full_array, i, j):
+
+    x_array = full_array[0]
+    y_array = full_array[1]
+    value_array = full_array[2]
+
+    excluded_pairs_x = i
+    excluded_pairs_y = j
+    excluded_pairs = np.stack((excluded_pairs_x, excluded_pairs_y), axis=-1)
+
+    max_x = np.max(x_array)
+    max_y = np.max(y_array)
+    min_x = np.min(x_array)
+    min_y = np.min(y_array)
+    x_unique = np.unique(x_array)
+    x_unique = x_unique.size
+    y_unique = np.unique(y_array)
+    y_unique = y_unique.size
+    x_step = (max_x - min_x)/(x_unique - 1)
+    y_step = (max_y - min_y) / (y_unique - 1)
+    grid_x, grid_y = np.mgrid[min_y:max_y + y_step:y_step, min_x:max_x + x_step:x_step]  # already setup for this input
+
+    x_points = np.array([])
+    y_points = np.array([])
+    values = np.array([])
+    for i in range(0, x_unique):
+        for j in range(0, y_unique):
+            try:
+                if exclusion_checker(i,j,excluded_pairs) != 1:
+                    x_points = np.append(x_points, x_array[j][i])
+                    y_points = np.append(y_points, y_array[j][i])
+                    values = np.append(values, value_array[j][i])
+            except:
+                x_points = np.append(x_points, x_array[j][i])
+                y_points = np.append(y_points, y_array[j][i])
+                values = np.append(values, value_array[j][i])
+
+    points = np.stack((x_points, y_points), axis = -1)
+    #print(exclusion_checker(0, 3, excluded_pairs))
+
+    return grid_x, grid_y, points, values
+
+def exclusion_checker(i, j, excluded_pairs):
+    length = np.shape(excluded_pairs)[0]
+
+    xs = excluded_pairs - [i,j]
+    #print(xs)
+    checker = 0
+    for x in range(0, length):
+        xf = np.sum(np.isin(xs[x], [0, 0]))
+        #print(xs[x], i, j, xf)
+        if xf == 2:
+            checker = 1
+    #print(i,j, checker)
+    return checker
+
+def interpolate_missing_fm_points(x_grid, y_grid, points, values):
+    #print(points)
+    #print(values)
+    grid_z1 = griddata(points, values, (x_grid, y_grid), method='nearest')
+
+    return grid_z1
+
+def median_fm_filter(full_array):
+    full_array[2] = median(full_array[2])
+
+    return full_array
+
+#grid_x, grid_y = np.mgrid[0:3000:600, 0:4000:1000] #already setup for this input
+
+#points = np.array([[0,0],[1200,2000], [600,1000], [0,3000]])
+#values = np.array([50, 52, 51,52])
+#grid_z1 = griddata(points, values, (grid_x, grid_y), method='nearest')
+
+
+full_array = tile_pattern(a, 4, 5)
+print(full_array[2])
+#median_fm = median_fm_filter(full_array)[2]
+#print(median_fm)
+[i,j,full_array] = fm_outlier_identifier(full_array)
+[x_grid, y_grid, points, values] = interpolator_maxtrix_generator(full_array, i, j)
+#print(full_array[2])
+new_fm = interpolate_missing_fm_points(x_grid, y_grid, points, values)
+
+
+
+
