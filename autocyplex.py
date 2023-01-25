@@ -119,7 +119,8 @@ class cycif:
 
         max_range = max(range_array)
         max_index = range_array.index(max_range)
-        print(bin_levels[max_index])
+        #print(range_array)
+        #print(bin_levels[max_index])
 
         optimal_score_array = [[brenner_scores.value[0][0][max_index], brenner_scores.value[0][1]], [brenner_scores.value[1][0][max_index], brenner_scores.value[1][1]], [brenner_scores.value[2][0][max_index], brenner_scores.value[2][1]]]
 
@@ -132,7 +133,7 @@ class cycif:
         :return: list of brenner scores of binned images
         '''
 
-        bin_levels = [4,8,16,32,64]
+        bin_levels = [4,8,16, 32]
         focus_scores = [0]*len(bin_levels)
 
 
@@ -234,6 +235,9 @@ class cycif:
         optimal_score_array = self.bin_selector()
         [a,b,c, derivative] = self.gauss_jordan_solver(optimal_score_array)
         z_ideal = derivative
+
+        if z_ideal > z_range[1] or z_ideal < z_range[0]:
+            z_ideal = (z_range[0] + z_range[1])/2
 
         return z_ideal
 
@@ -670,25 +674,35 @@ class cycif:
         numpy_z = np.array(xyz_points['z'])
         x_tile_count = np.unique(numpy_x).size
         y_tile_count = np.unique(numpy_y).size
+        tile_counter = 0
 
         core.set_xy_position(numpy_x[0], numpy_y[0])
         core.set_position(numpy_z[0])
 
-        with XYTiledAcquisition(directory=full_directory_path, name=channel, show_display=False, tile_overlap=10) as acq:
-            for y in range(0, y_tile_count):
-                if y % 2 != 0:
-                    for x in range(x_tile_count -1, -1, -1):
+        with XYTiledAcquisition(directory=full_directory_path, name=channel, show_display=False, tile_overlap=0) as acq:
+            for x in range(0, x_tile_count):
+                if x % 2 != 0:
+                    for y in range(y_tile_count -1, -1, -1):
                         event = {'channel': {'group': 'Color', 'config': channel}, 'exposure': exposure_time, 'row': y,
                                  'col': x}
                         #need to experiment here and see how y and x are packed together to make sure we are getting the right z
                         #associated with the right xy
+                        core.set_position(numpy_z[tile_counter])
+                        time.sleep(0.5)
                         acq.acquire(event)
+                        tile_counter += 1
 
-                elif y % 2 == 0:
-                    for x in range(0, x_tile_count):
+
+                elif x % 2 == 0:
+                    for y in range(0, y_tile_count):
                         event = {'channel': {'group': 'Color', 'config': channel}, 'exposure': exposure_time, 'row': y,
                                  'col': x}
+                        core.set_position(numpy_z[tile_counter])
+                        time.sleep(0.5)
                         acq.acquire(event)
+                        tile_counter += 1
+
+
 
 
 
@@ -708,7 +722,7 @@ class cycif:
         #num_channels = len(channels)  # checks how many 'New Surface #' surfaces exist. Not actual total
         tile_surface_xy = self.tile_xy_pos(surface_name)  # pull center tile coords from manually made surface
         z_center = magellan.get_surface(surface_name).get_points().get(0).z
-        z_range = [z_center - 20, z_center + 20, 2]
+        z_range = [z_center - 25, z_center + 25, 25]
 
         z_focused_array = []
         exp_time_array = []
@@ -716,8 +730,9 @@ class cycif:
 
         auto_focus_exposure_time = self.auto_initial_expose(50, 6500, channel, z_range, surface_name)
         tile_surface_xyz = self.focus_tile( tile_surface_xy, z_range, 0, auto_focus_exposure_time, channel)
-        z_focused = tile_surface_xyz['z'][0]
-        exp_time = self.auto_expose(auto_focus_exposure_time, 6500, z_focused, [channel], surface_name)
+        #z_focused = tile_surface_xyz['z'][0]
+        exp_time = auto_focus_exposure_time
+        #exp_time = self.auto_expose(auto_focus_exposure_time, 6500, z_focused, [channel], surface_name)
 
         self.tiled_acquire(tile_surface_xyz, channel, exp_time, cycle_number, directory_name)
 
