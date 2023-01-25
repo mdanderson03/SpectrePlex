@@ -25,8 +25,8 @@ tile_surface_xy = microscope.tile_xy_pos('New Surface 1')
 channel = 'A488'
 
 tile_surface_xy = microscope.tile_xy_pos('New Surface 1')
-print(tile_surface_xy['x'])
-print(tile_surface_xy['y'])
+print(tile_surface_xy[1])
+print(tile_surface_xy[1])
 
 auto_focus_exposure_time = microscope.auto_initial_expose(50, 2500, channel, z_range, 'New Surface 1')
 xyz = microscope.focus_tile( tile_surface_xy, z_range, 0, auto_focus_exposure_time, channel)

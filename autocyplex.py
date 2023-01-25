@@ -4,8 +4,10 @@ import time
 from scipy.optimize import curve_fit
 import paho.mqtt.client as mqtt
 import matplotlib.pyplot as plt
-from skimage import io
+from skimage import io, measure
 import os
+import math
+from datetime import datetime
 
 
 client = mqtt.Client('autocyplex_server')
@@ -45,8 +47,8 @@ class cycif:
         :rtype: list[float, float]
         '''
         xy_pos = self.tile_xy_pos(mag_surface)
-        x_center = (max(xy_pos['x']) + min(xy_pos['x'])) / 2
-        y_center = (max(xy_pos['y']) + min(xy_pos['y'])) / 2
+        x_center = (max(xy_pos[0]) + min(xy_pos[0])) / 2
+        y_center = (max(xy_pos[1]) + min(xy_pos[1])) / 2
         return x_center, y_center
 
     def num_surfaces_count(self):
@@ -452,8 +454,12 @@ class cycif:
 
         tile_points_xy['x'] = x_temp  ## put all points in dictionary to ease use
         tile_points_xy['y'] = y_temp
+        x_temp = np.array(tile_points_xy['x'])
+        y_temp = np.array(tile_points_xy['y'])
 
-        return tile_points_xy
+        xy = np.hstack([x_temp[:, None], y_temp[:, None]])
+
+        return xy
 
     def tile_xyz_gen(self, tile_points_xy, z_focused):
         '''
@@ -529,7 +535,7 @@ class cycif:
 
         return full_array
 
-    def focus_tile(self, tile_points_xy, z_range, offset, exposure_time, channel):
+    def focus_tile(self, full_array_no_pattern, z_range, offset, exposure_time, channel):
          '''
          Takes dictionary of XY coordinates, moves to each of them, executes autofocus algorithm from method
          auto_focus and outputs the paired in focus z coordinate
@@ -543,19 +549,20 @@ class cycif:
          '''
 
          z_temp = []
-         num = len(tile_points_xy['x'])
+         num = np.shape(full_array_no_pattern)[0]
+         print(num)
          for q in range(0, num):
              z_range = [z_range[0] + offset, z_range[1] + offset, z_range[2]]
 
-             new_x = tile_points_xy['x'][q]
-             new_y = tile_points_xy['y'][q]
+             new_x = full_array_no_pattern[0][q]
+             new_y = full_array_no_pattern[1][q]
              core.set_xy_position(new_x, new_y)
              z_focused = self.auto_focus(z_range, exposure_time,channel)  # here is where autofocus results go. = auto_focus
              z_temp.append(z_focused)
-         tile_points_xy['z'] = z_temp
-         surface_points_xyz = tile_points_xy
+         xyz = np.append(full_array_no_pattern, z_temp)
 
-         return surface_points_xyz
+
+         return xyz
 
  ########################################################################################################################
 
@@ -692,7 +699,7 @@ class cycif:
             acq.acquire(events)
             acq.await_completion()
 
-    def tiled_acquire(self, xyz_points, channel, exposure_time, cycle_number, directory_name='E://test_control_staining'):
+    def tiled_acquire(self, full_array, channel, exposure_time, cycle_number, directory_name='E://test_control_staining'):
 
         add_on_folder = 'cycle_' + str(cycle_number)
         full_directory_path = directory_name + add_on_folder
@@ -700,14 +707,24 @@ class cycif:
             os.mkdir(full_directory_path)
         time.sleep(0.5)
 
-        numpy_x = np.array(xyz_points['x'])
-        numpy_y = np.array(xyz_points['y'])
-        numpy_z = np.array(xyz_points['z'])
+        if channel == 'DAPI':
+            channel_index = 3
+        if channel == 'A488':
+            channel_index = 3
+        if channel == 'A555':
+            channel_index = 3
+        if channel == 'A647':
+            channel_index = 3
+
+
+        numpy_x = full_array[0]
+        numpy_y = full_array[1]
+        numpy_z = full_array[channel_index]
         x_tile_count = np.unique(numpy_x).size
         y_tile_count = np.unique(numpy_y).size
 
-        core.set_xy_position(numpy_x[0], numpy_y[0])
-        core.set_position(numpy_z[0])
+        core.set_xy_position(numpy_x[0][0], numpy_y[0][0])
+        core.set_position(numpy_z[0][0])
 
         with XYTiledAcquisition(directory=full_directory_path, name=channel, show_display=False, tile_overlap=10) as acq:
             for y in range(0, y_tile_count):
@@ -715,6 +732,10 @@ class cycif:
                     for x in range(x_tile_count -1, -1, -1):
                         event = {'channel': {'group': 'Color', 'config': channel}, 'exposure': exposure_time, 'row': y,
                                  'col': x}
+
+                        core.set_position(numpy_z[y][x])
+                        time.sleep(0.5)
+
                         #need to experiment here and see how y and x are packed together to make sure we are getting the right z
                         #associated with the right xy
                         acq.acquire(event)
@@ -723,6 +744,10 @@ class cycif:
                     for x in range(0, x_tile_count):
                         event = {'channel': {'group': 'Color', 'config': channel}, 'exposure': exposure_time, 'row': y,
                                  'col': x}
+
+                        core.set_position(numpy_z[y][x])
+                        time.sleep(0.5)
+
                         acq.acquire(event)
 
 
@@ -743,16 +768,17 @@ class cycif:
         #num_channels = len(channels)  # checks how many 'New Surface #' surfaces exist. Not actual total
         tile_surface_xy = self.tile_xy_pos(surface_name)  # pull center tile coords from manually made surface
         z_center = magellan.get_surface(surface_name).get_points().get(0).z
-        z_range = [z_center - 20, z_center + 20, 2]
+        z_range = [z_center - 20, z_center + 20, 10]
 
         z_focused_array = []
         exp_time_array = []
 
 
-        auto_focus_exposure_time = self.auto_initial_expose(50, 6500, channel, z_range, surface_name)
+        auto_focus_exposure_time = self.auto_initial_expose(50, 2500, channel, z_range, surface_name)
         tile_surface_xyz = self.focus_tile( tile_surface_xy, z_range, 0, auto_focus_exposure_time, channel)
-        z_focused = tile_surface_xyz['z'][0]
-        exp_time = self.auto_expose(auto_focus_exposure_time, 6500, z_focused, [channel], surface_name)
+        z_focused = tile_surface_xyz[2][0][0]
+        exp_time = self.auto_expose(auto_focus_exposure_time, 2500, z_focused, [channel], surface_name)
+        tile_surface_xyz = self.median_fm_filter(tile_surface_xyz)
 
         self.tiled_acquire(tile_surface_xyz, channel, exp_time, cycle_number, directory_name)
 
