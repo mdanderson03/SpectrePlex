@@ -97,10 +97,17 @@ class cycif:
         '''
 
         z = metadata.pop('ZPosition_um_Intended')  # moves up while taking z stack
-        image_focus_scores = self.focus_bin_generator(image)
-        brenner_scores.value.append([image_focus_scores, z])
+        image_focus_score = self.focus_bin_generator(image)
+        brenner_scores.value.append([image_focus_score, z])
 
         return
+    def score_array_generator(self):
+
+        optimal_score_array = [[brenner_scores.value[0][0], brenner_scores.value[0][1]], [brenner_scores.value[1][0],
+                        brenner_scores.value[1][1]], [brenner_scores.value[2][0], brenner_scores.value[2][1]]]
+
+        return optimal_score_array
+
 
     def bin_selector(self):
         '''
@@ -121,7 +128,8 @@ class cycif:
         max_index = range_array.index(max_range)
         print(bin_levels[max_index])
 
-        optimal_score_array = [[brenner_scores.value[0][0][max_index], brenner_scores.value[0][1]], [brenner_scores.value[1][0][max_index], brenner_scores.value[1][1]], [brenner_scores.value[2][0][max_index], brenner_scores.value[2][1]]]
+        optimal_score_array = [[brenner_scores.value[0][0][max_index], brenner_scores.value[0][1]], [brenner_scores.value[1][0][max_index],
+                        brenner_scores.value[1][1]], [brenner_scores.value[2][0][max_index], brenner_scores.value[2][1]]]
 
         return optimal_score_array
 
@@ -132,14 +140,14 @@ class cycif:
         :return: list of brenner scores of binned images
         '''
 
-        bin_levels = [4,8,16,32,64]
-        focus_scores = [0]*len(bin_levels)
+        #bin_levels = [4,8,16,32,64]
+        #focus_scores = [0]*len(bin_levels)
 
 
-        for x in range(0, len(focus_scores)):
-            focus_scores[x] = self.focus_score(image, bin_levels[x])
 
-        return focus_scores
+        focus_score = self.focus_score(image, 4)
+
+        return focus_score
 
     def focus_score(self, image, bin_level):
         '''
@@ -154,7 +162,7 @@ class cycif:
         # Note: Uniform background is a bit mandatory
 
         binning_size = bin_level
-        image_binned = image[::binning_size, ::binning_size]
+        image_binned = io.measure.block_reduce(image, binning_size)
 
         # do Brenner score
         a = image_binned[2:, :]
@@ -231,7 +239,7 @@ class cycif:
                                                 order='zc', channel_exposures_ms=[exposure_time])
             acq.acquire(events)
 
-        optimal_score_array = self.bin_selector()
+        optimal_score_array = self.score_array_generator()
         [a,b,c, derivative] = self.gauss_jordan_solver(optimal_score_array)
         z_ideal = derivative
 
@@ -493,6 +501,33 @@ class cycif:
 ############################################################################################
 #####focus_tile is depreciated. Need to convert this to not go to every tile, but an even sampling of them
     #######################################################################################
+
+    def tile_pattern(self, numpy_array, x_tiles, y_tiles):
+        '''
+        Takes numpy array with N rows and known tile pattern and casts into new array that follows
+        south-north, west-east snake pattern.
+
+
+        :param numpy_array: dimensions [N, x_tiles*y_tiles]
+        :param x_tiles: number x tiles in pattern
+        :param y_tiles: number y tiles in pattern
+        :return: numpy array with dimensions [N,x_tiles,y_tiles] with above snake pattern
+        '''
+
+        layers = np.shape(numpy_array)[0]
+        numpy_array = numpy_array.reshape(layers, x_tiles, y_tiles)
+        dummy = numpy_array.reshape(layers, y_tiles, x_tiles)
+        new_numpy = np.empty_like(dummy)
+        for x in range(0, layers):
+            new_numpy[x] = numpy_array[x].transpose()
+            new_numpy[x, ::, 1:y_tiles:2] = np.flipud(new_numpy[x, ::, 1:y_tiles:2])
+
+        return new_numpy
+
+    def median_fm_filter(self, full_array):
+        full_array[2] = median(full_array[2])
+
+        return full_array
 
     def focus_tile(self, tile_points_xy, z_range, offset, exposure_time, channel):
          '''
