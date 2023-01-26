@@ -533,6 +533,25 @@ class cycif:
 
         return new_numpy
 
+    def fm_channel_initial(self, full_array, channel, offset_from_dapi):
+
+        if channel == 'A488':
+            channel_index = 3
+        if channel == 'A555':
+            channel_index = 4
+        if channel == 'A647':
+            channel_index = 5
+
+        channel_count = np.shape(full_array)[0]
+        while channel_count < 6:
+            dummy_channel = np.empty_like(full_array[0])
+            full_array = np.ppend(full_array, dummy_channel)
+
+        full_array[channel_index] = full_array[2] + offset_from_dapi
+
+        return full_array
+
+
     def median_fm_filter(self, full_array):
         full_array[2] = median(full_array[2])
 
@@ -702,7 +721,7 @@ class cycif:
             acq.acquire(events)
             acq.await_completion()
 
-    def tiled_acquire(self, full_array, channel, exposure_time, cycle_number, directory_name='E://test_control_staining'):
+    def tiled_acquire(self, full_array, channel, change_from_z, exposure_time, cycle_number, directory_name='E://test_control_staining'):
 
         add_on_folder = 'cycle_' + str(cycle_number)
         full_directory_path = directory_name + add_on_folder
@@ -736,7 +755,7 @@ class cycif:
                         event = {'channel': {'group': 'Color', 'config': channel}, 'exposure': exposure_time, 'row': y,
                                  'col': x}
 
-                        core.set_position(numpy_z[y][x])
+                        core.set_position(numpy_z[y][x] + change_from_z)
                         time.sleep(0.5)
 
                         #need to experiment here and see how y and x are packed together to make sure we are getting the right z
@@ -748,7 +767,7 @@ class cycif:
                         event = {'channel': {'group': 'Color', 'config': channel}, 'exposure': exposure_time, 'row': y,
                                  'col': x}
 
-                        core.set_position(numpy_z[y][x])
+                        core.set_position(numpy_z[y][x] + change_from_z)
                         time.sleep(0.5)
 
                         acq.acquire(event)
@@ -772,19 +791,28 @@ class cycif:
         tile_surface_xy = self.tile_xy_pos(surface_name)  # pull center tile coords from manually made surface
         z_center = magellan.get_surface(surface_name).get_points().get(0).z
         z_range = [z_center - 20, z_center + 20, 10]
+        change_from_z = 1
 
         z_focused_array = []
         exp_time_array = []
 
+        if channel == 'DAPI':
+            offset = 0
+        if channel == 'A488':
+            offset = 5
+        if channel == 'A555':
+            offset = 5
+        if channel == 'A647':
+            offset = 3
 
         auto_focus_exposure_time = self.auto_initial_expose(50, 2500, channel, z_range, surface_name)
-        tile_surface_xyz = self.focus_tile( tile_surface_xy, z_range, 0, auto_focus_exposure_time, channel)
+        tile_surface_xyz = self.focus_tile( tile_surface_xy, z_range, offset, auto_focus_exposure_time, channel)
         tile_surface_xyz = self.tile_pattern(tile_surface_xyz)
         tile_surface_xyz = self.median_fm_filter(tile_surface_xyz)
         z_focused = tile_surface_xyz[2][0][0]
         exp_time = self.auto_expose(auto_focus_exposure_time, 2500, z_focused, [channel], surface_name)
 
-        self.tiled_acquire(tile_surface_xyz, channel, exp_time, cycle_number, directory_name)
+        self.tiled_acquire(tile_surface_xyz, channel, change_from_z, exp_time, cycle_number, directory_name)
 
         return
 
