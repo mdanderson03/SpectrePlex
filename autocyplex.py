@@ -5,6 +5,7 @@ from scipy.optimize import curve_fit
 import paho.mqtt.client as mqtt
 import matplotlib.pyplot as plt
 from skimage import io, measure
+from skimage.filters import median
 import os
 import math
 from datetime import datetime
@@ -87,7 +88,7 @@ class cycif:
     ####################################################################
     ############ All in section are functions for the autofocus function
     ####################################################################
-    def image_process_hook(self, image, metadata):
+    def image_process_hook( self, image, metadata):
         '''
         Method that hooks from autofocus image acquistion calls. It takes image, calculates a focus score for it
         via focus_score method and exports a list that contains both the focus score and the z position it was taken at
@@ -147,7 +148,7 @@ class cycif:
 
 
 
-        focus_score = self.focus_score(image, 4)
+        focus_score = self.focus_score(image, 8)
 
         return focus_score
 
@@ -164,7 +165,7 @@ class cycif:
         # Note: Uniform background is a bit mandatory
 
         binning_size = bin_level
-        image_binned = io.measure.block_reduce(image, binning_size)
+        image_binned = measure.block_reduce(image, binning_size)
 
         # do Brenner score
         a = image_binned[2:, :]
@@ -457,7 +458,8 @@ class cycif:
         x_temp = np.array(tile_points_xy['x'])
         y_temp = np.array(tile_points_xy['y'])
 
-        xy = np.hstack([x_temp[:, None], y_temp[:, None]])
+        xy = np.append(x_temp, y_temp)
+        xy = np.reshape(xy, (2, int(xy.size/2)))
 
         return xy
 
@@ -550,8 +552,7 @@ class cycif:
          '''
 
          z_temp = []
-         num = np.shape(full_array_no_pattern)[0]
-         print(num)
+         num = np.shape(full_array_no_pattern)[1]
          for q in range(0, num):
              z_range = [z_range[0] + offset, z_range[1] + offset, z_range[2]]
 
@@ -560,7 +561,8 @@ class cycif:
              core.set_xy_position(new_x, new_y)
              z_focused = self.auto_focus(z_range, exposure_time,channel)  # here is where autofocus results go. = auto_focus
              z_temp.append(z_focused)
-         xyz = np.append(full_array_no_pattern, z_temp)
+         z_temp = np.expand_dims(z_temp, axis = 0)
+         xyz = np.append(full_array_no_pattern, z_temp, axis =0)
 
 
          return xyz
@@ -709,13 +711,13 @@ class cycif:
         time.sleep(0.5)
 
         if channel == 'DAPI':
-            channel_index = 3
+            channel_index = 2
         if channel == 'A488':
-            channel_index = 3
+            channel_index = 2
         if channel == 'A555':
-            channel_index = 3
+            channel_index = 2
         if channel == 'A647':
-            channel_index = 3
+            channel_index = 2
 
 
         numpy_x = full_array[0]
@@ -727,7 +729,7 @@ class cycif:
         core.set_xy_position(numpy_x[0][0], numpy_y[0][0])
         core.set_position(numpy_z[0][0])
 
-        with XYTiledAcquisition(directory=full_directory_path, name=channel, show_display=False, tile_overlap=10) as acq:
+        with XYTiledAcquisition(directory=full_directory_path, name=channel, show_display=False, tile_overlap=0) as acq:
             for y in range(0, y_tile_count):
                 if y % 2 != 0:
                     for x in range(x_tile_count -1, -1, -1):
