@@ -252,7 +252,7 @@ class cycif:
     #This section is the for the exposure functions.
     ###########################################################
 
-    def image_percentile_level(self, image, cut_off_threshold):
+    def image_percentile_level( image, cut_off_threshold):
         '''
         Takes in image and cut off threshold and finds pixel value that exists at that threshold point.
 
@@ -268,7 +268,7 @@ class cycif:
 
         return tail_intensity
 
-    def exposure_hook(self, image, metadata):
+    def exposure_hook(image, metadata):
         '''
         Hook for expose method. Returns metric based on image_percentile_level method.
 
@@ -278,11 +278,11 @@ class cycif:
         '''
 
         global level
-        level = self.image_percentile_level(image, 0.85)
+        level = cycif.image_percentile_level(image, 0.85)
 
         return
 
-    def expose(self, seed_exposure, channel='DAPI'):
+    def expose( seed_exposure, channel='DAPI'):
         '''
         Runs entire auto exposure algorithm in current XY position. Gives back predicted
         in exposure level via image_percentile_level method with the exposure_hook
@@ -295,7 +295,7 @@ class cycif:
         '''
 
         with Acquisition(directory='C:/Users/CyCIF PC/Desktop/test_images/', name='trash', show_display=False,
-                         image_process_fn=self.exposure_hook) as acq:
+                         image_process_fn=cycif.exposure_hook) as acq:
             # Create some acquisition events here:
 
             event = {'channel': {'group': 'Color', 'config': channel}, 'exposure': seed_exposure}
@@ -303,7 +303,7 @@ class cycif:
 
         return level
 
-    def auto_expose(self, seed_expose, benchmark_threshold, z_focused_pos, channels=['DAPI', 'A488', 'A555', 'A647'], surface_name='none'):
+    def auto_expose(seed_expose, benchmark_threshold, z_focused_pos, channels=['DAPI', 'A488', 'A555', 'A647'], surface_name='none'):
         '''
 
         :param object core: core object from Core() in pycromananger
@@ -318,7 +318,7 @@ class cycif:
         '''
 
         if surface_name != 'none':
-            new_x, new_y = self.tissue_center(surface_name)  # uncomment if want center of tissue to expose
+            new_x, new_y = cycif.tissue_center(surface_name)  # uncomment if want center of tissue to expose
             core.set_xy_position(new_x, new_y)
             z_pos = z_focused_pos
             # z_pos = magellan.get_surface(surface_name).get_points().get(0).z
@@ -331,7 +331,7 @@ class cycif:
 
         for fluor_channel in channels:
 
-            intensity = self.expose(seed_expose, fluor_channel)
+            intensity = cycif.expose(seed_expose, fluor_channel)
             new_exp = seed_expose
             while intensity < (1 - bandwidth) * benchmark_threshold or intensity > (
                     1 + bandwidth) * benchmark_threshold:
@@ -341,20 +341,20 @@ class cycif:
                         new_exp = exp_time_limit
                         break
                     else:
-                        intensity = self.expose(new_exp, fluor_channel)
+                        intensity = cycif.expose(new_exp, fluor_channel)
                 elif intensity > benchmark_threshold and intensity < sat_max:
                     new_exp = benchmark_threshold / intensity * new_exp
-                    intensity = self.expose(new_exp, fluor_channel)
+                    intensity = cycif.expose(new_exp, fluor_channel)
                 elif intensity > sat_max:
                     new_exp = new_exp / 10
-                    intensity = self.expose(new_exp, fluor_channel)
+                    intensity = cycif.expose(new_exp, fluor_channel)
                 elif new_exp >= sat_max:
                     new_exp = sat_max
                     break
 
         return new_exp
 
-    def z_scan_exposure_hook(self, image, metadata):
+    def z_scan_exposure_hook( image, metadata):
         '''
         Method that hooks from autofocus image acquistion calls. It takes image, calculates a focus score for it
         via focus_score method and exports a list that contains both the focus score and the z position it was taken at
@@ -365,7 +365,7 @@ class cycif:
         :return: Nothing
         '''
         z = metadata.pop('ZPosition_um_Intended')  # moves up while taking z stack
-        z_intensity_level = self.image_percentile_level(image, 0.99)
+        z_intensity_level = cycif.image_percentile_level(image, 0.99)
         intensity.value.append([z_intensity_level, z])
 
         return
@@ -390,7 +390,7 @@ class cycif:
         z_brightest = z_range[0] + z_range[2]
         core.set_position(z_brightest)
 
-        new_exp = self.auto_expose(seed_expose, benchmark_threshold, z_brightest, [channel])
+        new_exp = cycif.auto_expose(seed_expose, benchmark_threshold, z_brightest, [channel])
 
         return new_exp
 
@@ -464,9 +464,13 @@ class cycif:
         a555_channel_offset = 3
         a647_channel_offset = 3
 
+        dummy_channel = np.empty_like(full_array[0])
+        dummy_channel = np.expand_dims(dummy_channel, axis=0)
+        channel_count = np.shape(full_array)[0]
+
         while channel_count < 6:
-            dummy_channel = np.empty_like(full_array[0])
-            full_array = np.append(full_array, dummy_channel)
+            full_array = np.append(full_array, dummy_channel, axis = 0)
+            channel_count = np.shape(full_array)[0]
 
         full_array[3] = full_array[2] + a488_channel_offset #index for a488 = 3
         full_array[4] = full_array[2] + a555_channel_offset
@@ -506,12 +510,12 @@ class cycif:
          z_temp = []
          num = np.shape(full_array_no_pattern)[1]
          for q in range(0, num):
-             z_range = [z_range[0] + offset, z_range[1] + offset, z_range[2]]
+             z_range = [z_range[0], z_range[1], z_range[2]]
 
              new_x = full_array_no_pattern[0][q]
              new_y = full_array_no_pattern[1][q]
              core.set_xy_position(new_x, new_y)
-             z_focused = self.auto_focus(z_range, exposure_time,channel)  # here is where autofocus results go. = auto_focus
+             z_focused = self.auto_focus(z_range, exposure_time,'DAPI')  # here is where autofocus results go. = auto_focus
              z_temp.append(z_focused)
          z_temp = np.expand_dims(z_temp, axis = 0)
          xyz = np.append(full_array_no_pattern, z_temp, axis =0)
@@ -538,7 +542,7 @@ class cycif:
          if channel == 'A647':
              channel_index = 5
 
-         exposure_time = self.auto_initial_expose(50, 2500, channel, full_array_with_pattern[channel_index][0][0], surface_name)
+         exposure_time = self.auto_initial_expose(50, 2500, channel, full_array_with_pattern[channel_index][0][0])
 
          shape = np.shape(full_array_with_pattern)
          x_tiles = shape[2]
@@ -547,19 +551,19 @@ class cycif:
              for y in range(0, y_tiles):
                  center = full_array_with_pattern[2][x][y]
                  z_range = [center - search_range/2, center + search_range/2, search_range/2]
-                 new_x = full_array_no_pattern[0][x][y]
-                 new_y = full_array_no_pattern[1][x][y]
+                 new_x = full_array_with_pattern[0][x][y]
+                 new_y = full_array_with_pattern[1][x][y]
                  core.set_xy_position(new_x, new_y)
                  z_focused = self.auto_focus(z_range, exposure_time,channel)  # here is where autofocus results go. = auto_focus
                  full_array_with_pattern[channel_index][x][y] = z_focused
 
-         return xyz
+         return full_array_with_pattern
 
  ########################################################################################################################
 
 
 
-    def tiled_acquire(self, full_array, channel, change_from_z, exposure_time, cycle_number, directory_name='E://test_control_staining'):
+    def tiled_acquire(self, full_array, channel, exposure_time, cycle_number, directory_name='E://test_control_staining'):
 
         add_on_folder = 'cycle_' + str(cycle_number)
         full_directory_path = directory_name + add_on_folder
@@ -593,7 +597,7 @@ class cycif:
                         event = {'channel': {'group': 'Color', 'config': channel}, 'exposure': exposure_time, 'row': y,
                                  'col': x}
 
-                        core.set_position(numpy_z[y][x] + change_from_z)
+                        core.set_position(numpy_z[y][x])
                         time.sleep(0.5)
 
                         #need to experiment here and see how y and x are packed together to make sure we are getting the right z
@@ -605,7 +609,7 @@ class cycif:
                         event = {'channel': {'group': 'Color', 'config': channel}, 'exposure': exposure_time, 'row': y,
                                  'col': x}
 
-                        core.set_position(numpy_z[y][x] + change_from_z)
+                        core.set_position(numpy_z[y][x])
                         time.sleep(0.5)
 
                         acq.acquire(event)
@@ -667,22 +671,22 @@ class cycif:
 
     def acquire_all_tiled_surfaces(self, cycle_number, channels=['DAPI', 'A488', 'A555', 'A647'], directory_name='E://test_control_staining/'):
 
-        if channel == 'DAPI':
-            channel_index = 0
-        if channel == 'A488':
-            channel_index = 1
-        if channel == 'A555':
-            channel_index = 2
-        if channel == 'A647':
-            channel_index = 3
-
         full_array = np.load('fm_array.npy', allow_pickle=False)
         exp_time_array = np.load('exp_array.npy', allow_pickle=False)
 
         for channel in channels:
 
-            exp_time_array[channel_index]
-            self.tiled_acquire(full_array, channel, change_from_z, exp_time, cycle_number, directory_name)
+            if channel == 'DAPI':
+                channel_index = 0
+            if channel == 'A488':
+                channel_index = 1
+            if channel == 'A555':
+                channel_index = 2
+            if channel == 'A647':
+                channel_index = 3
+
+            exp_time = exp_time_array[channel_index]
+            self.tiled_acquire(full_array, channel, exp_time, cycle_number, directory_name)
 
 ############################################
 #depreciated or unused
