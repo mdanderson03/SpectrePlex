@@ -88,7 +88,7 @@ class cycif:
     ####################################################################
     ############ All in section are functions for the autofocus function
     ####################################################################
-    def image_process_hook( self, image, metadata):
+    def image_process_hook( image, metadata):
         '''
         Method that hooks from autofocus image acquistion calls. It takes image, calculates a focus score for it
         via focus_score method and exports a list that contains both the focus score and the z position it was taken at
@@ -100,7 +100,7 @@ class cycif:
         '''
 
         z = metadata.pop('ZPosition_um_Intended')  # moves up while taking z stack
-        image_focus_score = self.focus_bin_generator(image)
+        image_focus_score = cycif.focus_bin_generator(image)
         brenner_scores.value.append([image_focus_score, z])
 
         return
@@ -136,7 +136,7 @@ class cycif:
 
         return optimal_score_array
 
-    def focus_bin_generator(self, image):
+    def focus_bin_generator( image):
         '''
         takes image and calculates brenner scores for various bin levels of 64, 32, 16, 8 and 4 and outputs them.
         :param image: numpy array 2D
@@ -148,11 +148,11 @@ class cycif:
 
 
 
-        focus_score = self.focus_score(image, 8)
+        focus_score = cycif.focus_score(image, 8)
 
         return focus_score
 
-    def focus_score(self, image, bin_level):
+    def focus_score(image, bin_level):
         '''
         Calculates focus score on image with Brenners algorithm on downsampled image.
 
@@ -233,7 +233,7 @@ class cycif:
 
         with Acquisition(directory='C:/Users/CyCIF PC/Desktop/test_images', name='trash',
                          show_display=False,
-                         image_process_fn=self.image_process_hook) as acq:
+                         image_process_fn=cycif.image_process_hook) as acq:
             events = multi_d_acquisition_events(channel_group='Color',
                                                 channels=[channel],
                                                 z_start=z_range[0],
@@ -590,22 +590,22 @@ class cycif:
         core.set_xy_position(numpy_x[0][0], numpy_y[0][0])
         core.set_position(numpy_z[0][0])
 
-        with XYTiledAcquisition(directory=full_directory_path, name=channel, show_display=False, tile_overlap=0) as acq:
+        with XYTiledAcquisition(directory=full_directory_path, name=channel, show_display=False, tile_overlap=10) as acq:
             for y in range(0, y_tile_count):
                 if y % 2 != 0:
                     for x in range(x_tile_count -1, -1, -1):
+                        print(x,y)
                         event = {'channel': {'group': 'Color', 'config': channel}, 'exposure': exposure_time, 'row': y,
                                  'col': x}
 
                         core.set_position(numpy_z[y][x])
                         time.sleep(0.5)
 
-                        #need to experiment here and see how y and x are packed together to make sure we are getting the right z
-                        #associated with the right xy
                         acq.acquire(event)
 
                 elif y % 2 == 0:
                     for x in range(0, x_tile_count):
+                        print(x, y)
                         event = {'channel': {'group': 'Color', 'config': channel}, 'exposure': exposure_time, 'row': y,
                                  'col': x}
 
