@@ -9,6 +9,7 @@ from skimage.filters import median
 import os
 import math
 from datetime import datetime
+from tifffile import imsave
 
 
 client = mqtt.Client('autocyplex_server')
@@ -687,6 +688,126 @@ class cycif:
 
             exp_time = exp_time_array[channel_index]
             self.tiled_acquire(full_array, channel, exp_time, cycle_number, directory_name)
+
+############################################
+#experimental using core snap and not pycromanager acquire
+############################################
+
+def core_tile_acquire(self, channels = ['DAPI','A488','A555', 'A647'], z_slices = 3):
+    '''
+    Makes numpy files that contain all tiles, z slices and channels. Order is tiles, z, channel.
+
+    :param self:
+    :param channels:
+    :param z_slices:
+    :return:
+    '''
+
+    full_array = np.load('fm_array.npy', allow_pickle=False)
+    exp_time_array = np.load('exp_array.npy', allow_pickle=False)
+
+    height_pixels = 2960
+    width_pixels = 5056
+
+    channel_count = len(channels)
+    z_end = (z_slices - 1)/2
+    z_start = -1*z_end
+
+    numpy_x = full_array[0]
+    numpy_y = full_array[1]
+    numpy_z = full_array[channel_index]
+    x_tile_count = np.unique(numpy_x).size
+    y_tile_count = np.unique(numpy_y).size
+    total_tile_count = x_tile_count * y_tile_count
+
+    core.set_xy_position(numpy_x[0][0], numpy_y[0][0])
+    core.set_position(numpy_z[0][0])
+    time.sleep(1)
+
+    tif_stack = np.random.rand(total_tile_count, z_slices, channel_count, height_pixels, width_pixels).astype('float16')
+
+    for channel in channels:
+
+        if channel == 'DAPI':
+            channel_index = 2
+            tif_stack_c_index = 0
+        if channel == 'A488':
+            channel_index = 3
+            tif_stack_c_index = 1
+        if channel == 'A555':
+            channel_index = 4
+            tif_stack_c_index = 2
+        if channel == 'A647':
+            channel_index = 5
+            tif_stack_c_index = 3
+
+        exp_time = exp_time_array[channel_index]
+        core.set_config("Color", channel)
+        core.set_exposure(exp_time)
+        tile_counter = 0
+
+        for y in range(0, y_tile_count):
+            if y % 2 != 0:
+                for x in range(x_tile_count - 1, -1, -1):
+
+                    core.set_xy_position(numpy_x[y][x], numpy_y[y][x])
+                    time.sleep(.5)
+
+                    z_counter = 0
+
+                    for z in range(z_start, z_end + 1, 1):
+                        core.set_position(numpy_z[y][x] + z)
+                        time.sleep(.5)
+
+                        core.snap_image()
+                        tagged_image = core.get_tagged_image()
+                        pixels = np.reshape(tagged_image.pix,newshape=[tagged_image.tags["Height"], tagged_image.tags["Width"]])
+
+                        tif_stack[tile_counter][z_counter][tif_stack_c_index] = pixels
+
+                        z_counter =+ 1
+
+                    tile_counter += 1
+
+
+            elif y % 2 == 0:
+                for x in range(0, x_tile_count):
+
+                    core.set_xy_position(numpy_x[y][x], numpy_y[y][x])
+                    time.sleep(.5)
+
+                    z_counter = 0
+
+                    for z in range(z_start, z_end + 1, 1):
+                        core.set_position(numpy_z[y][x] + z)
+                        time.sleep(.5)
+
+                        core.snap_image()
+                        tagged_image = core.get_tagged_image()
+                        pixels = np.reshape(tagged_image.pix,
+                                            newshape=[tagged_image.tags["Height"], tagged_image.tags["Width"]])
+
+                        tif_stack[tile_counter][z_counter][tif_stack_c_index] = pixels
+
+                        z_counter = + 1
+
+                    tile_counter += 1
+
+    return tif_stack
+
+def save_tif_stack(tif_stack, cycle_number,  directory_name):
+
+    add_on_folder = 'cycle_' + str(cycle_number)
+    full_directory_path = directory_name + add_on_folder
+    if os.path.exists(full_directory_path) == 'False':
+        os.mkdir(full_directory_path)
+    os.chdir(full_directory_path)
+    file_name = 'image_array.tif'
+
+    imwrite(file_name, tif_stack,
+            bigtiff=True,
+            photometric='minisblack')
+
 
 ############################################
 #depreciated or unused
