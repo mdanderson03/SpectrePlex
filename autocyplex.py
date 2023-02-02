@@ -806,7 +806,9 @@ def save_tif_stack(tif_stack, cycle_number,  directory_name):
 
     imwrite(file_name, tif_stack,
             bigtiff=True,
-            photometric='minisblack')
+            photometric='minisblack',
+            compression = 'zlib',
+            compressionargs = {'level': 8} )
 
 
 ############################################
