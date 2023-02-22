@@ -1,50 +1,45 @@
-from autocif import *
-from pycromanager import Core, Magellan
-core = Core()
-magellan = Magellan()
+from autocyplex import *
 microscope = cycif() # initialize cycif object
 import numpy as np
 
+def take_image():
 
+    core.snap_image()
+    tagged_image = core.get_tagged_image()
+    pixels = np.reshape(tagged_image.pix, newshape=[tagged_image.tags["Height"], tagged_image.tags["Width"]])
 
-#z_range = [4680, 4720, 2]
-
-#z_range = [4690, 4720, 4]
-
-#sd= microscope.auto_focus(z_range)
-#print(sd)
-#z_ideal = microscope.auto_focus(z_range)
-#print(z_ideal)
-
-
-# microscope.surf2focused_surf(z_range, 'New Grid 1', 'Focused Surface', core, magellan)
-# microscope.surf2focused_surf(z_range, 'New Surface 1', 'Focused Surface', core, magellan)
-
-#microscope.surf2focused_surf(z_range, 'New Surface 1', 'Focused Surface', core, magellan)
-
-
-#surface = magellan.get_surface('Focused Surface')
-#exposure = microscope.auto_expose()
-#microscope.focused_surface_acq_settings(exposure, 'New Surface 1', 'Focused Surface', magellan)
+    return pixels
 
 
 
-#core.set_roi(385,160,420,494)
+time_points = 160
+time_sampling = 1 #seconds between images
 
-#microscope.tilt_angle_chip(core)
-
-
-
+image_stack = np.random.rand(time_points, 740, 1264).astype('float16')
 
 
-'''
-xy = microscope.tile_xy_pos('New Surface 1', magellan)
-print(xy)
-xyz = microscope.focus_tile(xy, z_range, core)
-microscope.focused_surface_generate(xyz, magellan, 'Focused Surface')
-print(xyz)
 
-exposure = microscope.auto_expose()
-microscope.focused_surface_acq_settings(exposure, 'New Surface 1', 'Focused Surface', magellan)
-'''
+stain_valve = 3
 
+time_total_flow_on = 80
+time_stain_on = 12
+time_pbs_on = time_total_flow_on - time_stain_on
+
+
+on_pbs_command = (8 * 100) + 10  # multiplication by 100 forces x value into the 1st spot on a 3 digit code.
+off_pbs_command = (8 * 100) + 00
+
+
+arduino.flow(stain_valve, run_time=time_stain_on)
+arduino.mqtt_publish(on_pbs_command, 'valve')
+arduino.mqtt_publish(170, 'peristaltic')
+
+for x in range(0, time_points):
+
+    image = arduino.flow(stain_valve, run_time = time_stain_on)
+    image_stack[x] = image
+
+arduino.mqtt_publish(off_pbs_command, 'valve')
+arduino.mqtt_publish(0o70, 'peristaltic')
+
+microscope.save_tif_stack(image_stack, 1, directory_name=)
