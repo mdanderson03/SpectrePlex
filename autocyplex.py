@@ -304,7 +304,7 @@ class cycif:
 
         return level
 
-    def auto_expose(self, seed_expose, benchmark_threshold, z_focused_pos, channels=['DAPI', 'A488', 'A555', 'A647'], surface_name='none'):
+    def auto_expose(self, seed_expose, benchmark_threshold, channels=['DAPI', 'A488', 'A555', 'A647']):
         '''
 
         :param object core: core object from Core() in pycromananger
@@ -318,12 +318,12 @@ class cycif:
         :return: list of exposures
         '''
 
-        if surface_name != 'none':
-            new_x, new_y = cycif.tissue_center(self, surface_name)  # uncomment if want center of tissue to expose
-            core.set_xy_position(new_x, new_y)
-            z_pos = z_focused_pos
+        #if surface_name != 'none':
+            #new_x, new_y = cycif.tissue_center(self, surface_name)  # uncomment if want center of tissue to expose
+            #core.set_xy_position(new_x, new_y)
+            #z_pos = z_focused_pos
             # z_pos = magellan.get_surface(surface_name).get_points().get(0).z
-            core.set_position(z_pos)
+            #core.set_position(z_pos)
 
         bandwidth = 0.1
         sat_max = 65000
@@ -461,9 +461,9 @@ class cycif:
 
     def fm_channel_initial(self, full_array):
 
-        a488_channel_offset = 3 #determine if each of these are good and repeatable offsets
-        a555_channel_offset = 3
-        a647_channel_offset = 3
+        a488_channel_offset = -7.5 #determine if each of these are good and repeatable offsets
+        a555_channel_offset = -6
+        a647_channel_offset = -6
 
         dummy_channel = np.empty_like(full_array[0])
         dummy_channel = np.expand_dims(dummy_channel, axis=0)
@@ -524,7 +524,7 @@ class cycif:
 
          return xyz
 
-    def focus_tile_stain(self, full_array_with_pattern, search_range, channel):
+    def focus_tile_stain(self, full_array_with_pattern, search_range, channel, exposure_time):
          '''
          Takes dictionary of XY coordinates, moves to each of them, executes autofocus algorithm from method
          auto_focus and outputs the paired in focus z coordinate
@@ -543,7 +543,7 @@ class cycif:
          if channel == 'A647':
              channel_index = 5
 
-         exposure_time = self.auto_initial_expose(50, 2500, channel, full_array_with_pattern[channel_index][0][0])
+         #exposure_time = cycif.auto_expose(50, 2500, channel)
 
          shape = np.shape(full_array_with_pattern)
          x_tiles = shape[2]
@@ -1192,7 +1192,7 @@ class arduino:
         else:
             self.mqtt_publish(on_command, 'valve')
             self.mqtt_publish(170, 'peristaltic')  # turn pump on
-            time.sleep(time)
+            time.sleep(run_time)
             self.mqtt_publish(0o70, 'peristaltic')  # turn pump off
             self.mqtt_publish(off_command, 'valve')
 
@@ -1217,7 +1217,7 @@ class arduino:
         :return: nothing
         '''
 
-        self.dispense(liquid_selection, 275)
+        self.dispense(liquid_selection, 300)
         time.sleep(run_time)
         self.flow(8)  # flow wash with PBS
 

@@ -39,14 +39,29 @@ tile_surface_xyz = microscope.tile_pattern(xyz)
 tile_surface_xyz = microscope.median_fm_filter(tile_surface_xyz, channel)
 tile_surface_xyz = microscope.fm_channel_initial(tile_surface_xyz)
 
+'''
+exposure_time_a488 = microscope.auto_initial_expose(50, 2500, 'A488', z_range, 'New Surface 1')
+exposure_time_a555 = microscope.auto_initial_expose(50, 2500, 'A555', z_range, 'New Surface 1')
+exposure_time_a647 = microscope.auto_initial_expose(50, 2500, 'A647', z_range, 'New Surface 1')
+tile_surface_xyz = microscope.focus_tile_stain(tile_surface_xyz,15, 'A488', exposure_time_a488)
+tile_surface_xyz = microscope.focus_tile_stain(tile_surface_xyz,15, 'A555', exposure_time_a555)
+tile_surface_xyz = microscope.focus_tile_stain(tile_surface_xyz,15, 'A647', exposure_time_a647)
+'''
 
 
 z_focused = tile_surface_xyz[2][0][0]
-exp_time = microscope.auto_expose(auto_focus_exposure_time, 2500, z_focused, [channel], 'New Surface 1')
-exp_time = [100,100,100,100]
+#exp_time = microscope.auto_expose(auto_focus_exposure_time, 2500, z_focused, [channel], 'New Surface 1')
+exp_time = [100,400,300,800]
 np.save('exp_array.npy', exp_time)
 np.save('fm_array.npy', tile_surface_xyz)
-#print(exp_time[0])
+
 
 tif = microscope.core_tile_acquire(['DAPI', 'A488', 'A555', 'A647'], 3)
 microscope.save_tif_stack(tif, 1, 'E:/garbage')
+
+print(tile_surface_xyz[0])
+print(tile_surface_xyz[1])
+print(tile_surface_xyz[2])
+print(tile_surface_xyz[3])
+print(tile_surface_xyz[4])
+print(tile_surface_xyz[5])
