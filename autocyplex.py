@@ -462,8 +462,8 @@ class cycif:
     def fm_channel_initial(self, full_array):
 
         a488_channel_offset = -7.5 #determine if each of these are good and repeatable offsets
-        a555_channel_offset = -6
-        a647_channel_offset = -6
+        a555_channel_offset = -13
+        a647_channel_offset = -7
 
         dummy_channel = np.empty_like(full_array[0])
         dummy_channel = np.expand_dims(dummy_channel, axis=0)
@@ -550,13 +550,13 @@ class cycif:
          y_tiles = shape[1]
          for x in range(0, x_tiles):
              for y in range(0, y_tiles):
-                 center = full_array_with_pattern[2][x][y]
+                 center = full_array_with_pattern[channel_index][y][x]
                  z_range = [center - search_range/2, center + search_range/2, search_range/2]
-                 new_x = full_array_with_pattern[0][x][y]
-                 new_y = full_array_with_pattern[1][x][y]
+                 new_x = full_array_with_pattern[0][y][x]
+                 new_y = full_array_with_pattern[1][y][x]
                  core.set_xy_position(new_x, new_y)
                  z_focused = self.auto_focus(z_range, exposure_time,channel)  # here is where autofocus results go. = auto_focus
-                 full_array_with_pattern[channel_index][x][y] = z_focused
+                 full_array_with_pattern[channel_index][y][x] = z_focused
 
          return full_array_with_pattern
 
@@ -799,8 +799,10 @@ class cycif:
 
         add_on_folder = 'cycle_' + str(cycle_number)
         full_directory_path = directory_name + add_on_folder
-        if os.path.exists(full_directory_path) == 'False':
+        try:
             os.mkdir(full_directory_path)
+        except:
+           pass
         os.chdir(full_directory_path)
         file_name = 'image_array.tif'
 

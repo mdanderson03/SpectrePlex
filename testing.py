@@ -3,12 +3,12 @@ from autocyplex import *
 
 microscope = cycif()
 
-max_z = 6000
-min_z = 5950
+#max_z = 6000
+#min_z = 5950
 
 z_center = magellan.get_surface('New Surface 1').get_points().get(0).z
-#z_center = 5893
-z_range = [z_center - 20, z_center + 20, 20]
+#z_center = 6697
+z_range = [z_center - 10, z_center + 10, 10]
 print(z_range)
 
 #num = 0
@@ -27,7 +27,7 @@ channel = 'DAPI'
 
 tile_surface_xy = microscope.tile_xy_pos('New Surface 1')
 #print(tile_surface_xy)
-#z_focused = microscope.auto_focus(z_range, 100,channel)  # here is where autofocus results go. = auto_focus
+#z_focused = microscope.auto_focus(z_range, 200,channel)  # here is where autofocus results go. = auto_focus
 #print(z_focused)
 
 #exp = microscope.expose(200)
@@ -43,20 +43,22 @@ tile_surface_xyz = microscope.fm_channel_initial(tile_surface_xyz)
 exposure_time_a488 = microscope.auto_initial_expose(50, 2500, 'A488', z_range, 'New Surface 1')
 exposure_time_a555 = microscope.auto_initial_expose(50, 2500, 'A555', z_range, 'New Surface 1')
 exposure_time_a647 = microscope.auto_initial_expose(50, 2500, 'A647', z_range, 'New Surface 1')
-tile_surface_xyz = microscope.focus_tile_stain(tile_surface_xyz,15, 'A488', exposure_time_a488)
-tile_surface_xyz = microscope.focus_tile_stain(tile_surface_xyz,15, 'A555', exposure_time_a555)
-tile_surface_xyz = microscope.focus_tile_stain(tile_surface_xyz,15, 'A647', exposure_time_a647)
 '''
 
+#tile_surface_xyz = microscope.focus_tile_stain(tile_surface_xyz,10, 'A488', 200)
+#tile_surface_xyz = microscope.focus_tile_stain(tile_surface_xyz,10, 'A555', 200)
+#tile_surface_xyz = microscope.focus_tile_stain(tile_surface_xyz,10, 'A647', 200)
 
-z_focused = tile_surface_xyz[2][0][0]
+
+
+#z_focused = tile_surface_xyz[2][0][0]
 #exp_time = microscope.auto_expose(auto_focus_exposure_time, 2500, z_focused, [channel], 'New Surface 1')
-exp_time = [100,400,300,800]
+exp_time = [100,200,200,200]
 np.save('exp_array.npy', exp_time)
 np.save('fm_array.npy', tile_surface_xyz)
 
 
-tif = microscope.core_tile_acquire(['DAPI', 'A488', 'A555', 'A647'], 3)
+tif = microscope.core_tile_acquire(['DAPI'])
 microscope.save_tif_stack(tif, 1, 'E:/garbage')
 
 print(tile_surface_xyz[0])
