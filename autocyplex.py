@@ -693,9 +693,9 @@ class cycif:
 #experimental using core snap and not pycromanager acquire
 ############################################
 
-    def core_tile_acquire(self, channels = ['DAPI','A488','A555', 'A647'], z_slices = 3):
+    def core_tile_acquire(self, channel = 'DAPI', z_slices = 3):
         '''
-        Makes numpy files that contain all tiles, z slices and channels. Order is tiles, z, channel.
+        Makes numpy files that contain all tiles and z slices. Order is z, tiles.
 
         :param self:
         :param channels:
@@ -709,7 +709,6 @@ class cycif:
         height_pixels = 2960
         width_pixels = 5056
 
-        channel_count = len(channels)
         z_end = int((z_slices - 1)/2)
         z_start = (-1*z_end)
 
@@ -720,80 +719,201 @@ class cycif:
         total_tile_count = x_tile_count * y_tile_count
 
         core.set_xy_position(numpy_x[0][0], numpy_y[0][0])
-        #core.set_position(numpy_z[0][0])
         time.sleep(1)
 
-        tif_stack = np.random.rand(total_tile_count, z_slices, channel_count, height_pixels, width_pixels).astype('float16')
+        tif_stack = np.random.rand(z_slices, total_tile_count, height_pixels, width_pixels).astype('float16')
+
+
+        if channel == 'DAPI':
+            channel_index = 2
+        if channel == 'A488':
+            channel_index = 3
+        if channel == 'A555':
+            channel_index = 4
+        if channel == 'A647':
+            channel_index = 5
+
+        numpy_z = full_array[channel_index]
+        exp_time = int(exp_time_array[tif_stack_c_index])
+        core.set_config("Color", channel)
+        core.set_exposure(exp_time)
+        tile_counter = 0
+
+        for y in range(0, y_tile_count):
+            if y % 2 != 0:
+                for x in range(x_tile_count - 1, -1, -1):
+
+                    core.set_xy_position(numpy_x[y][x], numpy_y[y][x])
+                    time.sleep(.5)
+
+                    z_counter = 0
+
+                    for z in range(z_start, z_end + 1, 1):
+                        core.set_position(numpy_z[y][x] + z)
+                        time.sleep(.5)
+
+                        core.snap_image()
+                        tagged_image = core.get_tagged_image()
+                        pixels = np.reshape(tagged_image.pix,newshape=[tagged_image.tags["Height"], tagged_image.tags["Width"]])
+
+                        tif_stack[z_counter][tile_counter] = pixels
+
+                        z_counter =+ 1
+
+                    tile_counter += 1
+
+
+            elif y % 2 == 0:
+                for x in range(0, x_tile_count):
+
+                    core.set_xy_position(numpy_x[y][x], numpy_y[y][x])
+                    time.sleep(.5)
+
+                    z_counter = 0
+
+                    for z in range(z_start, z_end + 1, 1):
+                        core.set_position(numpy_z[y][x] + z)
+                        time.sleep(.5)
+
+                        core.snap_image()
+                        tagged_image = core.get_tagged_image()
+                        pixels = np.reshape(tagged_image.pix,
+                                            newshape=[tagged_image.tags["Height"], tagged_image.tags["Width"]])
+
+                        tif_stack[z_counter][tile_counter] = pixels
+
+                        z_counter = + 1
+
+                    tile_counter += 1
+
+        return tif_stack
+    
+    def quick_tile_placement(self, z_tile_stack, overlap = 10):
+
+        full_array = np.load('fm_array.npy', allow_pickle=False)
+
+        numpy_x = full_array[0]
+        numpy_y = full_array[1]
+
+        x_tile_count = np.unique(numpy_x).size
+        y_tile_count = np.unique(numpy_y).size
+
+        height = z_tile_stack[0].shape[0]
+        width = z_tile_stack[0].shape[1]
+        overlapped_height = int(height * (1 - overlap / 100))
+        overlapped_width = int(width * (1 - overlap / 100))
+
+        pna_height = int(y_tile_count * height - int((y_tile_count) * overlap / 100 * height))
+        pna_width = int(x_tile_count * width - int((x_tile_count) * overlap / 100 * width))
+
+        pna = np.random.rand(pna_height, pna_width).astype('float16')
+        tile_counter = 0
+
+        for y in range(0, y_tile_count):
+            if y % 2 != 0:
+                for x in range(x_tile_count - 1, -1, -1):
+                    pna[y * overlapped_height:(y + 1) * overlapped_height,
+                    x * overlapped_width:(x + 1) * overlapped_width] = z_tile_stack[tile_counter][0:overlapped_height,
+                                                                       0:overlapped_width]
+
+                    tile_counter += 1
+
+
+            elif y % 2 == 0:
+                for x in range(0, x_tile_count):
+                    pna[y * overlapped_height:(y + 1) * overlapped_height,
+                    x * overlapped_width:(x + 1) * overlapped_width] = z_tile_stack[tile_counter][0:overlapped_height,
+                                                                       0:overlapped_width]
+
+                    tile_counter += 1
+
+        return z_tile_stack
+
+######Folder System Generation########################################################
+    def folder_addon(self, parent_directory_path, new_folder_names):
+
+        os.chdir(parent_directory_path)
+
+        for name in new_folder_names:
+
+            add_on_folder = str(name)
+            full_directory_path = parent_directory_path + add_on_folder
+
+            try:
+                os.mkdir(full_directory_path)
+            except:
+               pass
+
+    def file_structure(self, experiment_directory, highest_cycle_count):
+
+        channels = ['DAPI', 'A488', 'A555', 'A647']
+        cycles = np.linspace(1,highest_cycle_count,highest_cycle_count).astype(int)
+
+        #folder layer one
+        os.chdir(experiment_directory)
+        self.folder_addon(experiment_directory, ['Quick_Tile'])
+        self.folder_addon(experiment_directory, channels)
+
+        #folder layer two
 
         for channel in channels:
 
-            if channel == 'DAPI':
-                channel_index = 2
-                tif_stack_c_index = 0
-            if channel == 'A488':
-                channel_index = 3
-                tif_stack_c_index = 1
-            if channel == 'A555':
-                channel_index = 4
-                tif_stack_c_index = 2
-            if channel == 'A647':
-                channel_index = 5
-                tif_stack_c_index = 3
+            experiment_channel_directory = experiment_directory + '/' + channel
 
-            numpy_z = full_array[channel_index]
-            exp_time = int(exp_time_array[tif_stack_c_index])
-            core.set_config("Color", channel)
-            core.set_exposure(exp_time)
-            tile_counter = 0
+            self.folder_addon(experiment_channel_directory, ['Stain'])
+            self.folder_addon(experiment_channel_directory, ['Bleach'])
 
-            for y in range(0, y_tile_count):
-                if y % 2 != 0:
-                    for x in range(x_tile_count - 1, -1, -1):
+        #folder layers 3 and 4
 
-                        core.set_xy_position(numpy_x[y][x], numpy_y[y][x])
-                        time.sleep(.5)
+            for cycle in cycles:
 
-                        z_counter = 0
-
-                        for z in range(z_start, z_end + 1, 1):
-                            core.set_position(numpy_z[y][x] + z)
-                            time.sleep(.5)
-
-                            core.snap_image()
-                            tagged_image = core.get_tagged_image()
-                            pixels = np.reshape(tagged_image.pix,newshape=[tagged_image.tags["Height"], tagged_image.tags["Width"]])
-
-                            tif_stack[tile_counter][z_counter][tif_stack_c_index] = pixels
-
-                            z_counter =+ 1
-
-                        tile_counter += 1
+                experiment_channel_stain_directory = experiment_channel_directory + '/' + 'Stain'
+                experiment_channel_bleach_directory = experiment_channel_directory + '/' + 'Bleach'
 
 
-                elif y % 2 == 0:
-                    for x in range(0, x_tile_count):
+                self.folder_addon(experiment_channel_stain_directory, ['cy_' + str(cycle)])
+                experiment_channel_stain_cycle_directory = experiment_channel_stain_directory + '/' + 'cy_' + str(cycle)
 
-                        core.set_xy_position(numpy_x[y][x], numpy_y[y][x])
-                        time.sleep(.5)
+                self.folder_addon(experiment_channel_stain_cycle_directory, ['Tiles'])
+                self.folder_addon(experiment_channel_stain_cycle_directory, ['Quick_Tile'])
 
-                        z_counter = 0
 
-                        for z in range(z_start, z_end + 1, 1):
-                            core.set_position(numpy_z[y][x] + z)
-                            time.sleep(.5)
+                self.folder_addon(experiment_channel_bleach_directory, ['cy_' + str(cycle)])
+                experiment_channel_bleach_cycle_directory = experiment_channel_bleach_directory + '/' + 'cy_' + str(cycle)
 
-                            core.snap_image()
-                            tagged_image = core.get_tagged_image()
-                            pixels = np.reshape(tagged_image.pix,
-                                                newshape=[tagged_image.tags["Height"], tagged_image.tags["Width"]])
+                self.folder_addon(experiment_channel_bleach_cycle_directory, ['Tiles'])
+                self.folder_addon(experiment_channel_bleach_cycle_directory, ['Quick_Tile'])
 
-                            tif_stack[tile_counter][z_counter][tif_stack_c_index] = pixels
+#####################################################################################################
+##########Saving Methods#############################################################################
 
-                            z_counter = + 1
+    def save_quick_tile(self, image, channel, cycle, experiment_directory, Stain_or_Bleach = 'Stain'):
 
-                        tile_counter += 1
+        file_name = 'quick_tile_' + str(channel) + '_' + 'cy' + str(cycle) + '.tif'
 
-        return tif_stack
+        top_path = experiment_directory + '/' + 'Quick_Tile'
+        bottom_path = experiment_directory + '/' + str(channel) + '/' + Stain_or_Bleach + '/' + 'cy_' + str(cycle) + '/' + 'Quick_Tile'
+
+        os.chdir(top_path)
+        imwrite(file_name, image, photometric='minisblack' )
+
+        os.chdir(bottom_path)
+        imwrite(file_name, image, photometric='minisblack' )
+
+    def save_files(self, z_tile_stack, channel, cycle, experiment_directory, Stain_or_Bleach = 'Stain'):
+
+        save_directory = experiment_directory + '/' + str(channel) + '/' + Stain_or_Bleach + '/' + 'cy_' + str(cycle) + '/' + 'Tiles'
+
+        z_tile_count = z_tile_stack.shape[0]
+        tile_count = z_tile_stack,shape[1]
+
+        for z in range(0, z_tile_count):
+            for t in range(0, tile_count):
+
+                file_name = 'z_' + str(z) + '_' + str(t) + '_' + str(channel)+ '.tif'
+                image = z_tile_stack[z][t]
+                os.chdir(save_directory)
+                imwrite(file_name, image, photometric='minisblack')
 
     def save_tif_stack(self, tif_stack, cycle_number,  directory_name):
 
