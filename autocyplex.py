@@ -149,7 +149,7 @@ class cycif:
 
 
 
-        focus_score = cycif.focus_score(image, 8)
+        focus_score = cycif.focus_score(image, 1)
 
         return focus_score
 
@@ -726,12 +726,16 @@ class cycif:
 
         if channel == 'DAPI':
             channel_index = 2
+            tif_stack_c_index = 0
         if channel == 'A488':
             channel_index = 3
+            tif_stack_c_index = 1
         if channel == 'A555':
             channel_index = 4
+            tif_stack_c_index = 2
         if channel == 'A647':
             channel_index = 5
+            tif_stack_c_index = 3
 
         numpy_z = full_array[channel_index]
         exp_time = int(exp_time_array[tif_stack_c_index])
@@ -749,17 +753,15 @@ class cycif:
                     z_counter = 0
 
                     for z in range(z_start, z_end + 1, 1):
-                        core.set_position(numpy_z[y][x] + z)
-                        time.sleep(.5)
-
+                        core.set_position(numpy_z[y][x] + 2*z)
                         core.snap_image()
                         tagged_image = core.get_tagged_image()
                         pixels = np.reshape(tagged_image.pix,newshape=[tagged_image.tags["Height"], tagged_image.tags["Width"]])
-
                         tif_stack[z_counter][tile_counter] = pixels
 
-                        z_counter =+ 1
+                        z_counter += 1
 
+                    #print(tile_counter)
                     tile_counter += 1
 
 
@@ -772,9 +774,7 @@ class cycif:
                     z_counter = 0
 
                     for z in range(z_start, z_end + 1, 1):
-                        core.set_position(numpy_z[y][x] + z)
-                        time.sleep(.5)
-
+                        core.set_position(numpy_z[y][x] + 2*z)
                         core.snap_image()
                         tagged_image = core.get_tagged_image()
                         pixels = np.reshape(tagged_image.pix,
@@ -782,14 +782,18 @@ class cycif:
 
                         tif_stack[z_counter][tile_counter] = pixels
 
-                        z_counter = + 1
 
+                        z_counter += 1
+
+                    #print(tile_counter)
                     tile_counter += 1
 
         return tif_stack
     
     def quick_tile_placement(self, z_tile_stack, overlap = 10):
 
+        numpy_path = 'E:/folder_structure' +'/' + 'np_arrays'
+        os.chdir(numpy_path)
         full_array = np.load('fm_array.npy', allow_pickle=False)
 
         numpy_x = full_array[0]
@@ -827,7 +831,67 @@ class cycif:
 
                     tile_counter += 1
 
-        return z_tile_stack
+        return pna
+
+    def quick_tile_optimal_z(self, z_tile_stack):
+
+        z_slice_count = z_tile_stack.shape[0]
+        tile_count = z_tile_stack[0].shape[0]
+
+        height = z_tile_stack[0].shape[1]
+        width = z_tile_stack[0].shape[2]
+
+        optimal_stack = np.random.rand(tile_count, height, width).astype('float16')
+        score_array = np.random.rand(z_slice_count, 1).astype('float32')
+
+
+        for tile in range(0, tile_count):
+
+            for z in range(0, z_slice_count):
+                score_array[z] = cycif.focus_bin_generator(z_tile_stack[z][tile])
+
+            min_score = np.min(score_array)
+            optimal_index = np.where(score_array == min_score)[0][0]
+            optimal_stack[tile] = z_tile_stack[optimal_index][tile]
+
+        return optimal_stack
+
+    def optimal_quick_preview_qt(self, z_tile_stack, channel, cycle, experiment_directory,  overlap = 10):
+
+        optimal_stack = self.quick_tile_optimal_z(z_tile_stack)
+        optimal_qt = self.quick_tile_placement(optimal_stack, overlap)
+        optimal_qt_binned = optimal_qt[0:-1:4, 0:-1:4]
+        self.save_optimal_quick_tile(optimal_qt_binned, channel, cycle, experiment_directory)
+
+
+
+    def quick_tile_all_z_save(self, z_tile_stack, channel, cycle, experiment_directory,  overlap = 0):
+
+
+        z_slice_count = z_tile_stack.shape[0]
+        numpy_path = experiment_directory +'/' + 'np_arrays'
+        os.chdir(numpy_path)
+        full_array = np.load('fm_array.npy', allow_pickle=False)
+
+        numpy_x = full_array[0]
+        numpy_y = full_array[1]
+
+        x_tile_count = np.unique(numpy_x).size
+        y_tile_count = np.unique(numpy_y).size
+
+        height = z_tile_stack.shape[2]
+        width = z_tile_stack.shape[3]
+
+        pna_height = int(y_tile_count * height - int((y_tile_count) * overlap / 100 * height))
+        pna_width = int(x_tile_count * width - int((x_tile_count) * overlap / 100 * width))
+
+        pna_stack = np.random.rand(z_slice_count, pna_height, pna_width).astype('float16')
+
+        for z in range(0, z_slice_count):
+            pna = self.quick_tile_placement(z_tile_stack[z], overlap)
+            pna_stack[z] = pna
+
+        self.save_quick_tile(pna_stack, channel, cycle, experiment_directory)
 
 ######Folder System Generation########################################################
     def folder_addon(self, parent_directory_path, new_folder_names):
@@ -837,7 +901,7 @@ class cycif:
         for name in new_folder_names:
 
             add_on_folder = str(name)
-            full_directory_path = parent_directory_path + add_on_folder
+            full_directory_path = parent_directory_path + '/' + add_on_folder
 
             try:
                 os.mkdir(full_directory_path)
@@ -852,6 +916,7 @@ class cycif:
         #folder layer one
         os.chdir(experiment_directory)
         self.folder_addon(experiment_directory, ['Quick_Tile'])
+        self.folder_addon(experiment_directory, ['np_arrays'])
         self.folder_addon(experiment_directory, channels)
 
         #folder layer two
@@ -884,12 +949,23 @@ class cycif:
                 self.folder_addon(experiment_channel_bleach_cycle_directory, ['Tiles'])
                 self.folder_addon(experiment_channel_bleach_cycle_directory, ['Quick_Tile'])
 
+        os.chdir(experiment_directory + '/' + 'np_arrays')
+
 #####################################################################################################
 ##########Saving Methods#############################################################################
 
-    def save_quick_tile(self, image, channel, cycle, experiment_directory, Stain_or_Bleach = 'Stain'):
+    def save_optimal_quick_tile(self, image, channel, cycle, experiment_directory):
 
         file_name = 'quick_tile_' + str(channel) + '_' + 'cy' + str(cycle) + '.tif'
+
+        top_path = experiment_directory + '/' + 'Quick_Tile'
+
+        os.chdir(top_path)
+        imwrite(file_name, image, photometric='minisblack' )
+
+    def save_quick_tile(self, image, channel, cycle, experiment_directory, Stain_or_Bleach = 'Stain'):
+
+        file_name = 'quick_tile_' + str(channel)  + '_' + 'cy' + str(cycle) + '.tif'
 
         top_path = experiment_directory + '/' + 'Quick_Tile'
         bottom_path = experiment_directory + '/' + str(channel) + '/' + Stain_or_Bleach + '/' + 'cy_' + str(cycle) + '/' + 'Quick_Tile'
@@ -905,7 +981,7 @@ class cycif:
         save_directory = experiment_directory + '/' + str(channel) + '/' + Stain_or_Bleach + '/' + 'cy_' + str(cycle) + '/' + 'Tiles'
 
         z_tile_count = z_tile_stack.shape[0]
-        tile_count = z_tile_stack,shape[1]
+        tile_count = z_tile_stack.shape[1]
 
         for z in range(0, z_tile_count):
             for t in range(0, tile_count):
