@@ -10,6 +10,10 @@ import os
 import math
 from datetime import datetime
 from tifffile import imsave, imwrite
+import openpyxl
+from ome_types.model import Instrument, Microscope, Objective, InstrumentRef, Image, Pixels, Plane, Channel
+from ome_types.model.simple_types import UnitsLength, PixelType, PixelsID, ImageID, ChannelID
+from ome_types import from_xml, OME, from_tiff
 
 
 client = mqtt.Client('autocyplex_server')
@@ -693,7 +697,7 @@ class cycif:
 #experimental using core snap and not pycromanager acquire
 ############################################
 
-    def core_tile_acquire(self, channel = 'DAPI', z_slices = 3):
+    def core_tile_acquire(self, experiment_directory, channel = 'DAPI', z_slices = 3):
         '''
         Makes numpy files that contain all tiles and z slices. Order is z, tiles.
 
@@ -703,6 +707,8 @@ class cycif:
         :return:
         '''
 
+        numpy_path = experiment_directory +'/' + 'np_arrays'
+        os.chdir(numpy_path)
         full_array = np.load('fm_array.npy', allow_pickle=False)
         exp_time_array = np.load('exp_array.npy', allow_pickle=False)
 
@@ -894,6 +900,157 @@ class cycif:
         self.save_quick_tile(pna_stack, channel, cycle, experiment_directory)
 
 ######Folder System Generation########################################################
+
+    def image_metadata_generation(self, tile_x_number, tile_y_number, channel, experiment_directory):
+
+        ome = OME()
+
+        numpy_path = experiment_directory + '/' + 'np_arrays'
+        os.chdir(numpy_path)
+        full_array = np.load('fm_array.npy', allow_pickle=False)
+        exp_time_array = np.load('exp_array.npy', allow_pickle=False)
+
+        numpy_x = full_array[0]
+        numpy_y = full_array[1]
+
+        stage_x = numpy_x[tile_x_number][tile_y_number]
+        stage_y = numpy_y[tile_x_number][tile_y_number]
+
+        if channel == 'DAPI':
+            channel_array_index = 2
+            ex_wavelength = 405
+            em_wavelength = 455
+        if channel == 'A488':
+            channel_array_index = 3
+            ex_wavelength = 488
+            em_wavelength = 525
+        if channel == 'A555':
+            channel_array_index = 4
+            ex_wavelength = 540
+            em_wavelength = 590
+        if channel == 'A647':
+            channel_array_index = 5
+            ex_wavelength = 640
+            em_wavelength = 690
+
+        microscope_mk4 = Microscope(
+            manufacturer='ASI',
+            model='AutoCyPlex',
+            serial_number='CFIC-1',
+        )
+
+        objective_16x = Objective(
+            manufacturer='Nikon',
+            model='16x water dipping',
+            nominal_magnification=21.0,
+        )
+
+        instrument = Instrument(
+            microscope=microscope_mk4,
+            objectives=[objective_16x],
+        )
+
+        p_type = PixelType('uint16')
+        p_id = PixelsID('Pixels:0')
+        i_id = ImageID('Image:0')
+        c_id = ChannelID('Channel:1:' + str(channel_array_index - 2))
+
+        channel = Channel(
+            id=c_id,
+            emission_wavelength=em_wavelength,
+            emission_wavelength_unit='nm',
+            excitation_wavelength=ex_wavelength,
+            excitation_wavelength_unit='nm',
+            samples_per_pixel=1
+        )
+
+        plane = Plane(
+            the_c=0,
+            the_t=0,
+            the_z=0,
+            exposure_time=exp_time_array[channel_array_index],
+            exposure_time_unit='ms',
+            position_x=stage_x,
+            position_y=stage_y,
+            position_z=0
+        )
+
+        image_pixels = Pixels(dimension_order='XYZCT', id=p_id, size_c=1, size_t=1, size_x=5056, size_y=2960, size_z=1,
+                              type=p_type,
+                              physical_size_x=202,
+                              physical_size_x_unit='nm',
+                              physical_size_y=202,
+                              physical_size_y_unit='nm',
+                              physical_size_z=1000,
+                              physical_size_z_unit='nm',
+                              planes=[plane],
+                              channels=[channel])
+
+        image1 = Image(id=i_id, pixels=image_pixels)
+        ome.images.append(image1)
+        ome.instruments.append(instrument)
+        ome.images[0].instrument_ref = InstrumentRef(id=instrument.id)
+
+        metadata = to_xml(ome)
+
+        return metadata
+
+
+    def marker_excel_file_generation(self, experiment_directory, cycle_number):
+
+        folder_path = experiment_directory + '/mcmicro'
+        numpy_path = experiment_directory +'/' + 'np_arrays'
+        os.chdir(numpy_path)
+        exp_array = np.load('exp_array.npy', allow_pickle=False)
+        exp_array = np.flip(exp_array)
+        
+        filter_sets = ['A647', 'A555', 'A488', 'DAPI']
+        emission_wavelengths = ['675', '565', '525', '450']
+        exciation_wavlengths = ['647', '555', '488', '405']
+
+        try:
+            os.chdir(folder_path)
+            wb = load_workbook(markers.xlsx)
+        except:
+            wb = openpyxl.Workbook()
+        ws = wb.active
+        ws.cell(row=1, column=1).value = 'channel_number'
+        ws.cell(row=1, column=2).value = 'cycle_number'
+        ws.cell(row=1, column=3).value = 'marker_name'
+        ws.cell(row=1, column=4).value = 'Filter'
+        ws.cell(row=1, column=5).value = 'excitation_wavlength'
+        ws.cell(row=1, column=6).value = 'emission_wavlength'
+        ws.cell(row=1, column=7).value = 'background'
+        ws.cell(row=1, column=8).value = 'exposure'
+        ws.cell(row=1, column=9).value = 'remove'
+        
+        for row_number in range(2, (cycle_number)*4 + 2):
+
+            cycle_number = 4//row_number + 1
+            intercycle_channel_number = cycle_number * 4 + 1 - row_number
+
+            ws.cell(row=row_number, column=1).value = row_number
+            ws.cell(row=row_number, column=2).value = cycle_number
+            ws.cell(row=row_number, column=3).value = 'Marker_' + str(row_number)
+            ws.cell(row=row_number, column=4).value = filter_sets[intercycle_channel_number]
+            ws.cell(row=row_number, column=5).value = exciation_wavlengths[intercycle_channel_number]
+            ws.cell(row=row_number, column=6).value = emission_wavelengths[intercycle_channel_number]
+
+
+        row_start = (cycle_number - 1)*4 + 2
+        row_end = row_start + 4
+
+        for row_number in range(row_start, row_end):
+
+            cycle_number = 4 // row_number + 1
+            intercycle_channel_number = cycle_number * 4 + 1 - row_number
+
+            ws.cell(row=row_number, column=8).value = exp_array[intercycle_channel_number]
+
+        os.chdir(folder_path)
+        wb.save(filename = 'markers.xlsx')
+
+
     def folder_addon(self, parent_directory_path, new_folder_names):
 
         os.chdir(parent_directory_path)
@@ -917,6 +1074,7 @@ class cycif:
         os.chdir(experiment_directory)
         self.folder_addon(experiment_directory, ['Quick_Tile'])
         self.folder_addon(experiment_directory, ['np_arrays'])
+        self.folder_addon(experiment_directory, ['mcmicro'])
         self.folder_addon(experiment_directory, channels)
 
         #folder layer two
