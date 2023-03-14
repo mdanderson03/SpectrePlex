@@ -1138,16 +1138,43 @@ class cycif:
 
         save_directory = experiment_directory + '/' + str(channel) + '/' + Stain_or_Bleach + '/' + 'cy_' + str(cycle) + '/' + 'Tiles'
 
+        numpy_path = experiment_directory +'/' + 'np_arrays'
+        os.chdir(numpy_path)
+        full_array = np.load('fm_array.npy', allow_pickle=False)
+
+        numpy_x = full_array[0]
+        numpy_y = full_array[1]
+
+        x_tile_count = np.unique(numpy_x).size
+        y_tile_count = np.unique(numpy_y).size
+
         z_tile_count = z_tile_stack.shape[0]
-        tile_count = z_tile_stack.shape[1]
+
 
         for z in range(0, z_tile_count):
-            for t in range(0, tile_count):
 
-                file_name = 'z_' + str(z) + '_' + str(t) + '_' + str(channel)+ '.tif'
-                image = z_tile_stack[z][t]
-                os.chdir(save_directory)
-                imwrite(file_name, image, photometric='minisblack')
+            tile_counter = 0
+
+            for y in range(0, y_tile_count):
+                if y % 2 != 0:
+                    for x in range(x_tile_count - 1, -1, -1):
+
+                        meta = cycif.image_metadata_generation(x, y, channel, experiment_directory)
+                        file_name = 'z_' + str(z) + '_x' + str(x) + '_y_' + str(y) + '_c_' + str(channel)+ '.ome.tif'
+                        image = z_tile_stack[z][tile_counter]
+                        os.chdir(save_directory)
+                        imwrite(file_name, image, photometric='minisblack', description = meta)
+                        tile_counter =+ 1
+
+                if y % 2 == 0:
+                    for x in range(0, x_tile_count):
+
+                        meta = cycif.image_metadata_generation(x, y, channel, experiment_directory)
+                        file_name = 'z_' + str(z) + '_x' + str(x) + '_y_' + str(y) + '_c_' + str(channel)+ '.ome.tif'
+                        image = z_tile_stack[z][tile_counter]
+                        os.chdir(save_directory)
+                        imwrite(file_name, image, photometric='minisblack', description = meta)
+                        tile_counter = + 1
 
     def save_tif_stack(self, tif_stack, cycle_number,  directory_name):
 
