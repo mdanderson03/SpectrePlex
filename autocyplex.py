@@ -331,10 +331,19 @@ class cycif:
 
         bandwidth = 0.1
         sat_max = 65000
-        exp_time_limit = 1000
+        exp_time_limit = 2000
         exposure_array = [10, 10, 10, 10]  # dapi, a488, a555, a647
 
         for fluor_channel in channels:
+
+            if fluor_channel == 'DAPI':
+                exp_index = 0
+            if fluor_channel == 'A488':
+                exp_index = 1
+            if fluor_channel == 'A555':
+                exp_index = 2
+            if fluor_channel == 'A647':
+                exp_index = 3
 
             intensity = cycif.expose(seed_expose, fluor_channel)
             new_exp = seed_expose
@@ -357,7 +366,9 @@ class cycif:
                     new_exp = sat_max
                     break
 
-        return new_exp
+            exposure_array[exp_index] = new_exp
+
+        return exposure_array
 
     def z_scan_exposure_hook( image, metadata):
         '''
@@ -527,6 +538,27 @@ class cycif:
 
 
          return xyz
+
+    def nonfocus_tile_DAPI(self, full_array_no_pattern):
+         '''
+         Makes micromagellen z the focus position at each XY point for DAPI
+         auto_focus and outputs the paired in focus z coordinate
+
+         :param dictionary tile_points_xy: dictionary containing all XY coordinates. In the form: {{x:(int)}, {y:(int)}}
+
+         :return: XYZ points where XY are stage coords and Z is in focus coordinate. {{x:(int)}, {y:(int)}, {z:(float)}}
+         :rtype: dictionary
+         '''
+
+         z_pos = magellan.get_surface('New Surface 1').get_points().get(0).z
+         num = np.shape(full_array_no_pattern)[1]
+         for q in range(0, num):
+             z_temp.append(z_pos)
+         z_temp = np.expand_dims(z_temp, axis = 0)
+         xyz = np.append(full_array_no_pattern, z_temp, axis =0)
+
+         return xyz
+
 
     def focus_tile_stain(self, full_array_with_pattern, search_range, channel, exposure_time):
          '''
@@ -898,6 +930,28 @@ class cycif:
             pna_stack[z] = pna
 
         self.save_quick_tile(pna_stack, channel, cycle, experiment_directory)
+
+
+    def cycle_acquire(self, cycle_number, experiment_directory, stain_bleach, channels = ['DAPI', 'A488', 'A555', 'A647']):
+
+        self.file_structure(experiment_directory, cycle_number)
+
+        xy_pos = self.tile_xy_pos('New Surface 1')
+        xyz_pos = self.nonfocus_tile_DAPI(xy_pos)
+        xyz_tile_pattern = self.tile_pattern(xyz_pos)
+        fm_array = self.fm_channel_initial(xyz_tile_pattern)
+        exp_time = self.auto_expose(300, 5000)
+
+        np.save('exp_array.npy', exp_time)
+        np.save('fm_array.npy', fm_array)
+
+        for channel in channels:
+            z_tile_stack = self.core_tile_acquire(channel, 7)
+            self.optimal_quick_preview_qt(z_tile_stack, channel, cycle_number, experiment_directory)
+            self.quick_tile_all_z_save(z_tile_stack, channel, cycle_number, experiment_directory, stain_bleach)
+            self.save_files(z_tile_stack, channel, cycle_number, experiment_directory, stain_bleach)
+
+        self.marker_excel_file_generation(experiment_directory, cycle_number)
 
 ######Folder System Generation########################################################
 

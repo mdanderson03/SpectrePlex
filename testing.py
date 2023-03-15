@@ -9,14 +9,8 @@ microscope = cycif()
 microscope.file_structure('E:/folder_structure', 1)
 
 
-
-#max_z = 6000
-#min_z = 5950
-
 z_center = magellan.get_surface('New Surface 1').get_points().get(0).z
-#z_center = 6697
-z_range = [z_center - 15, z_center + 15, 15]
-print(z_range)
+
 
 #num = 0
 
