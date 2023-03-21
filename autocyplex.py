@@ -1,3 +1,4 @@
+import ome_types
 from pycromanager import Core, Acquisition, multi_d_acquisition_events, Dataset, MagellanAcquisition, Magellan, start_headless, XYTiledAcquisition
 import numpy as np
 import time
@@ -10,7 +11,7 @@ import os
 import math
 from datetime import datetime
 from tifffile import imsave, imwrite
-import openpyxl
+from openpyxl import load_workbook, Workbook
 from ome_types.model import Instrument, Microscope, Objective, InstrumentRef, Image, Pixels, Plane, Channel
 from ome_types.model.simple_types import UnitsLength, PixelType, PixelsID, ImageID, ChannelID
 from ome_types import from_xml, OME, from_tiff
@@ -476,9 +477,9 @@ class cycif:
 
     def fm_channel_initial(self, full_array):
 
-        a488_channel_offset = -7.5 #determine if each of these are good and repeatable offsets
-        a555_channel_offset = -13
-        a647_channel_offset = -7
+        a488_channel_offset = -5 #determine if each of these are good and repeatable offsets
+        a555_channel_offset = -5
+        a647_channel_offset = -5
 
         dummy_channel = np.empty_like(full_array[0])
         dummy_channel = np.expand_dims(dummy_channel, axis=0)
@@ -552,6 +553,7 @@ class cycif:
 
          z_pos = magellan.get_surface('New Surface 1').get_points().get(0).z
          num = np.shape(full_array_no_pattern)[1]
+         z_temp = []
          for q in range(0, num):
              z_temp.append(z_pos)
          z_temp = np.expand_dims(z_temp, axis = 0)
@@ -903,7 +905,7 @@ class cycif:
 
 
 
-    def quick_tile_all_z_save(self, z_tile_stack, channel, cycle, experiment_directory,  overlap = 0):
+    def quick_tile_all_z_save(self, z_tile_stack, channel, cycle, experiment_directory, stain_bleach,  overlap = 0):
 
 
         z_slice_count = z_tile_stack.shape[0]
@@ -914,11 +916,11 @@ class cycif:
         numpy_x = full_array[0]
         numpy_y = full_array[1]
 
-        x_tile_count = np.unique(numpy_x).size
-        y_tile_count = np.unique(numpy_y).size
+        x_tile_count = int(np.unique(numpy_x).size)
+        y_tile_count = int(np.unique(numpy_y).size)
 
-        height = z_tile_stack.shape[2]
-        width = z_tile_stack.shape[3]
+        height = int(z_tile_stack.shape[2])
+        width = int(z_tile_stack.shape[3])
 
         pna_height = int(y_tile_count * height - int((y_tile_count) * overlap / 100 * height))
         pna_width = int(x_tile_count * width - int((x_tile_count) * overlap / 100 * width))
@@ -929,7 +931,7 @@ class cycif:
             pna = self.quick_tile_placement(z_tile_stack[z], overlap)
             pna_stack[z] = pna
 
-        self.save_quick_tile(pna_stack, channel, cycle, experiment_directory)
+        self.save_quick_tile(pna_stack, channel, cycle, experiment_directory, stain_bleach)
 
 
     def cycle_acquire(self, cycle_number, experiment_directory, stain_bleach, channels = ['DAPI', 'A488', 'A555', 'A647']):
@@ -940,13 +942,14 @@ class cycif:
         xyz_pos = self.nonfocus_tile_DAPI(xy_pos)
         xyz_tile_pattern = self.tile_pattern(xyz_pos)
         fm_array = self.fm_channel_initial(xyz_tile_pattern)
-        exp_time = self.auto_expose(300, 5000)
+        exp_time = np.array([50,300,300,300])
+        #exp_time = self.auto_expose(300, 5000)
 
         np.save('exp_array.npy', exp_time)
         np.save('fm_array.npy', fm_array)
 
         for channel in channels:
-            z_tile_stack = self.core_tile_acquire(channel, 7)
+            z_tile_stack = self.core_tile_acquire(experiment_directory, channel, 7)
             self.optimal_quick_preview_qt(z_tile_stack, channel, cycle_number, experiment_directory)
             self.quick_tile_all_z_save(z_tile_stack, channel, cycle_number, experiment_directory, stain_bleach)
             self.save_files(z_tile_stack, channel, cycle_number, experiment_directory, stain_bleach)
@@ -967,8 +970,8 @@ class cycif:
         numpy_x = full_array[0]
         numpy_y = full_array[1]
 
-        stage_x = numpy_x[tile_x_number][tile_y_number]
-        stage_y = numpy_y[tile_x_number][tile_y_number]
+        stage_x = numpy_x[tile_y_number][tile_x_number]
+        stage_y = numpy_y[tile_y_number][tile_x_number]
 
         if channel == 'DAPI':
             channel_array_index = 2
@@ -1022,11 +1025,11 @@ class cycif:
             the_c=0,
             the_t=0,
             the_z=0,
-            exposure_time=exp_time_array[channel_array_index],
+            exposure_time=exp_time_array[channel_array_index - 2],
             exposure_time_unit='ms',
             position_x=stage_x,
             position_y=stage_y,
-            position_z=0
+            position_z=1
         )
 
         image_pixels = Pixels(dimension_order='XYZCT', id=p_id, size_c=1, size_t=1, size_x=5056, size_y=2960, size_z=1,
@@ -1038,14 +1041,14 @@ class cycif:
                               physical_size_z=1000,
                               physical_size_z_unit='nm',
                               planes=[plane],
-                              channels=[channel])
+                              channels=[channel], metadata_only = 'True')
 
         image1 = Image(id=i_id, pixels=image_pixels)
         ome.images.append(image1)
         ome.instruments.append(instrument)
         ome.images[0].instrument_ref = InstrumentRef(id=instrument.id)
 
-        metadata = to_xml(ome)
+        metadata = ome_types.to_xml(ome)
 
         return metadata
 
@@ -1064,9 +1067,9 @@ class cycif:
 
         try:
             os.chdir(folder_path)
-            wb = load_workbook(markers.xlsx)
+            wb = load_workbook('markers.xlsx')
         except:
-            wb = openpyxl.Workbook()
+            wb = Workbook()
         ws = wb.active
         ws.cell(row=1, column=1).value = 'channel_number'
         ws.cell(row=1, column=2).value = 'cycle_number'
@@ -1086,9 +1089,9 @@ class cycif:
             ws.cell(row=row_number, column=1).value = row_number
             ws.cell(row=row_number, column=2).value = cycle_number
             ws.cell(row=row_number, column=3).value = 'Marker_' + str(row_number)
-            ws.cell(row=row_number, column=4).value = filter_sets[intercycle_channel_number]
-            ws.cell(row=row_number, column=5).value = exciation_wavlengths[intercycle_channel_number]
-            ws.cell(row=row_number, column=6).value = emission_wavelengths[intercycle_channel_number]
+            #ws.cell(row=row_number, column=4).value = filter_sets[intercycle_channel_number]
+            #ws.cell(row=row_number, column=5).value = exciation_wavlengths[intercycle_channel_number]
+            #ws.cell(row=row_number, column=6).value = emission_wavelengths[intercycle_channel_number]
 
 
         row_start = (cycle_number - 1)*4 + 2
@@ -1099,7 +1102,7 @@ class cycif:
             cycle_number = 4 // row_number + 1
             intercycle_channel_number = cycle_number * 4 + 1 - row_number
 
-            ws.cell(row=row_number, column=8).value = exp_array[intercycle_channel_number]
+            ws.cell(row=row_number, column=8).value = exp_array[row_number-2]
 
         os.chdir(folder_path)
         wb.save(filename = 'markers.xlsx')
@@ -1213,7 +1216,7 @@ class cycif:
                 if y % 2 != 0:
                     for x in range(x_tile_count - 1, -1, -1):
 
-                        meta = cycif.image_metadata_generation(x, y, channel, experiment_directory)
+                        meta = self.image_metadata_generation(x, y, channel, experiment_directory)
                         file_name = 'z_' + str(z) + '_x' + str(x) + '_y_' + str(y) + '_c_' + str(channel)+ '.ome.tif'
                         image = z_tile_stack[z][tile_counter]
                         os.chdir(save_directory)
@@ -1223,7 +1226,7 @@ class cycif:
                 if y % 2 == 0:
                     for x in range(0, x_tile_count):
 
-                        meta = cycif.image_metadata_generation(x, y, channel, experiment_directory)
+                        meta = self.image_metadata_generation(x, y, channel, experiment_directory)
                         file_name = 'z_' + str(z) + '_x' + str(x) + '_y_' + str(y) + '_c_' + str(channel)+ '.ome.tif'
                         image = z_tile_stack[z][tile_counter]
                         os.chdir(save_directory)
@@ -1528,7 +1531,7 @@ class arduino:
         client.publish(full_topic, message)
         client.loop_stop()
 
-    def auto_load(self, time_small=26, time_large=40):
+    def auto_load(self, time_small=29, time_large=40):
         '''
         Load in all 8 liquids into multiplexer. Numbers 2-7 just reach multiplexer while 1 and 8 flow through more.
 
