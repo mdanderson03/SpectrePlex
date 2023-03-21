@@ -1083,7 +1083,7 @@ class cycif:
         
         for row_number in range(2, (cycle_number)*4 + 2):
 
-            cycle_number = 4//row_number + 1
+            cycle_number = (row_number - 2)//4 + 1
             intercycle_channel_number = cycle_number * 4 + 1 - row_number
 
             ws.cell(row=row_number, column=1).value = row_number
@@ -1099,7 +1099,7 @@ class cycif:
 
         for row_number in range(row_start, row_end):
 
-            cycle_number = 4 // row_number + 1
+            ccycle_number = (row_number - 2)//4 + 1
             intercycle_channel_number = cycle_number * 4 + 1 - row_number
 
             ws.cell(row=row_number, column=8).value = exp_array[row_number-2]
