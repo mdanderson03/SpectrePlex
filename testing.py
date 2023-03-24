@@ -1,11 +1,11 @@
 from autocyplex import *
 
 
-os.chdir(r'E:\folder_structure\np_arrays')
+os.chdir(r'E:\24-3-23_control\np_arrays')
 
-images = full_array = np.load('z_stack.npy', allow_pickle=False)
-imwrite('test_save.tif', images[5][5], photometric='minisblack')
-io.imshow(images[5][5])
-io.show()
+images = full_array = np.load('exp_array.npy', allow_pickle=False)
+
+
+print(images)
 
 
