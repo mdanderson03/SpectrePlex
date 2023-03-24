@@ -1136,6 +1136,9 @@ class cycif:
 
         #folder layer two
 
+        experiment_mcmicro_directory = experiment_directory + '/' + 'mcmicro'
+        self.folder_addon(experiment_mcmicro_directory, ['raw'])
+
         for channel in channels:
 
             experiment_channel_directory = experiment_directory + '/' + channel
@@ -1221,7 +1224,7 @@ class cycif:
                         image = z_tile_stack[z][tile_counter]
                         os.chdir(save_directory)
                         imwrite(file_name, image, photometric='minisblack', description = meta)
-                        tile_counter =+ 1
+                        tile_counter += 1
 
                 if y % 2 == 0:
                     for x in range(0, x_tile_count):
@@ -1231,7 +1234,7 @@ class cycif:
                         image = z_tile_stack[z][tile_counter]
                         os.chdir(save_directory)
                         imwrite(file_name, image, photometric='minisblack', description = meta)
-                        tile_counter = + 1
+                        tile_counter += 1
 
     def save_tif_stack(self, tif_stack, cycle_number,  directory_name):
 
