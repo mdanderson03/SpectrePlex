@@ -276,17 +276,17 @@ void loop() {
   }  
   
     
-mqttClient.beginMessage(IR1);
+//mqttClient.beginMessage(IR1);
     // add the value:
-mqttClient.print(analogRead(A0));
+//mqttClient.print(analogRead(A0));
     // send the message:
-mqttClient.endMessage();
+//mqttClient.endMessage();
 
-mqttClient.beginMessage(IR2);
+//mqttClient.beginMessage(IR2);
     // add the value:
-mqttClient.print(analogRead(A2));
+//mqttClient.print(analogRead(A2));
     // send the message:
-mqttClient.endMessage();
+//mqttClient.endMessage();
 
     
   

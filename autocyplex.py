@@ -793,7 +793,7 @@ class cycif:
                     z_counter = 0
 
                     for z in range(z_start, z_end + 1, 1):
-                        core.set_position(numpy_z[y][x] + 2*z)
+                        core.set_position(numpy_z[y][x] + 3*z)
                         core.snap_image()
                         tagged_image = core.get_tagged_image()
                         pixels = np.reshape(tagged_image.pix,newshape=[tagged_image.tags["Height"], tagged_image.tags["Width"]])
@@ -814,7 +814,7 @@ class cycif:
                     z_counter = 0
 
                     for z in range(z_start, z_end + 1, 1):
-                        core.set_position(numpy_z[y][x] + 2*z)
+                        core.set_position(numpy_z[y][x] + 3*z)
                         core.snap_image()
                         tagged_image = core.get_tagged_image()
                         pixels = np.reshape(tagged_image.pix,
@@ -942,14 +942,14 @@ class cycif:
         xyz_pos = self.nonfocus_tile_DAPI(xy_pos)
         xyz_tile_pattern = self.tile_pattern(xyz_pos)
         fm_array = self.fm_channel_initial(xyz_tile_pattern)
-        exp_time = np.array([50,300,300,300])
-        #exp_time = self.auto_expose(300, 5000)
+        #exp_time = np.array([100,300,300,300])
+        exp_time = self.auto_expose(300, 5000)
 
         np.save('exp_array.npy', exp_time)
         np.save('fm_array.npy', fm_array)
 
         for channel in channels:
-            z_tile_stack = self.core_tile_acquire(experiment_directory, channel, 7)
+            z_tile_stack = self.core_tile_acquire(experiment_directory, channel, 5)
             self.optimal_quick_preview_qt(z_tile_stack, channel, cycle_number, experiment_directory)
             self.quick_tile_all_z_save(z_tile_stack, channel, cycle_number, experiment_directory, stain_bleach)
             self.save_files(z_tile_stack, channel, cycle_number, experiment_directory, stain_bleach)
@@ -1216,21 +1216,21 @@ class cycif:
                 if y % 2 != 0:
                     for x in range(x_tile_count - 1, -1, -1):
 
-                        meta = self.image_metadata_generation(x, y, channel, experiment_directory)
-                        file_name = 'z_' + str(z) + '_x' + str(x) + '_y_' + str(y) + '_c_' + str(channel)+ '.ome.tif'
+                        #meta = self.image_metadata_generation(x, y, channel, experiment_directory)
+                        file_name = 'z_' + str(z) + '_x' + str(x) + '_y_' + str(y) + '_c_' + str(channel)+ '.tif'
                         image = z_tile_stack[z][tile_counter]
                         os.chdir(save_directory)
-                        imwrite(file_name, image, photometric='minisblack', description = meta)
+                        imwrite(file_name, image, photometric='minisblack')
                         tile_counter =+ 1
 
                 if y % 2 == 0:
                     for x in range(0, x_tile_count):
 
-                        meta = self.image_metadata_generation(x, y, channel, experiment_directory)
-                        file_name = 'z_' + str(z) + '_x' + str(x) + '_y_' + str(y) + '_c_' + str(channel)+ '.ome.tif'
+                        #meta = self.image_metadata_generation(x, y, channel, experiment_directory)
+                        file_name = 'z_' + str(z) + '_x' + str(x) + '_y_' + str(y) + '_c_' + str(channel)+ '.tif'
                         image = z_tile_stack[z][tile_counter]
                         os.chdir(save_directory)
-                        imwrite(file_name, image, photometric='minisblack', description = meta)
+                        imwrite(file_name, image, photometric='minisblack')
                         tile_counter = + 1
 
     def save_tif_stack(self, tif_stack, cycle_number,  directory_name):
