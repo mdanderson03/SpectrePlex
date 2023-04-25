@@ -15,12 +15,17 @@ from openpyxl import load_workbook, Workbook
 from ome_types.model import Instrument, Microscope, Objective, InstrumentRef, Image, Pixels, Plane, Channel
 from ome_types.model.simple_types import UnitsLength, PixelType, PixelsID, ImageID, ChannelID
 from ome_types import from_xml, OME, from_tiff
+import sys
+sys.path.append(r'C:\Users\mike\Documents\GitHub\AutoCIF\Python_64_elveflow\DLL64'.encode('utf-8'))#add the path of the library here
+sys.path.append(r'C:\Users\mike\Documents\GitHub\AutoCIF\Python_64_elveflow'.encode('utf-8'))#add the path of the LoadElveflow.py
+ElveflowDLL = CDLL(r'C:\Users\mike\Documents\GitHub\AutoCIF\Python_64_elveflow\DLL64\Elveflow64.dll')
+from ctypes import *
+from array import array
+from Elveflow64 import *
 
 
 client = mqtt.Client('autocyplex_server')
 client.connect('10.3.141.1', 1883)
-
-
 
 core = Core()
 magellan = Magellan()
@@ -1704,6 +1709,47 @@ class arduino:
         self.stain(primary_liq_selection)
         self.stain(secondary_liquid_selection)
 
+class fluidics:
+
+    def __init__(self, ob1_com_port, mux_com_port):
+        return
+
+    def mux_initialize(self, mux_com_port):
+        '''
+        initialize and home MUX 12 valve distribution valve via associated com port
+
+        :param int mux_com_port: example if COM3 is used, 3 is the parameter
+        :return: mux id number for use in other functions
+        '''
+
+        #initialize
+        path = 'ASRL' + str(mux_com_port) + '::INSTR'
+        Instr_ID = c_int32()
+        MUX_DRI_Initialization(path.encode('ascii'), byref(Instr_ID))  # choose the COM port, it can be ASRLXXX::INSTR (where XXX=port number)
+        mux_id = Instr_ID.value
+
+        #home
+        answer = (c_char * 40)()
+        MUX_DRI_Send_Command(mux_id, 0, Answer, 40)
+        print(answer.value)
+
+        return mux_id
+
+    def valve_select(self, mux_id, valve_number):
+        '''
+        Selects valve in mux unit with associated mux_id to the valve_number declared.
+        :param c_int32 mux_id: mux_id given from mux_initialization method
+        :param int valve_number: number of desired valve to be selected
+        :return: Nothing
+        '''
+
+        valve_number = c_int32(valve_number)
+        MUX_DRI_Set_Valve(mux_id, valve_number, 0) #0 is shortest path. clockwise and cc are also options
+
+
+
+    
+    
 
 
 
