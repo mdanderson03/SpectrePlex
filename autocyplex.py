@@ -1746,6 +1746,12 @@ class fluidics:
         valve_number = c_int32(valve_number)
         MUX_DRI_Set_Valve(mux_id, valve_number, 0) #0 is shortest path. clockwise and cc are also options
 
+    def pump_start(self):
+
+        Instr_ID = c_int32()
+        pump = OB1_Initialization('01A1E91E'.encode('ascii'), 2, 0, 0, 0, byref(Instr_ID))
+        pump = OB1_Add_Sens(Instr_ID, 1, 5, 1, 0, 7, 0) #16bit working range between 0-1000uL/min, also what are CustomSens_Voltage_5_to_25 and can I really choose any digital range?
+
 
 
     
