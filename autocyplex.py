@@ -1712,6 +1712,25 @@ class arduino:
 class fluidics:
 
     def __init__(self, ob1_com_port, mux_com_port):
+
+        # OB1 initialize
+        ob1_path = 'ASRL' + str(ob1_com_port) + '::INSTR'
+        Instr_ID = c_int32()
+        pump = OB1_Initialization(ob1_path.encode('ascii'), 0, 0, 0, 0, byref(Instr_ID))
+        pump = OB1_Add_Sens(Instr_ID, 1, 5, 1, 0, 7, 0) #16bit working range between 0-1000uL/min, also what are CustomSens_Voltage_5_to_25 and can I really choose any digital range?
+
+        # MUX intiialize
+        path = 'ASRL' + str(mux_com_port) + '::INSTR'
+        mux_Instr_ID = c_int32()
+        MUX_DRI_Initialization(path.encode('ascii'), byref(mux_Instr_ID))  # choose the COM port, it can be ASRLXXX::INSTR (where XXX=port number)
+
+        #home
+        answer = (c_char * 40)()
+        MUX_DRI_Send_Command(mux_id, 0, Answer, 40)
+
+        self.pump_ID = Instr_ID.value
+        self.mux_ID = mux_Instr_ID.value
+
         return
 
     def mux_initialize(self, mux_com_port):
@@ -1731,7 +1750,6 @@ class fluidics:
         #home
         answer = (c_char * 40)()
         MUX_DRI_Send_Command(mux_id, 0, Answer, 40)
-        print(answer.value)
 
         return mux_id
 
@@ -1744,13 +1762,28 @@ class fluidics:
         '''
 
         valve_number = c_int32(valve_number)
-        MUX_DRI_Set_Valve(mux_id, valve_number, 0) #0 is shortest path. clockwise and cc are also options
+        MUX_DRI_Set_Valve(self.mux_id, valve_number, 0) #0 is shortest path. clockwise and cc are also options
 
     def pump_start(self):
 
         Instr_ID = c_int32()
         pump = OB1_Initialization('01A1E91E'.encode('ascii'), 2, 0, 0, 0, byref(Instr_ID))
         pump = OB1_Add_Sens(Instr_ID, 1, 5, 1, 0, 7, 0) #16bit working range between 0-1000uL/min, also what are CustomSens_Voltage_5_to_25 and can I really choose any digital range?
+
+    def ob1_calibration(self):
+
+        Calib = (c_double * 1000)()
+        calibration_array = Elveflow_Calibration_Default(byref(Calib), 1000)
+
+        return calibration_array
+
+    def flow(self, flow_rate):
+
+        set_channel=int(1)#convert to int
+        set_channel=c_int32(set_channel)#convert to c_int32
+        set_target=float(flow_rate) # in uL/min for flow
+        set_target=c_double(set_target)#convert to c_double
+        OB1_Set_Remote_Target(self.pump_ID, set_channel, set_target)
 
 
 
