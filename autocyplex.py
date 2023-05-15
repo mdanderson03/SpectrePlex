@@ -1781,9 +1781,23 @@ class fluidics:
 
         set_channel=int(1)#convert to int
         set_channel=c_int32(set_channel)#convert to c_int32
+
+        set_channel_regulator = int(1)  # convert to int
+        set_channel_regulator = c_int32(set_channel_regulator)  # convert to c_int32
+        set_channel_sensor = int(1)
+        set_channel_sensor = c_int32(set_channel_sensor)  # convert to c_int32
+
+        Calib = (c_double * 1000)()
         set_target=float(flow_rate) # in uL/min for flow
         set_target=c_double(set_target)#convert to c_double
+
+        OB1_Start_Remote_Measurement(self.pump_ID, byref(Calib), 1000)
+        PID_Add_Remote(self.pump_ID, set_channel_regulator, self.pump_ID, set_channel_sensor, 10, 0.1, 1)
         OB1_Set_Remote_Target(self.pump_ID, set_channel, set_target)
+
+    def stop(self):
+
+        OB1_Stop_Remote_Measurement(self.pump_ID)
 
 
 
