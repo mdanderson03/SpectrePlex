@@ -1799,6 +1799,61 @@ class fluidics:
 
         OB1_Stop_Remote_Measurement(self.pump_ID)
 
+    def measure(self):
+
+        set_channel = int(1)  # convert to int
+        set_channel = c_int32(set_channel)  # convert to c_int32
+
+        data_sens=c_double()
+        data_reg=c_double()
+
+        OB1_Get_Remote_Data(self.pump_ID, set_channel, byref(data_reg),byref(data_sens) )
+
+        pressure = data_reg.value
+        flow_rate = data_sens.value
+        time_stamp = time.clock()
+
+        return pressure, flow_rate, time_stamp
+
+    def flow_recorder(self, time_step, total_time, file_name, plot = 1):
+
+        wb = Workbook()
+        ws = wb.active
+        ws.cell(row=1, column=1).value = 'Time'
+        ws.cell(row=1, column=2).value = 'Flow Rate'
+        ws.cell(row=1, column=3).value = 'Pressure'
+
+        total_steps = int(total_time/time_step)
+        pressure_points = np.random.rand(total_steps).astype('float16')
+        time_points = np.random.rand(total_steps).astype('float16')
+        flow_points = np.random.rand(total_steps).astype('float16')
+
+        for t in range(0, total_steps):
+
+            pressure_point, flow_point, time_point = self.measure()
+            pressure_points[t] = pressure_point
+            time_points[t] = t * time_step
+            flow_points[t] = flow_point
+
+            ws.cell(row= t + 2, column=1).value = t * time_step
+            ws.cell(row= t + 2, column=2).value = flow_point
+            ws.cell(row= t + 2, column=3).value = pressure_point
+
+            time.sleep(time_step)
+
+
+        wb.save(filename = file_name)
+
+        if plot == 1:
+            plt.plot(time_points, flow_points, 'o', color='black')
+
+
+
+
+
+
+
+
 
 
     
