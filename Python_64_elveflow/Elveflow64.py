@@ -2,7 +2,7 @@
 # It defines all function prototype for use with python lib
 
 from ctypes import *
-ElveflowDLL=CDLL('D:/dev/SDK/DLL64/DLL64/Elveflow64.dll')# change this path 
+ElveflowDLL = CDLL(r'C:\Users\CyCIF PC\Documents\GitHub\AutoCIF\Python_64_elveflow\DLL64\Elveflow64.dll')
 
 
  # Elveflow Library
@@ -263,7 +263,7 @@ def OB1_Destructor (OB1_ID):
  # 
  # Read the sensor of the requested channel. ! This Function only convert data 
  # that are acquired in OB1_Acquire_data
- # Units : Flow sensor µl/min
+ # Units : Flow sensor ï¿½l/min
  # Pressure : mbar
  # 
  # If Acquire_data is true, the OB1 acquires ALL regulator AND ALL analog 
@@ -479,7 +479,7 @@ def MUX_DRI_Set_Valve (MUX_DRI_ID_in, selected_Valve, Rotation):
  # Elveflow Library
  # OB1 Device
  # 
- # Add sensor to OB1 device. Select the channel n° (1-4) the sensor type. 
+ # Add sensor to OB1 device. Select the channel nï¿½ (1-4) the sensor type. 
  # 
  # For Flow sensor, the type of communication (Analog/Digital), the 
  # Calibration for digital version (H20 or IPA) should be specify as well as 
@@ -560,7 +560,7 @@ def BFS_Get_Flow (BFS_ID_in, Flow):
  # Elveflow Library
  # BFS Device
  # 
- # Get the fluid temperature (in °C) of the BFS defined by the BFS_ID
+ # Get the fluid temperature (in ï¿½C) of the BFS defined by the BFS_ID
  #
 def BFS_Get_Temperature (BFS_ID_in, Temperature):
 	X_BFS_Get_Temperature=ElveflowDLL.BFS_Get_Temperature
@@ -721,7 +721,7 @@ def M_S_R_D_Initialization (Device_Name, Sens_Ch_1, Sens_Ch_2, Sens_Ch_3, Sens_C
  # Elveflow Library
  # MSRD Device
  # 
- # Add sensor to MSRD device. Select the channel n° (1-4) the sensor type. 
+ # Add sensor to MSRD device. Select the channel nï¿½ (1-4) the sensor type. 
  # 
  # For Flow sensor, the type of communication (Analog/Digital), the 
  # Calibration for digital version (H20 or IPA) should be specify as well as 
@@ -762,7 +762,7 @@ def M_S_R_D_Destructor (M_S_R_D_ID):
  # MSRD Device
  # 
  # Read the sensor of the requested channel.s
- # Units: Flow sensor: µl/min
+ # Units: Flow sensor: ï¿½l/min
  # Pressure: mbar
  # 
  # NB: For Digital Flow Senor, If the connection is lost, MSRD will be reseted 
@@ -811,7 +811,7 @@ def M_S_R_D_Set_Filt (M_S_R_D_ID, Channel_1_to_4, ONOFF):
  # Read the sensor and regulator values of the requested channel.
  # Warning: This Function only extracts data obtained in the remote 
  # measurement loop
- # Sensor unit : mbar if pressure sensor, µl/min if flow sensor
+ # Sensor unit : mbar if pressure sensor, ï¿½l/min if flow sensor
  # Regulator unit : mbar
  # 
  # NB: For Digital Flow Senor, If the connection is lost, OB1 will be reseted 
@@ -938,7 +938,7 @@ def AF1_Set_Remote_Target (AF1_ID, Target):
  # Read the sensor and regulator values of the device.
  # Warning: This Function only extracts data obtained in the remote 
  # measurement loop
- # Sensor unit : mbar if pressure sensor, µl/min if flow sensor
+ # Sensor unit : mbar if pressure sensor, ï¿½l/min if flow sensor
  # Regulator unit : mbars
  #
 def AF1_Get_Remote_Data (AF1_ID, Reg_Data, Sens_Data):
@@ -988,7 +988,7 @@ def BFS_Stop_Remote_Measurement (BFS_ID):
  # BFS Device
  # 
  # Read the sensors from the remote monitoring loop:
- # Units: Flow sensor: µl/min
+ # Units: Flow sensor: ï¿½l/min
  #            Density: g/m3
  #            Temperature: Celcius
  #
@@ -1044,7 +1044,7 @@ def M_S_R_D_Stop_Remote_Measurement (M_S_R_D_ID):
  # MSRD Device
  # 
  # Read the sensor of the requested channel.s
- # Units: Flow sensor: µl/min
+ # Units: Flow sensor: ï¿½l/min
  # Pressure: mbar
  # 
  # NB: For Digital Flow Senor, If the connection is lost, MSRD will be reseted 

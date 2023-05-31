@@ -4,7 +4,7 @@ import numpy as np
 
 
 microscope = cycif() # initialize cycif object
-arduino = arduino()
+
 
 #microscope.cycle_acquire(1, r'E:\24-3-23_control', 'Bleach') #(cycle_number, experiment_directory, 'Stain' or 'Bleach')
 
@@ -19,8 +19,7 @@ arduino = arduino()
 #microscope.cycle_acquire(2, r'E:\24-3-23_control', 'Stain') #(cycle_number, experiment_directory, 'Stain' or 'Bleach')
 #arduino.bleach(360)
 #microscope.cycle_acquire(2, r'E:\24-3-23_control', 'Bleach') #(cycle_number, experiment_directory, 'Stain' or 'Bleach')
-arduino.stain(4)
-microscope.cycle_acquire(3, r'E:\24-3-23_control', 'Stain') #(cycle_number, experiment_directory, 'Stain' or 'Bleach')
-arduino.bleach(360)
-microscope.cycle_acquire(3, r'E:\24-3-23_control', 'Bleach') #(cycle_number, experiment_directory, 'Stain' or 'Bleach')
+#arduino.stain(4)
+microscope.cycle_acquire(1, r'E:\5_31_23_test_slide_elveflow', 'Bleach') #(cycle_number, experiment_directory, 'Stain' or 'Bleach')
+
 

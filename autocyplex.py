@@ -16,12 +16,13 @@ from ome_types.model import Instrument, Microscope, Objective, InstrumentRef, Im
 from ome_types.model.simple_types import UnitsLength, PixelType, PixelsID, ImageID, ChannelID
 from ome_types import from_xml, OME, from_tiff
 import sys
-sys.path.append(r'C:\Users\mike\Documents\GitHub\AutoCIF\Python_64_elveflow\DLL64'.encode('utf-8'))#add the path of the library here
-sys.path.append(r'C:\Users\mike\Documents\GitHub\AutoCIF\Python_64_elveflow'.encode('utf-8'))#add the path of the LoadElveflow.py
-ElveflowDLL = CDLL(r'C:\Users\mike\Documents\GitHub\AutoCIF\Python_64_elveflow\DLL64\Elveflow64.dll')
 from ctypes import *
+sys.path.append(r'C:\Users\CyCIF PC\Documents\GitHub\AutoCIF\Python_64_elveflow\DLL64')#add the path of the library here
+sys.path.append(r'C:\Users\CyCIF PC\Documents\GitHub\AutoCIF\Python_64_elveflow')#add the path of the LoadElveflow.py
+
 from array import array
 from Elveflow64 import *
+
 
 
 client = mqtt.Client('autocyplex_server')
@@ -482,9 +483,9 @@ class cycif:
 
     def fm_channel_initial(self, full_array):
 
-        a488_channel_offset = -13 #determine if each of these are good and repeatable offsets
-        a555_channel_offset = -13
-        a647_channel_offset = -11
+        a488_channel_offset = -9 #determine if each of these are good and repeatable offsets
+        a555_channel_offset = -9
+        a647_channel_offset = -9
 
         dummy_channel = np.empty_like(full_array[0])
         dummy_channel = np.expand_dims(dummy_channel, axis=0)
@@ -943,18 +944,18 @@ class cycif:
 
         self.file_structure(experiment_directory, cycle_number)
 
-        #xy_pos = self.tile_xy_pos('New Surface 1')
-        #xyz_pos = self.nonfocus_tile_DAPI(xy_pos)
-        #xyz_tile_pattern = self.tile_pattern(xyz_pos)
-        #fm_array = self.fm_channel_initial(xyz_tile_pattern)
-        #exp_time = np.array([100,300,300,300])
-        exp_time = self.auto_expose(300, 5000)
+        xy_pos = self.tile_xy_pos('New Surface 1')
+        xyz_pos = self.nonfocus_tile_DAPI(xy_pos)
+        xyz_tile_pattern = self.tile_pattern(xyz_pos)
+        fm_array = self.fm_channel_initial(xyz_tile_pattern)
+        exp_time = np.array([200,400,1000,1000])
+        #exp_time = self.auto_expose(300, 5000)
 
         np.save('exp_array.npy', exp_time)
-        #np.save('fm_array.npy', fm_array)
+        np.save('fm_array.npy', fm_array)
 
         for channel in channels:
-            z_tile_stack = self.core_tile_acquire(experiment_directory, channel, 15)
+            z_tile_stack = self.core_tile_acquire(experiment_directory, channel, 7)
             #self.optimal_quick_preview_qt(z_tile_stack, channel, cycle_number, experiment_directory)
             #self.quick_tile_all_z_save(z_tile_stack, channel, cycle_number, experiment_directory, stain_bleach)
             self.save_files(z_tile_stack, channel, cycle_number, experiment_directory, stain_bleach)
@@ -1711,7 +1712,7 @@ class arduino:
 
 class fluidics:
 
-    def __init__(self, ob1_com_port, mux_com_port):
+    def __init__(self, mux_com_port, ob1_com_port):
 
         # OB1 initialize
         ob1_path = 'ASRL' + str(ob1_com_port) + '::INSTR'
@@ -1719,41 +1720,26 @@ class fluidics:
         pump = OB1_Initialization(ob1_path.encode('ascii'), 0, 0, 0, 0, byref(Instr_ID))
         pump = OB1_Add_Sens(Instr_ID, 1, 5, 1, 0, 7, 0) #16bit working range between 0-1000uL/min, also what are CustomSens_Voltage_5_to_25 and can I really choose any digital range?
 
+
         # MUX intiialize
         path = 'ASRL' + str(mux_com_port) + '::INSTR'
         mux_Instr_ID = c_int32()
         MUX_DRI_Initialization(path.encode('ascii'), byref(mux_Instr_ID))  # choose the COM port, it can be ASRLXXX::INSTR (where XXX=port number)
 
         #home
-        answer = (c_char * 40)()
-        MUX_DRI_Send_Command(mux_id, 0, Answer, 40)
+        #answer = (c_char * 40)()
+        self.mux_ID = mux_Instr_ID.value
+        #MUX_DRI_Send_Command(self.mux_ID, 0, answer, 40)
 
         self.pump_ID = Instr_ID.value
-        self.mux_ID = mux_Instr_ID.value
 
         return
 
-    def mux_initialize(self, mux_com_port):
-        '''
-        initialize and home MUX 12 valve distribution valve via associated com port
+    def mux_end(self):
 
-        :param int mux_com_port: example if COM3 is used, 3 is the parameter
-        :return: mux id number for use in other functions
-        '''
+        MUX_DRI_Destructor(self.mux_ID)
 
-        #initialize
-        path = 'ASRL' + str(mux_com_port) + '::INSTR'
-        Instr_ID = c_int32()
-        MUX_DRI_Initialization(path.encode('ascii'), byref(Instr_ID))  # choose the COM port, it can be ASRLXXX::INSTR (where XXX=port number)
-        mux_id = Instr_ID.value
-
-        #home
-        answer = (c_char * 40)()
-        MUX_DRI_Send_Command(mux_id, 0, Answer, 40)
-
-        return mux_id
-
-    def valve_select(self, mux_id, valve_number):
+    def valve_select(self, valve_number):
         '''
         Selects valve in mux unit with associated mux_id to the valve_number declared.
         :param c_int32 mux_id: mux_id given from mux_initialization method
@@ -1762,13 +1748,8 @@ class fluidics:
         '''
 
         valve_number = c_int32(valve_number)
-        MUX_DRI_Set_Valve(self.mux_id, valve_number, 0) #0 is shortest path. clockwise and cc are also options
-
-    def pump_start(self):
-
-        Instr_ID = c_int32()
-        pump = OB1_Initialization('01A1E91E'.encode('ascii'), 2, 0, 0, 0, byref(Instr_ID))
-        pump = OB1_Add_Sens(Instr_ID, 1, 5, 1, 0, 7, 0) #16bit working range between 0-1000uL/min, also what are CustomSens_Voltage_5_to_25 and can I really choose any digital range?
+        MUX_DRI_Set_Valve(self.mux_ID, valve_number, 0) #0 is shortest path. clockwise and cc are also options
+        time.sleep(1)
 
     def ob1_calibration(self):
 
@@ -1791,13 +1772,15 @@ class fluidics:
         set_target=float(flow_rate) # in uL/min for flow
         set_target=c_double(set_target)#convert to c_double
 
-        OB1_Start_Remote_Measurement(self.pump_ID, byref(Calib), 1000)
-        PID_Add_Remote(self.pump_ID, set_channel_regulator, self.pump_ID, set_channel_sensor, 10, 0.1, 1)
-        OB1_Set_Remote_Target(self.pump_ID, set_channel, set_target)
+        #OB1_Start_Remote_Measurement(self.pump_ID, byref(Calib), 1000)
+        #PID_Add_Remote(self.pump_ID, set_channel_regulator, self.pump_ID, set_channel_sensor, .43, 0.06, 1)
+        #OB1_Set_Remote_Target(self.pump_ID, set_channel, set_target)
+        #OB1_Stop_Remote_Measurement(self.pump_ID)
+        OB1_Set_Press(self.pump_ID, set_channel, set_target, byref(Calib), 1000)
 
-    def stop(self):
+    def ob1_end(self):
 
-        OB1_Stop_Remote_Measurement(self.pump_ID)
+        OB1_Destructor(self.pump_ID)
 
     def measure(self):
 
@@ -1811,11 +1794,11 @@ class fluidics:
 
         pressure = data_reg.value
         flow_rate = data_sens.value
-        time_stamp = time.clock()
+        time_stamp = time.time()
 
         return pressure, flow_rate, time_stamp
 
-    def flow_recorder(self, time_step, total_time, file_name, plot = 1):
+    def flow_recorder(self, time_step, total_time, file_name = 'none', plot = 1):
 
         wb = Workbook()
         ws = wb.active
@@ -1842,10 +1825,11 @@ class fluidics:
             time.sleep(time_step)
 
 
-        wb.save(filename = file_name)
+        #wb.save(filename = file_name)
 
         if plot == 1:
             plt.plot(time_points, flow_points, 'o', color='black')
+            plt.show()
 
 
 

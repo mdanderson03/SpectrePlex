@@ -6,8 +6,8 @@
 
 import sys
 from email.header import UTF8
-sys.path.append('D:/dev/SDK/DLL64/DLL64')#add the path of the library here
-sys.path.append('D:/dev/SDK/Python_64')#add the path of the LoadElveflow.py
+sys.path.append(r'C:\Users\CyCIF PC\Documents\GitHub\AutoCIF\Python_64_elveflow\DLL64')#add the path of the library here
+sys.path.append(r'C:\Users\CyCIF PC\Documents\GitHub\AutoCIF\Python_64_elveflow')#add the path of the LoadElveflow.py
 
 from ctypes import *
 
@@ -22,13 +22,14 @@ from Elveflow64 import *
 Instr_ID=c_int32()
 print("Instrument name and regulator types are hardcoded in the Python script")
 #see User Guide to determine regulator types and NIMAX to determine the instrument name 
-error=OB1_Initialization('01A1E91E'.encode('ascii'),1,2,4,3,byref(Instr_ID)) 
+error=OB1_Initialization('ASRL3::INSTR'.encode('ascii'),1,2,4,3,byref(Instr_ID))
 #all functions will return error codes to help you to debug your code, for further information refer to User Guide
 print('error:%d' % error)
 print("OB1 ID: %d" % Instr_ID.value)
 
 #add one digital flow sensor with water calibration (OB1 MK3+ only), all information to declare sensors are described in the User Guide
-error=OB1_Add_Sens(Instr_ID, 1, 4, 1, 0, 7, 0)
+error=OB1_Add_Sens(Instr_ID.value, 1, 5, 1, 0, 7, 0)
+
 #(CustomSens_Voltage_5_to_25 only works with CustomSensors and OB1 from 2020 and after)
 print('error add digit flow sensor:%d' % error)
 
@@ -143,7 +144,7 @@ while repeat:
         set_channel_sensor=input("select channel sensor (1-4) : ")
         set_channel_sensor=int(set_channel_sensor)#convert to int
         set_channel_sensor=c_int32(set_channel_sensor)#convert to c_int32
-        error=PID_Add_Remote(Instr_ID.value, set_channel_regulator, Instr_ID.value, set_channel_sensor,10,0.1,1) 
+        error=PID_Add_Remote(Instr_ID.value, set_channel_regulator, Instr_ID.value, set_channel_sensor,0.01,0.01,1)
 
     if answer=="start":
         error=OB1_Start_Remote_Measurement(Instr_ID.value, byref(Calib), 1000)
