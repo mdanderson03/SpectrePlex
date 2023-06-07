@@ -483,9 +483,9 @@ class cycif:
 
     def fm_channel_initial(self, full_array):
 
-        a488_channel_offset = -9 #determine if each of these are good and repeatable offsets
-        a555_channel_offset = -9
-        a647_channel_offset = -9
+        a488_channel_offset = -7 #determine if each of these are good and repeatable offsets
+        a555_channel_offset = -7
+        a647_channel_offset = -7
 
         dummy_channel = np.empty_like(full_array[0])
         dummy_channel = np.expand_dims(dummy_channel, axis=0)
@@ -948,7 +948,7 @@ class cycif:
         xyz_pos = self.nonfocus_tile_DAPI(xy_pos)
         xyz_tile_pattern = self.tile_pattern(xyz_pos)
         fm_array = self.fm_channel_initial(xyz_tile_pattern)
-        exp_time = np.array([200,400,1000,1000])
+        exp_time = np.array([200,500,50,1500])
         #exp_time = self.auto_expose(300, 5000)
 
         np.save('exp_array.npy', exp_time)
@@ -1720,6 +1720,17 @@ class fluidics:
         pump = OB1_Initialization(ob1_path.encode('ascii'), 0, 0, 0, 0, byref(Instr_ID))
         pump = OB1_Add_Sens(Instr_ID, 1, 5, 1, 0, 7, 0) #16bit working range between 0-1000uL/min, also what are CustomSens_Voltage_5_to_25 and can I really choose any digital range?
 
+        Calib = (c_double * 1000)()
+        Elveflow_Calibration_Default(byref(Calib), 1000)
+        OB1_Start_Remote_Measurement(Instr_ID.value, byref(Calib), 1000)
+        self.calibration_array = byref(Calib)
+
+        set_channel_regulator = int(1)  # convert to int
+        set_channel_regulator = c_int32(set_channel_regulator)  # convert to c_int32
+        set_channel_sensor = int(1)
+        set_channel_sensor = c_int32(set_channel_sensor)  # convert to c_int32
+        PID_Add_Remote(Instr_ID.value, set_channel_regulator, Instr_ID.value, set_channel_sensor, .9, 0.002, 1)
+
 
         # MUX intiialize
         path = 'ASRL' + str(mux_com_port) + '::INSTR'
@@ -1751,35 +1762,39 @@ class fluidics:
         MUX_DRI_Set_Valve(self.mux_ID, valve_number, 0) #0 is shortest path. clockwise and cc are also options
         time.sleep(1)
 
-    def ob1_calibration(self):
-
-        Calib = (c_double * 1000)()
-        calibration_array = Elveflow_Calibration_Default(byref(Calib), 1000)
-
-        return calibration_array
-
     def flow(self, flow_rate):
 
         set_channel=int(1)#convert to int
         set_channel=c_int32(set_channel)#convert to c_int32
 
-        set_channel_regulator = int(1)  # convert to int
-        set_channel_regulator = c_int32(set_channel_regulator)  # convert to c_int32
-        set_channel_sensor = int(1)
-        set_channel_sensor = c_int32(set_channel_sensor)  # convert to c_int32
-
-        Calib = (c_double * 1000)()
         set_target=float(flow_rate) # in uL/min for flow
         set_target=c_double(set_target)#convert to c_double
 
-        #OB1_Start_Remote_Measurement(self.pump_ID, byref(Calib), 1000)
-        #PID_Add_Remote(self.pump_ID, set_channel_regulator, self.pump_ID, set_channel_sensor, .43, 0.06, 1)
-        #OB1_Set_Remote_Target(self.pump_ID, set_channel, set_target)
+        OB1_Set_Remote_Target(self.pump_ID, set_channel, set_target)
         #OB1_Stop_Remote_Measurement(self.pump_ID)
-        OB1_Set_Press(self.pump_ID, set_channel, set_target, byref(Calib), 1000)
 
     def ob1_end(self):
 
+        set_channel = int(1)  # convert to int
+        set_channel = c_int32(set_channel)  # convert to c_int32
+
+        data_sens=c_double()
+        data_reg=c_double()
+
+        x = 0
+        self.flow(0)
+
+        while x == 0:
+            OB1_Get_Remote_Data(self.pump_ID, set_channel, byref(data_reg), byref(data_sens))
+            flow_rate = data_sens.value
+
+            if flow_rate < 10:
+                x = 1
+            if flow_rate > 10:
+                x = 0
+            time.sleep(1)
+
+        OB1_Stop_Remote_Measurement(self.pump_ID)
         OB1_Destructor(self.pump_ID)
 
     def measure(self):

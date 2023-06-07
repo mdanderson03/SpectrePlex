@@ -144,7 +144,7 @@ while repeat:
         set_channel_sensor=input("select channel sensor (1-4) : ")
         set_channel_sensor=int(set_channel_sensor)#convert to int
         set_channel_sensor=c_int32(set_channel_sensor)#convert to c_int32
-        error=PID_Add_Remote(Instr_ID.value, set_channel_regulator, Instr_ID.value, set_channel_sensor,0.01,0.01,1)
+        error=PID_Add_Remote(Instr_ID.value, set_channel_regulator, Instr_ID.value, set_channel_sensor,1.2,0.0000,1)
 
     if answer=="start":
         error=OB1_Start_Remote_Measurement(Instr_ID.value, byref(Calib), 1000)

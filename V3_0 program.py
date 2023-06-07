@@ -20,6 +20,6 @@ microscope = cycif() # initialize cycif object
 #arduino.bleach(360)
 #microscope.cycle_acquire(2, r'E:\24-3-23_control', 'Bleach') #(cycle_number, experiment_directory, 'Stain' or 'Bleach')
 #arduino.stain(4)
-microscope.cycle_acquire(1, r'E:\5_31_23_test_slide_elveflow', 'Bleach') #(cycle_number, experiment_directory, 'Stain' or 'Bleach')
+microscope.cycle_acquire(2, r'E:\elveflow_test_2', 'Bleach') #(cycle_number, experiment_directory, 'Stain' or 'Bleach')
 
 
