@@ -315,7 +315,7 @@ class cycif:
 
         return level
 
-    def auto_expose(self, seed_expose, benchmark_threshold, channels=['DAPI', 'A488', 'A555', 'A647']):
+    def auto_expose(self, directory, seed_expose, benchmark_threshold, channels=['DAPI', 'A488', 'A555', 'A647']):
         '''
 
         :param object core: core object from Core() in pycromananger
@@ -329,12 +329,14 @@ class cycif:
         :return: list of exposures
         '''
 
-        #if surface_name != 'none':
-            #new_x, new_y = cycif.tissue_center(self, surface_name)  # uncomment if want center of tissue to expose
-            #core.set_xy_position(new_x, new_y)
-            #z_pos = z_focused_pos
-            # z_pos = magellan.get_surface(surface_name).get_points().get(0).z
-            #core.set_position(z_pos)
+        numpy_path = experiment_directory +'/' + 'np_arrays'
+        os.chdir(numpy_path)
+        full_array = np.load('fm_array.npy', allow_pickle=False)
+
+        new_x = full_array[0][0][0]
+        new_y = full_array[1][0][0]
+        z_position_channel_list = [full_array[2][0][0],full_array[3][0][0], full_array[4][0][0], full_array[5][0][0]]
+        core.set_xy_position(new_x, new_y)
 
         bandwidth = 0.1
         sat_max = 65000
@@ -351,6 +353,9 @@ class cycif:
                 exp_index = 2
             if fluor_channel == 'A647':
                 exp_index = 3
+
+            z_pos = z_position_channel_list[exp_index]
+            core.set_position(z_pos)
 
             intensity = cycif.expose(seed_expose, fluor_channel)
             new_exp = seed_expose
@@ -481,11 +486,11 @@ class cycif:
 
         return new_numpy
 
-    def fm_channel_initial(self, full_array):
+    def fm_channel_initial(self, full_array, off_array):
 
-        a488_channel_offset = -7 #determine if each of these are good and repeatable offsets
-        a555_channel_offset = -7
-        a647_channel_offset = -7
+        a488_channel_offset = off_array[0] #determine if each of these are good and repeatable offsets
+        a555_channel_offset = off_array[1]
+        a647_channel_offset = off_array[2]
 
         dummy_channel = np.empty_like(full_array[0])
         dummy_channel = np.expand_dims(dummy_channel, axis=0)
@@ -940,27 +945,30 @@ class cycif:
         self.save_quick_tile(pna_stack, channel, cycle, experiment_directory, stain_bleach)
 
 
-    def cycle_acquire(self, cycle_number, experiment_directory, stain_bleach, channels = ['DAPI', 'A488', 'A555', 'A647']):
+    def cycle_acquire(self, cycle_number, experiment_directory, z_slices, stain_bleach, offset_array, exp_time_array = 0, channels = ['DAPI', 'A488', 'A555', 'A647']):
 
         self.file_structure(experiment_directory, cycle_number)
-
         xy_pos = self.tile_xy_pos('New Surface 1')
         xyz_pos = self.nonfocus_tile_DAPI(xy_pos)
         xyz_tile_pattern = self.tile_pattern(xyz_pos)
-        fm_array = self.fm_channel_initial(xyz_tile_pattern)
-        exp_time = np.array([200,500,50,1500])
-        #exp_time = self.auto_expose(300, 5000)
+        fm_array = self.fm_channel_initial(xyz_tile_pattern, offset_array)
 
-        np.save('exp_array.npy', exp_time)
         np.save('fm_array.npy', fm_array)
 
+        if exp_time_array == 0:
+            exp_time = self.auto_expose(experiment_directory, 300, 5000)
+        else:
+            exp_time = exp_time_array
+
+        np.save('exp_array.npy', exp_time)
+
         for channel in channels:
-            z_tile_stack = self.core_tile_acquire(experiment_directory, channel, 7)
+            z_tile_stack = self.core_tile_acquire(experiment_directory, channel, z_slices)
             #self.optimal_quick_preview_qt(z_tile_stack, channel, cycle_number, experiment_directory)
             #self.quick_tile_all_z_save(z_tile_stack, channel, cycle_number, experiment_directory, stain_bleach)
             self.save_files(z_tile_stack, channel, cycle_number, experiment_directory, stain_bleach)
 
-        #self.marker_excel_file_generation(experiment_directory, cycle_number)
+        self.marker_excel_file_generation(experiment_directory, cycle_number)
 
 ######Folder System Generation########################################################
 
@@ -1131,7 +1139,7 @@ class cycif:
     def file_structure(self, experiment_directory, highest_cycle_count):
 
         channels = ['DAPI', 'A488', 'A555', 'A647']
-        cycles = np.linspace(1,highest_cycle_count,highest_cycle_count).astype(int)
+        cycles = np.linspace(0,highest_cycle_count,highest_cycle_count).astype(int)
 
         #folder layer one
         os.chdir(experiment_directory)
@@ -1845,6 +1853,65 @@ class fluidics:
         if plot == 1:
             plt.plot(time_points, flow_points, 'o', color='black')
             plt.show()
+
+
+    def liquid_action(self, action_type, stain_valve = 0):
+
+        bleach_valve = 1
+        pbs_valve = 8
+        bleach_time = 3 #minutes
+        stain_flow_time = 45 #seconds
+        stain_inc_time = 45 #minutes
+        nuc_valve = 7
+        nuc_flow_time = 60 #seconds
+        nuc_inc_time = 3 #minutes
+
+        if action_type == 'Bleach':
+
+            self.valve_select(bleach_valve)
+            self.flow(500)
+            time.sleep(60)
+            self.flow(0)
+            time.sleep(bleach_time*60)
+
+            self.valve_select(pbs_valve)
+            self.flow(500)
+            time.sleep(60)
+            self.flow(0)
+
+        elif action_type == 'Stain':
+
+            self.valve_select(stain_valve)
+            self.flow(500)
+            time.sleep(stain_flow_time)
+            self.flow(0)
+            time.sleep(stain_inc_time*60)
+
+            self.valve_select(pbs_valve)
+            self.flow(500)
+            time.sleep(60)
+            self.flow(0)
+
+        elif action_type == "Wash":
+
+            self.valve_select(pbs_valve)
+            self.flow(500)
+            time.sleep(60)
+            self.flow(0)
+
+        elif action_type == 'Nuc Touchup':
+
+            self.valve_select(nuc_valve)
+            self.flow(500)
+            time.sleep(nuc_flow_time)
+            self.flow(0)
+            time.sleep(nuc_inc_time*60)
+
+            self.valve_select(pbs_valve)
+            self.flow(500)
+            time.sleep(60)
+            self.flow(0)
+
 
 
 
