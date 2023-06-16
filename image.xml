@@ -1,0 +1,217 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Warning: this comment is an OME-XML metadata block, which contains crucial dimensional parameters and other important metadata. Please edit cautiously (if at all), and back up the original data before doing so. For more information, see the OME-TIFF web site: https://docs.openmicroscopy.org/latest/ome-model/ome-tiff/. -->
+<OME xmlns="http://www.openmicroscopy.org/Schemas/OME/2016-06" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" Creator="OME Bio-Formats 6.2.1-SNAPSHOT" UUID="urn:uuid:27f14ce6-cf37-4ec8-9913-018a402a9ad4" xsi:schemaLocation="http://www.openmicroscopy.org/Schemas/OME/2016-06 http://www.openmicroscopy.org/Schemas/OME/2016-06/ome.xsd">
+  <Instrument ID="Instrument:0">
+    <Objective Correction="Other" ID="Objective:0" Immersion="Other" NominalMagnification="0.0"/>
+  </Instrument>
+  <Image ID="Image:760" Name="Scan_20180711_085334_01x4x01271.rcpnl #761">
+    <AcquisitionDate>2018-07-11T12:53:34</AcquisitionDate>
+    <InstrumentRef ID="Instrument:0"/>
+    <ObjectiveSettings ID="Objective:0"/>
+    <Pixels BigEndian="false" DimensionOrder="XYCZT" ID="Pixels:760" Interleaved="false" PhysicalSizeX="0.6499999761581421" PhysicalSizeXUnit="µm" PhysicalSizeY="0.6499999761581421" PhysicalSizeYUnit="µm" PhysicalSizeZ="1.0" PhysicalSizeZUnit="µm" SignificantBits="16" SizeC="4" SizeT="1" SizeX="1280" SizeY="1080" SizeZ="1" Type="uint16">
+      <Channel EmissionWavelength="431.0" EmissionWavelengthUnit="nm" ExcitationWavelength="390.0" ExcitationWavelengthUnit="nm" ID="Channel:760:0" NDFilter="0.0" SamplesPerPixel="1">
+        <LightPath/>
+      </Channel>
+      <Channel EmissionWavelength="525.0" EmissionWavelengthUnit="nm" ExcitationWavelength="475.0" ExcitationWavelengthUnit="nm" ID="Channel:760:1" NDFilter="0.0" SamplesPerPixel="1">
+        <LightPath/>
+      </Channel>
+      <Channel EmissionWavelength="590.0" EmissionWavelengthUnit="nm" ExcitationWavelength="542.0" ExcitationWavelengthUnit="nm" ID="Channel:760:2" NDFilter="0.0" SamplesPerPixel="1">
+        <LightPath/>
+      </Channel>
+      <Channel EmissionWavelength="690.0" EmissionWavelengthUnit="nm" ExcitationWavelength="632.0" ExcitationWavelengthUnit="nm" ID="Channel:760:3" NDFilter="0.0" SamplesPerPixel="1">
+        <LightPath/>
+      </Channel>
+      <TiffData FirstC="0" FirstT="0" FirstZ="0" IFD="0" PlaneCount="1">
+        <UUID FileName="exemplar-001-cycle-06.ome.tiff">urn:uuid:27f14ce6-cf37-4ec8-9913-018a402a9ad4</UUID>
+      </TiffData>
+      <TiffData FirstC="1" FirstT="0" FirstZ="0" IFD="1" PlaneCount="1">
+        <UUID FileName="exemplar-001-cycle-06.ome.tiff">urn:uuid:27f14ce6-cf37-4ec8-9913-018a402a9ad4</UUID>
+      </TiffData>
+      <TiffData FirstC="2" FirstT="0" FirstZ="0" IFD="2" PlaneCount="1">
+        <UUID FileName="exemplar-001-cycle-06.ome.tiff">urn:uuid:27f14ce6-cf37-4ec8-9913-018a402a9ad4</UUID>
+      </TiffData>
+      <TiffData FirstC="3" FirstT="0" FirstZ="0" IFD="3" PlaneCount="1">
+        <UUID FileName="exemplar-001-cycle-06.ome.tiff">urn:uuid:27f14ce6-cf37-4ec8-9913-018a402a9ad4</UUID>
+      </TiffData>
+      <Plane DeltaT="1166.751953125" DeltaTUnit="s" ExposureTime="0.014999999664723873" ExposureTimeUnit="s" PositionX="25498.0" PositionXUnit="reference frame" PositionY="12615.0" PositionYUnit="reference frame" PositionZ="0.06201172" PositionZUnit="reference frame" TheC="0" TheT="0" TheZ="0"/>
+      <Plane DeltaT="1166.758056640625" DeltaTUnit="s" ExposureTime="0.5" ExposureTimeUnit="s" PositionX="25498.0" PositionXUnit="reference frame" PositionY="12615.0" PositionYUnit="reference frame" PositionZ="-3.9490051" PositionZUnit="reference frame" TheC="1" TheT="0" TheZ="0"/>
+      <Plane DeltaT="1166.762939453125" DeltaTUnit="s" ExposureTime="0.20000000298023224" ExposureTimeUnit="s" PositionX="25498.0" PositionXUnit="reference frame" PositionY="12615.0" PositionYUnit="reference frame" PositionZ="-3.9490051" PositionZUnit="reference frame" TheC="2" TheT="0" TheZ="0"/>
+      <Plane DeltaT="1166.76904296875" DeltaTUnit="s" ExposureTime="0.20000000298023224" ExposureTimeUnit="s" PositionX="25498.0" PositionXUnit="reference frame" PositionY="12615.0" PositionYUnit="reference frame" PositionZ="0.06201172" PositionZUnit="reference frame" TheC="3" TheT="0" TheZ="0"/>
+    </Pixels>
+  </Image>
+  <Image ID="Image:761" Name="Scan_20180711_085334_01x4x01271.rcpnl #762">
+    <AcquisitionDate>2018-07-11T12:53:34</AcquisitionDate>
+    <InstrumentRef ID="Instrument:0"/>
+    <ObjectiveSettings ID="Objective:0"/>
+    <Pixels BigEndian="false" DimensionOrder="XYCZT" ID="Pixels:761" Interleaved="false" PhysicalSizeX="0.6499999761581421" PhysicalSizeXUnit="µm" PhysicalSizeY="0.6499999761581421" PhysicalSizeYUnit="µm" PhysicalSizeZ="1.0" PhysicalSizeZUnit="µm" SignificantBits="16" SizeC="4" SizeT="1" SizeX="1280" SizeY="1080" SizeZ="1" Type="uint16">
+      <Channel EmissionWavelength="431.0" EmissionWavelengthUnit="nm" ExcitationWavelength="390.0" ExcitationWavelengthUnit="nm" ID="Channel:761:0" NDFilter="0.0" SamplesPerPixel="1">
+        <LightPath/>
+      </Channel>
+      <Channel EmissionWavelength="525.0" EmissionWavelengthUnit="nm" ExcitationWavelength="475.0" ExcitationWavelengthUnit="nm" ID="Channel:761:1" NDFilter="0.0" SamplesPerPixel="1">
+        <LightPath/>
+      </Channel>
+      <Channel EmissionWavelength="590.0" EmissionWavelengthUnit="nm" ExcitationWavelength="542.0" ExcitationWavelengthUnit="nm" ID="Channel:761:2" NDFilter="0.0" SamplesPerPixel="1">
+        <LightPath/>
+      </Channel>
+      <Channel EmissionWavelength="690.0" EmissionWavelengthUnit="nm" ExcitationWavelength="632.0" ExcitationWavelengthUnit="nm" ID="Channel:761:3" NDFilter="0.0" SamplesPerPixel="1">
+        <LightPath/>
+      </Channel>
+      <TiffData FirstC="0" FirstT="0" FirstZ="0" IFD="4" PlaneCount="1">
+        <UUID FileName="exemplar-001-cycle-06.ome.tiff">urn:uuid:27f14ce6-cf37-4ec8-9913-018a402a9ad4</UUID>
+      </TiffData>
+      <TiffData FirstC="1" FirstT="0" FirstZ="0" IFD="5" PlaneCount="1">
+        <UUID FileName="exemplar-001-cycle-06.ome.tiff">urn:uuid:27f14ce6-cf37-4ec8-9913-018a402a9ad4</UUID>
+      </TiffData>
+      <TiffData FirstC="2" FirstT="0" FirstZ="0" IFD="6" PlaneCount="1">
+        <UUID FileName="exemplar-001-cycle-06.ome.tiff">urn:uuid:27f14ce6-cf37-4ec8-9913-018a402a9ad4</UUID>
+      </TiffData>
+      <TiffData FirstC="3" FirstT="0" FirstZ="0" IFD="7" PlaneCount="1">
+        <UUID FileName="exemplar-001-cycle-06.ome.tiff">urn:uuid:27f14ce6-cf37-4ec8-9913-018a402a9ad4</UUID>
+      </TiffData>
+      <Plane DeltaT="1168.25" DeltaTUnit="s" ExposureTime="0.014999999664723873" ExposureTimeUnit="s" PositionX="26315.0" PositionXUnit="reference frame" PositionY="12615.0" PositionYUnit="reference frame" PositionZ="0.34799194" PositionZUnit="reference frame" TheC="0" TheT="0" TheZ="0"/>
+      <Plane DeltaT="1168.2559814453125" DeltaTUnit="s" ExposureTime="0.5" ExposureTimeUnit="s" PositionX="26315.0" PositionXUnit="reference frame" PositionY="12615.0" PositionYUnit="reference frame" PositionZ="-3.6619873" PositionZUnit="reference frame" TheC="1" TheT="0" TheZ="0"/>
+      <Plane DeltaT="1168.260986328125" DeltaTUnit="s" ExposureTime="0.20000000298023224" ExposureTimeUnit="s" PositionX="26315.0" PositionXUnit="reference frame" PositionY="12615.0" PositionYUnit="reference frame" PositionZ="-3.6619873" PositionZUnit="reference frame" TheC="2" TheT="0" TheZ="0"/>
+      <Plane DeltaT="1168.2669677734375" DeltaTUnit="s" ExposureTime="0.20000000298023224" ExposureTimeUnit="s" PositionX="26315.0" PositionXUnit="reference frame" PositionY="12615.0" PositionYUnit="reference frame" PositionZ="0.34799194" PositionZUnit="reference frame" TheC="3" TheT="0" TheZ="0"/>
+    </Pixels>
+  </Image>
+  <Image ID="Image:801" Name="Scan_20180711_085334_01x4x01271.rcpnl #802">
+    <AcquisitionDate>2018-07-11T12:53:34</AcquisitionDate>
+    <InstrumentRef ID="Instrument:0"/>
+    <ObjectiveSettings ID="Objective:0"/>
+    <Pixels BigEndian="false" DimensionOrder="XYCZT" ID="Pixels:801" Interleaved="false" PhysicalSizeX="0.6499999761581421" PhysicalSizeXUnit="µm" PhysicalSizeY="0.6499999761581421" PhysicalSizeYUnit="µm" PhysicalSizeZ="1.0" PhysicalSizeZUnit="µm" SignificantBits="16" SizeC="4" SizeT="1" SizeX="1280" SizeY="1080" SizeZ="1" Type="uint16">
+      <Channel EmissionWavelength="431.0" EmissionWavelengthUnit="nm" ExcitationWavelength="390.0" ExcitationWavelengthUnit="nm" ID="Channel:801:0" NDFilter="0.0" SamplesPerPixel="1">
+        <LightPath/>
+      </Channel>
+      <Channel EmissionWavelength="525.0" EmissionWavelengthUnit="nm" ExcitationWavelength="475.0" ExcitationWavelengthUnit="nm" ID="Channel:801:1" NDFilter="0.0" SamplesPerPixel="1">
+        <LightPath/>
+      </Channel>
+      <Channel EmissionWavelength="590.0" EmissionWavelengthUnit="nm" ExcitationWavelength="542.0" ExcitationWavelengthUnit="nm" ID="Channel:801:2" NDFilter="0.0" SamplesPerPixel="1">
+        <LightPath/>
+      </Channel>
+      <Channel EmissionWavelength="690.0" EmissionWavelengthUnit="nm" ExcitationWavelength="632.0" ExcitationWavelengthUnit="nm" ID="Channel:801:3" NDFilter="0.0" SamplesPerPixel="1">
+        <LightPath/>
+      </Channel>
+      <TiffData FirstC="0" FirstT="0" FirstZ="0" IFD="8" PlaneCount="1">
+        <UUID FileName="exemplar-001-cycle-06.ome.tiff">urn:uuid:27f14ce6-cf37-4ec8-9913-018a402a9ad4</UUID>
+      </TiffData>
+      <TiffData FirstC="1" FirstT="0" FirstZ="0" IFD="9" PlaneCount="1">
+        <UUID FileName="exemplar-001-cycle-06.ome.tiff">urn:uuid:27f14ce6-cf37-4ec8-9913-018a402a9ad4</UUID>
+      </TiffData>
+      <TiffData FirstC="2" FirstT="0" FirstZ="0" IFD="10" PlaneCount="1">
+        <UUID FileName="exemplar-001-cycle-06.ome.tiff">urn:uuid:27f14ce6-cf37-4ec8-9913-018a402a9ad4</UUID>
+      </TiffData>
+      <TiffData FirstC="3" FirstT="0" FirstZ="0" IFD="11" PlaneCount="1">
+        <UUID FileName="exemplar-001-cycle-06.ome.tiff">urn:uuid:27f14ce6-cf37-4ec8-9913-018a402a9ad4</UUID>
+      </TiffData>
+      <Plane DeltaT="1229.7139892578125" DeltaTUnit="s" ExposureTime="0.014999999664723873" ExposureTimeUnit="s" PositionX="25498.0" PositionXUnit="reference frame" PositionY="13302.0" PositionYUnit="reference frame" PositionZ="0.15701294" PositionZUnit="reference frame" TheC="0" TheT="0" TheZ="0"/>
+      <Plane DeltaT="1229.719970703125" DeltaTUnit="s" ExposureTime="0.5" ExposureTimeUnit="s" PositionX="25498.0" PositionXUnit="reference frame" PositionY="13302.0" PositionYUnit="reference frame" PositionZ="-3.8529968" PositionZUnit="reference frame" TheC="1" TheT="0" TheZ="0"/>
+      <Plane DeltaT="1229.7259521484375" DeltaTUnit="s" ExposureTime="0.20000000298023224" ExposureTimeUnit="s" PositionX="25498.0" PositionXUnit="reference frame" PositionY="13302.0" PositionYUnit="reference frame" PositionZ="-3.8529968" PositionZUnit="reference frame" TheC="2" TheT="0" TheZ="0"/>
+      <Plane DeltaT="1229.73095703125" DeltaTUnit="s" ExposureTime="0.20000000298023224" ExposureTimeUnit="s" PositionX="25498.0" PositionXUnit="reference frame" PositionY="13302.0" PositionYUnit="reference frame" PositionZ="0.15701294" PositionZUnit="reference frame" TheC="3" TheT="0" TheZ="0"/>
+    </Pixels>
+  </Image>
+  <Image ID="Image:802" Name="Scan_20180711_085334_01x4x01271.rcpnl #803">
+    <AcquisitionDate>2018-07-11T12:53:34</AcquisitionDate>
+    <InstrumentRef ID="Instrument:0"/>
+    <ObjectiveSettings ID="Objective:0"/>
+    <Pixels BigEndian="false" DimensionOrder="XYCZT" ID="Pixels:802" Interleaved="false" PhysicalSizeX="0.6499999761581421" PhysicalSizeXUnit="µm" PhysicalSizeY="0.6499999761581421" PhysicalSizeYUnit="µm" PhysicalSizeZ="1.0" PhysicalSizeZUnit="µm" SignificantBits="16" SizeC="4" SizeT="1" SizeX="1280" SizeY="1080" SizeZ="1" Type="uint16">
+      <Channel EmissionWavelength="431.0" EmissionWavelengthUnit="nm" ExcitationWavelength="390.0" ExcitationWavelengthUnit="nm" ID="Channel:802:0" NDFilter="0.0" SamplesPerPixel="1">
+        <LightPath/>
+      </Channel>
+      <Channel EmissionWavelength="525.0" EmissionWavelengthUnit="nm" ExcitationWavelength="475.0" ExcitationWavelengthUnit="nm" ID="Channel:802:1" NDFilter="0.0" SamplesPerPixel="1">
+        <LightPath/>
+      </Channel>
+      <Channel EmissionWavelength="590.0" EmissionWavelengthUnit="nm" ExcitationWavelength="542.0" ExcitationWavelengthUnit="nm" ID="Channel:802:2" NDFilter="0.0" SamplesPerPixel="1">
+        <LightPath/>
+      </Channel>
+      <Channel EmissionWavelength="690.0" EmissionWavelengthUnit="nm" ExcitationWavelength="632.0" ExcitationWavelengthUnit="nm" ID="Channel:802:3" NDFilter="0.0" SamplesPerPixel="1">
+        <LightPath/>
+      </Channel>
+      <TiffData FirstC="0" FirstT="0" FirstZ="0" IFD="12" PlaneCount="1">
+        <UUID FileName="exemplar-001-cycle-06.ome.tiff">urn:uuid:27f14ce6-cf37-4ec8-9913-018a402a9ad4</UUID>
+      </TiffData>
+      <TiffData FirstC="1" FirstT="0" FirstZ="0" IFD="13" PlaneCount="1">
+        <UUID FileName="exemplar-001-cycle-06.ome.tiff">urn:uuid:27f14ce6-cf37-4ec8-9913-018a402a9ad4</UUID>
+      </TiffData>
+      <TiffData FirstC="2" FirstT="0" FirstZ="0" IFD="14" PlaneCount="1">
+        <UUID FileName="exemplar-001-cycle-06.ome.tiff">urn:uuid:27f14ce6-cf37-4ec8-9913-018a402a9ad4</UUID>
+      </TiffData>
+      <TiffData FirstC="3" FirstT="0" FirstZ="0" IFD="15" PlaneCount="1">
+        <UUID FileName="exemplar-001-cycle-06.ome.tiff">urn:uuid:27f14ce6-cf37-4ec8-9913-018a402a9ad4</UUID>
+      </TiffData>
+      <Plane DeltaT="1231.2110595703125" DeltaTUnit="s" ExposureTime="0.014999999664723873" ExposureTimeUnit="s" PositionX="26315.0" PositionXUnit="reference frame" PositionY="13302.0" PositionYUnit="reference frame" PositionZ="0.44400024" PositionZUnit="reference frame" TheC="0" TheT="0" TheZ="0"/>
+      <Plane DeltaT="1231.217041015625" DeltaTUnit="s" ExposureTime="0.5" ExposureTimeUnit="s" PositionX="26315.0" PositionXUnit="reference frame" PositionY="13302.0" PositionYUnit="reference frame" PositionZ="-3.566986" PositionZUnit="reference frame" TheC="1" TheT="0" TheZ="0"/>
+      <Plane DeltaT="1231.2220458984375" DeltaTUnit="s" ExposureTime="0.20000000298023224" ExposureTimeUnit="s" PositionX="26315.0" PositionXUnit="reference frame" PositionY="13302.0" PositionYUnit="reference frame" PositionZ="-3.566986" PositionZUnit="reference frame" TheC="2" TheT="0" TheZ="0"/>
+      <Plane DeltaT="1231.22802734375" DeltaTUnit="s" ExposureTime="0.20000000298023224" ExposureTimeUnit="s" PositionX="26315.0" PositionXUnit="reference frame" PositionY="13302.0" PositionYUnit="reference frame" PositionZ="0.44400024" PositionZUnit="reference frame" TheC="3" TheT="0" TheZ="0"/>
+    </Pixels>
+  </Image>
+  <Image ID="Image:842" Name="Scan_20180711_085334_01x4x01271.rcpnl #843">
+    <AcquisitionDate>2018-07-11T12:53:34</AcquisitionDate>
+    <InstrumentRef ID="Instrument:0"/>
+    <ObjectiveSettings ID="Objective:0"/>
+    <Pixels BigEndian="false" DimensionOrder="XYCZT" ID="Pixels:842" Interleaved="false" PhysicalSizeX="0.6499999761581421" PhysicalSizeXUnit="µm" PhysicalSizeY="0.6499999761581421" PhysicalSizeYUnit="µm" PhysicalSizeZ="1.0" PhysicalSizeZUnit="µm" SignificantBits="16" SizeC="4" SizeT="1" SizeX="1280" SizeY="1080" SizeZ="1" Type="uint16">
+      <Channel EmissionWavelength="431.0" EmissionWavelengthUnit="nm" ExcitationWavelength="390.0" ExcitationWavelengthUnit="nm" ID="Channel:842:0" NDFilter="0.0" SamplesPerPixel="1">
+        <LightPath/>
+      </Channel>
+      <Channel EmissionWavelength="525.0" EmissionWavelengthUnit="nm" ExcitationWavelength="475.0" ExcitationWavelengthUnit="nm" ID="Channel:842:1" NDFilter="0.0" SamplesPerPixel="1">
+        <LightPath/>
+      </Channel>
+      <Channel EmissionWavelength="590.0" EmissionWavelengthUnit="nm" ExcitationWavelength="542.0" ExcitationWavelengthUnit="nm" ID="Channel:842:2" NDFilter="0.0" SamplesPerPixel="1">
+        <LightPath/>
+      </Channel>
+      <Channel EmissionWavelength="690.0" EmissionWavelengthUnit="nm" ExcitationWavelength="632.0" ExcitationWavelengthUnit="nm" ID="Channel:842:3" NDFilter="0.0" SamplesPerPixel="1">
+        <LightPath/>
+      </Channel>
+      <TiffData FirstC="0" FirstT="0" FirstZ="0" IFD="16" PlaneCount="1">
+        <UUID FileName="exemplar-001-cycle-06.ome.tiff">urn:uuid:27f14ce6-cf37-4ec8-9913-018a402a9ad4</UUID>
+      </TiffData>
+      <TiffData FirstC="1" FirstT="0" FirstZ="0" IFD="17" PlaneCount="1">
+        <UUID FileName="exemplar-001-cycle-06.ome.tiff">urn:uuid:27f14ce6-cf37-4ec8-9913-018a402a9ad4</UUID>
+      </TiffData>
+      <TiffData FirstC="2" FirstT="0" FirstZ="0" IFD="18" PlaneCount="1">
+        <UUID FileName="exemplar-001-cycle-06.ome.tiff">urn:uuid:27f14ce6-cf37-4ec8-9913-018a402a9ad4</UUID>
+      </TiffData>
+      <TiffData FirstC="3" FirstT="0" FirstZ="0" IFD="19" PlaneCount="1">
+        <UUID FileName="exemplar-001-cycle-06.ome.tiff">urn:uuid:27f14ce6-cf37-4ec8-9913-018a402a9ad4</UUID>
+      </TiffData>
+      <Plane DeltaT="1292.6639404296875" DeltaTUnit="s" ExposureTime="0.014999999664723873" ExposureTimeUnit="s" PositionX="25498.0" PositionXUnit="reference frame" PositionY="13989.0" PositionYUnit="reference frame" PositionZ="0.15701294" PositionZUnit="reference frame" TheC="0" TheT="0" TheZ="0"/>
+      <Plane DeltaT="1292.6700439453125" DeltaTUnit="s" ExposureTime="0.5" ExposureTimeUnit="s" PositionX="25498.0" PositionXUnit="reference frame" PositionY="13989.0" PositionYUnit="reference frame" PositionZ="-3.8529968" PositionZUnit="reference frame" TheC="1" TheT="0" TheZ="0"/>
+      <Plane DeltaT="1292.675048828125" DeltaTUnit="s" ExposureTime="0.20000000298023224" ExposureTimeUnit="s" PositionX="25498.0" PositionXUnit="reference frame" PositionY="13989.0" PositionYUnit="reference frame" PositionZ="-3.8529968" PositionZUnit="reference frame" TheC="2" TheT="0" TheZ="0"/>
+      <Plane DeltaT="1292.6810302734375" DeltaTUnit="s" ExposureTime="0.20000000298023224" ExposureTimeUnit="s" PositionX="25498.0" PositionXUnit="reference frame" PositionY="13989.0" PositionYUnit="reference frame" PositionZ="0.15701294" PositionZUnit="reference frame" TheC="3" TheT="0" TheZ="0"/>
+    </Pixels>
+  </Image>
+  <Image ID="Image:843" Name="Scan_20180711_085334_01x4x01271.rcpnl #844">
+    <AcquisitionDate>2018-07-11T12:53:34</AcquisitionDate>
+    <InstrumentRef ID="Instrument:0"/>
+    <ObjectiveSettings ID="Objective:0"/>
+    <Pixels BigEndian="false" DimensionOrder="XYCZT" ID="Pixels:843" Interleaved="false" PhysicalSizeX="0.6499999761581421" PhysicalSizeXUnit="µm" PhysicalSizeY="0.6499999761581421" PhysicalSizeYUnit="µm" PhysicalSizeZ="1.0" PhysicalSizeZUnit="µm" SignificantBits="16" SizeC="4" SizeT="1" SizeX="1280" SizeY="1080" SizeZ="1" Type="uint16">
+      <Channel EmissionWavelength="431.0" EmissionWavelengthUnit="nm" ExcitationWavelength="390.0" ExcitationWavelengthUnit="nm" ID="Channel:843:0" NDFilter="0.0" SamplesPerPixel="1">
+        <LightPath/>
+      </Channel>
+      <Channel EmissionWavelength="525.0" EmissionWavelengthUnit="nm" ExcitationWavelength="475.0" ExcitationWavelengthUnit="nm" ID="Channel:843:1" NDFilter="0.0" SamplesPerPixel="1">
+        <LightPath/>
+      </Channel>
+      <Channel EmissionWavelength="590.0" EmissionWavelengthUnit="nm" ExcitationWavelength="542.0" ExcitationWavelengthUnit="nm" ID="Channel:843:2" NDFilter="0.0" SamplesPerPixel="1">
+        <LightPath/>
+      </Channel>
+      <Channel EmissionWavelength="690.0" EmissionWavelengthUnit="nm" ExcitationWavelength="632.0" ExcitationWavelengthUnit="nm" ID="Channel:843:3" NDFilter="0.0" SamplesPerPixel="1">
+        <LightPath/>
+      </Channel>
+      <TiffData FirstC="0" FirstT="0" FirstZ="0" IFD="20" PlaneCount="1">
+        <UUID FileName="exemplar-001-cycle-06.ome.tiff">urn:uuid:27f14ce6-cf37-4ec8-9913-018a402a9ad4</UUID>
+      </TiffData>
+      <TiffData FirstC="1" FirstT="0" FirstZ="0" IFD="21" PlaneCount="1">
+        <UUID FileName="exemplar-001-cycle-06.ome.tiff">urn:uuid:27f14ce6-cf37-4ec8-9913-018a402a9ad4</UUID>
+      </TiffData>
+      <TiffData FirstC="2" FirstT="0" FirstZ="0" IFD="22" PlaneCount="1">
+        <UUID FileName="exemplar-001-cycle-06.ome.tiff">urn:uuid:27f14ce6-cf37-4ec8-9913-018a402a9ad4</UUID>
+      </TiffData>
+      <TiffData FirstC="3" FirstT="0" FirstZ="0" IFD="23" PlaneCount="1">
+        <UUID FileName="exemplar-001-cycle-06.ome.tiff">urn:uuid:27f14ce6-cf37-4ec8-9913-018a402a9ad4</UUID>
+      </TiffData>
+      <Plane DeltaT="1294.1519775390625" DeltaTUnit="s" ExposureTime="0.014999999664723873" ExposureTimeUnit="s" PositionX="26315.0" PositionXUnit="reference frame" PositionY="13989.0" PositionYUnit="reference frame" PositionZ="0.15701294" PositionZUnit="reference frame" TheC="0" TheT="0" TheZ="0"/>
+      <Plane DeltaT="1294.157958984375" DeltaTUnit="s" ExposureTime="0.5" ExposureTimeUnit="s" PositionX="26315.0" PositionXUnit="reference frame" PositionY="13989.0" PositionYUnit="reference frame" PositionZ="-3.8529968" PositionZUnit="reference frame" TheC="1" TheT="0" TheZ="0"/>
+      <Plane DeltaT="1294.1629638671875" DeltaTUnit="s" ExposureTime="0.20000000298023224" ExposureTimeUnit="s" PositionX="26315.0" PositionXUnit="reference frame" PositionY="13989.0" PositionYUnit="reference frame" PositionZ="-3.8529968" PositionZUnit="reference frame" TheC="2" TheT="0" TheZ="0"/>
+      <Plane DeltaT="1294.1689453125" DeltaTUnit="s" ExposureTime="0.20000000298023224" ExposureTimeUnit="s" PositionX="26315.0" PositionXUnit="reference frame" PositionY="13989.0" PositionYUnit="reference frame" PositionZ="0.15701294" PositionZUnit="reference frame" TheC="3" TheT="0" TheZ="0"/>
+    </Pixels>
+  </Image>
+</OME>

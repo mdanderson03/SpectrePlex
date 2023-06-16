@@ -186,6 +186,7 @@ class cycif:
         b = b.astype('int64')
         c = a - b
         c = c * c
+        c = c/100000
         f_score_shadow = c.sum()
 
         return 1/f_score_shadow
@@ -972,100 +973,6 @@ class cycif:
 
 ######Folder System Generation########################################################
 
-    def image_metadata_generation(self, tile_x_number, tile_y_number, channel, experiment_directory):
-
-        ome = OME()
-
-        numpy_path = experiment_directory + '/' + 'np_arrays'
-        os.chdir(numpy_path)
-        full_array = np.load('fm_array.npy', allow_pickle=False)
-        exp_time_array = np.load('exp_array.npy', allow_pickle=False)
-
-        numpy_x = full_array[0]
-        numpy_y = full_array[1]
-
-        stage_x = numpy_x[tile_y_number][tile_x_number]
-        stage_y = numpy_y[tile_y_number][tile_x_number]
-
-        if channel == 'DAPI':
-            channel_array_index = 2
-            ex_wavelength = 405
-            em_wavelength = 455
-        if channel == 'A488':
-            channel_array_index = 3
-            ex_wavelength = 488
-            em_wavelength = 525
-        if channel == 'A555':
-            channel_array_index = 4
-            ex_wavelength = 540
-            em_wavelength = 590
-        if channel == 'A647':
-            channel_array_index = 5
-            ex_wavelength = 640
-            em_wavelength = 690
-
-        microscope_mk4 = Microscope(
-            manufacturer='ASI',
-            model='AutoCyPlex',
-            serial_number='CFIC-1',
-        )
-
-        objective_16x = Objective(
-            manufacturer='Nikon',
-            model='16x water dipping',
-            nominal_magnification=21.0,
-        )
-
-        instrument = Instrument(
-            microscope=microscope_mk4,
-            objectives=[objective_16x],
-        )
-
-        p_type = PixelType('uint16')
-        p_id = PixelsID('Pixels:0')
-        i_id = ImageID('Image:0')
-        c_id = ChannelID('Channel:1:' + str(channel_array_index - 2))
-
-        channel = Channel(
-            id=c_id,
-            emission_wavelength=em_wavelength,
-            emission_wavelength_unit='nm',
-            excitation_wavelength=ex_wavelength,
-            excitation_wavelength_unit='nm',
-            samples_per_pixel=1
-        )
-
-        plane = Plane(
-            the_c=0,
-            the_t=0,
-            the_z=0,
-            exposure_time=exp_time_array[channel_array_index - 2],
-            exposure_time_unit='ms',
-            position_x=stage_x,
-            position_y=stage_y,
-            position_z=1
-        )
-
-        image_pixels = Pixels(dimension_order='XYZCT', id=p_id, size_c=1, size_t=1, size_x=5056, size_y=2960, size_z=1,
-                              type=p_type,
-                              physical_size_x=202,
-                              physical_size_x_unit='nm',
-                              physical_size_y=202,
-                              physical_size_y_unit='nm',
-                              physical_size_z=1000,
-                              physical_size_z_unit='nm',
-                              planes=[plane],
-                              channels=[channel], metadata_only = 'True')
-
-        image1 = Image(id=i_id, pixels=image_pixels)
-        ome.images.append(image1)
-        ome.instruments.append(instrument)
-        ome.images[0].instrument_ref = InstrumentRef(id=instrument.id)
-
-        metadata = ome_types.to_xml(ome)
-
-        return metadata
-
 
     def marker_excel_file_generation(self, experiment_directory, cycle_number):
 
@@ -1169,41 +1076,387 @@ class cycif:
                 experiment_channel_stain_cycle_directory = experiment_channel_stain_directory + '/' + 'cy_' + str(cycle)
 
                 self.folder_addon(experiment_channel_stain_cycle_directory, ['Tiles'])
-                self.folder_addon(experiment_channel_stain_cycle_directory, ['Quick_Tile'])
 
 
                 self.folder_addon(experiment_channel_bleach_directory, ['cy_' + str(cycle)])
                 experiment_channel_bleach_cycle_directory = experiment_channel_bleach_directory + '/' + 'cy_' + str(cycle)
 
                 self.folder_addon(experiment_channel_bleach_cycle_directory, ['Tiles'])
-                self.folder_addon(experiment_channel_bleach_cycle_directory, ['Quick_Tile'])
 
         os.chdir(experiment_directory + '/' + 'np_arrays')
 
 #####################################################################################################
-##########Saving Methods#############################################################################
+##########Saving/File Generation Methods#############################################################################
 
-    def save_optimal_quick_tile(self, image, channel, cycle, experiment_directory):
+    def post_acquisition_processor(self, experiment_directory):
 
-        file_name = 'quick_tile_' + str(channel) + '_' + 'cy' + str(cycle) + '.tif'
+        mcmicro_path = experiment_directory + r'\mcmicro\raw'
+        dapi_im_path = experiment_directory + '\DAPI\Stain'
+        cycle_start = 1
+        cycle_start_search = 0
 
-        top_path = experiment_directory + '/' + 'Quick_Tile'
+        os.chdir(mcmicro_path)
+        while cycle_start_search == 0:
+            file_name = str(experiment_directory.split("\\")[-1]) + '-cycle-0' + str(cycle_start) + '.ome.tif'
+            if os.path.isfile(file_name) == 1:
+                cycle_start += 1
+            else:
+                cycle_start_search = 1
 
-        os.chdir(top_path)
-        imwrite(file_name, image, photometric='minisblack' )
+        cycle_end = len(os.listdir(dapi_im_path)) + 1
 
-    def save_quick_tile(self, image, channel, cycle, experiment_directory, Stain_or_Bleach = 'Stain'):
+        for cycle_number in range(cycle_start, cycle_end):
+            self.infocus(experiment_directory, cycle_number, 10 ,10)
+            self.mcmicro_image_stack_generator(cycle_number, experiment_directory)
+            self.stage_placement(experiment_directory, cycle_number)
 
-        file_name = 'quick_tile_' + str(channel)  + '_' + 'cy' + str(cycle) + '.tif'
+    def mcmicro_image_stack_generator(self, cycle_number, experiment_directory):
 
-        top_path = experiment_directory + '/' + 'Quick_Tile'
-        bottom_path = experiment_directory + '/' + str(channel) + '/' + Stain_or_Bleach + '/' + 'cy_' + str(cycle) + '/' + 'Quick_Tile'
+        numpy_path = experiment_directory + '/' + 'np_arrays'
+        os.chdir(numpy_path)
+        full_array = np.load('fm_array.npy', allow_pickle=False)
 
-        os.chdir(top_path)
-        imwrite(file_name, image, photometric='minisblack' )
+        xml_metadata = cycif.metadata_generator(experiment_directory)
 
-        os.chdir(bottom_path)
-        imwrite(file_name, image, photometric='minisblack' )
+        numpy_x = full_array[0]
+        numpy_y = full_array[1]
+        y_tile_count = numpy_x.shape[0]
+        x_tile_count = numpy_y.shape[1]
+        tile_count = int(x_tile_count * y_tile_count)
+
+        dapi_im_path = experiment_directory + '\DAPI\Stain\cy_' + str(cycle_number) + '\Tiles' + '/focused'
+        a488_im_path = experiment_directory + '\A488\Stain\cy_' + str(cycle_number) + '\Tiles' + '/focused'
+        a555_im_path = experiment_directory + '\A555\Stain\cy_' + str(cycle_number) + '\Tiles' + '/focused'
+        a647_im_path = experiment_directory + '\A647\Stain\cy_' + str(cycle_number) + '\Tiles' + '/focused'
+
+        mcmicro_path = experiment_directory + r'\mcmicro\raw'
+
+        mcmicro_stack = np.random.rand(tile_count * 4, 2960, 5056).astype('uint16')
+
+        tile = 0
+        for x in range(0, x_tile_count):
+            for y in range(0, y_tile_count):
+                dapi_file_name = 'x' + str(x) + '_y_' + str(y) + '_c_DAPI.tif'
+                a488_file_name = 'x' + str(x) + '_y_' + str(y) + '_c_A488.tif'
+                a555_file_name = 'x' + str(x) + '_y_' + str(y) + '_c_A555.tif'
+                a647_file_name = 'x' + str(x) + '_y_' + str(y) + '_c_A647.tif'
+
+                base_count_number_stack = tile * 4
+
+                os.chdir(dapi_im_path)
+                image = io.imread(dapi_file_name).astype('uint16')
+                mcmicro_stack[base_count_number_stack + 0] = image
+
+                os.chdir(a488_im_path)
+                image = io.imread(a488_file_name).astype('uint16')
+                mcmicro_stack[base_count_number_stack + 1] = image
+
+                os.chdir(a555_im_path)
+                image = io.imread(a555_file_name).astype('uint16')
+                mcmicro_stack[base_count_number_stack + 2] = image
+
+                os.chdir(a647_im_path)
+                image = io.imread(a647_file_name).astype('uint16')
+                mcmicro_stack[base_count_number_stack + 3] = image
+
+                tile += 1
+
+        os.chdir(mcmicro_path)
+        mcmicro_file_name = str(experiment_directory.split("\\")[-1]) + '-cycle-0' + str(cycle_number) + '.ome.tif'
+        tf.imwrite(mcmicro_file_name, mcmicro_stack, photometric='minisblack', description=xml_metadata)
+
+    def metadata_generator(self, experiment_directory):
+
+        new_ome = OME()
+        ome = from_xml(r'C:\Users\mike\Documents\GitHub\AutoCIF/image.xml')
+        ome = ome.images[0]
+
+        numpy_path = experiment_directory + '/' + 'np_arrays'
+        os.chdir(numpy_path)
+        full_array = np.load('fm_array.npy', allow_pickle=False)
+
+        numpy_x = full_array[0]
+        numpy_y = full_array[1]
+        y_tile_count = numpy_x.shape[0]
+        x_tile_count = numpy_y.shape[1]
+        total_tile_count = x_tile_count * y_tile_count
+
+        y_gap = 532
+        col_col_gap = 10
+        for r in range(3, -1, -1):
+            numpy_y[r][0] = numpy_y[r + 1][0] - y_gap
+            numpy_y[r][1] = numpy_y[r + 1][1] - y_gap - col_col_gap
+
+        # sub in needed pixel size and pixel grid changes
+        ome.pixels.physical_size_x = 0.2
+        ome.pixels.physical_size_y = 0.2
+        ome.pixels.size_x = 5056
+        ome.pixels.size_y = 2960
+        # sub in other optional numbers to make metadata more accurate
+
+        for x in range(0, total_tile_count):
+            tile_metadata = copy.deepcopy(ome)
+            new_ome.images.append(tile_metadata)
+
+        # sub in stage positional information into each tile. numpy[y][x]
+        tile_counter = 0
+        for x in range(0, x_tile_count):
+            for y in range(0, y_tile_count):
+
+                for p in range(0, 4):
+                    new_x = numpy_x[y][x] - 11000
+                    new_y = numpy_y[y][x] + 2300
+                    new_ome.images[tile_counter].pixels.planes[p].position_y = copy.deepcopy(new_y)
+                    new_ome.images[tile_counter].pixels.planes[p].position_x = copy.deepcopy(new_x)
+                    new_ome.images[tile_counter].pixels.tiff_data_blocks[p].ifd = (4 * tile_counter) + p
+                tile_counter += 1
+
+        xml = to_xml(new_ome)
+
+        return xml
+
+    def stage_placement(self, experiment_directory, cycle_number):
+        '''
+        Goal to place images via rough stage coords in a larger image. WIll have nonsense borders
+        '''
+
+        quick_tile_path = experiment_directory + r'\Quick_Tile'
+
+        # load in numpy matricies
+
+        numpy_path = experiment_directory + '/' + 'np_arrays'
+        os.chdir(numpy_path)
+        full_array = np.load('fm_array.npy', allow_pickle=False)
+
+        numpy_x = full_array[0]
+        numpy_y = full_array[1]
+
+        y_tile_count = numpy_x.shape[0]
+        x_tile_count = numpy_y.shape[1]
+
+        fov_x_pixels = 5056
+        fov_y_pixels = 2960
+        um_pixel = 0.20
+
+        # generate large numpy image with rand numbers. Big enough to hold all images + 10%
+
+        super_y = int(1.02 * (y_tile_count * fov_y_pixels))
+        super_x = int(1.02 * (x_tile_count * fov_x_pixels))
+        placed_image = np.random.rand(super_y, super_x).astype('uint16')
+
+        # transform numpy x and y coords into new shifted space that starts at zero and is in units of pixels and not um
+        numpy_x_pixels = numpy_x / um_pixel
+        numpy_y_pixels = numpy_y / um_pixel
+
+        y_displacement_vector = (2100 / um_pixel + fov_y_pixels / 2) * 1.02
+        x_displacement_vector = (-11385 / um_pixel + fov_x_pixels / 2) * 1.02
+
+        numpy_x_pixels = numpy_x_pixels + x_displacement_vector
+        numpy_x_pixels = np.ceil(numpy_x_pixels)
+        numpy_x_pixels = numpy_x_pixels.astype(int)
+
+        numpy_y_pixels = numpy_y_pixels + y_displacement_vector
+        numpy_y_pixels = np.ceil(numpy_y_pixels)
+        numpy_y_pixels = numpy_y_pixels.astype(int)
+
+        # load images into python
+
+        channels = ['DAPI', 'A488', 'A555', 'A647']
+
+        for channel in channels:
+
+            im_path = experiment_directory + '/' + channel + '\Stain\cy_' + str(cycle_number) + '\Tiles' + '/focused'
+            os.chdir(im_path)
+
+            # place images into large array
+
+            for x in range(0, x_tile_count):
+                for y in range(0, y_tile_count):
+                    filename = 'x' + str(x) + '_y_' + str(y) + '_c_' + channel + '.tif'
+                    image = io.imread(filename)
+                    # define subsection of large array that fits dimensions of single FOV
+                    x_center = numpy_x_pixels[y][x]
+                    y_center = numpy_y_pixels[y][x]
+                    x_start = int(x_center - fov_x_pixels / 2)
+                    x_end = int(x_center + fov_x_pixels / 2)
+                    y_start = int(y_center - fov_y_pixels / 2)
+                    y_end = int(y_center + fov_y_pixels / 2)
+
+                    # placed_image[y_start:y_end, x_start:x_end] = placed_image[y_start:y_end, x_start:x_end] + image
+                    placed_image[y_start:y_end, x_start:x_end] = image
+
+            # save output image
+            os.chdir(quick_tile_path)
+            tf.imwrite(channel + '_cy' + str(cycle_number) + '_placed.tif', placed_image)
+
+    def focus_score(self, image, bin_level):
+        '''
+        Calculates focus score on image with Brenners algorithm on downsampled image.
+
+        Image is downsampled by [binning_size x binning_size], where binning_size is currently hardcoded in.
+
+        :param numpy image: single image from hooked from acquistion
+        :return: focus score for image
+        :rtype: float
+        '''
+        # Note: Uniform background is a bit mandatory
+
+        # binning_size = bin_level
+        binning_size = 1
+        image_binned = measure.block_reduce(image, binning_size)
+
+        # do Brenner score
+        a = image_binned[1::bin_level, ::bin_level]
+        # a = image_binned[2:, :]
+        a = a
+        b = image_binned[:-1:bin_level, ::bin_level]
+        # b = image_binned[:-2, :]
+        b = b
+        c = (a - b)
+        c = (c * c)
+        c = c / 100000
+        c = c.astype('int64')
+        # tf.imwrite('c.tif', c)
+        f_score = c.sum().astype('longlong')
+
+        return f_score
+
+    def infocus(self, experiment_directory, cycle_number, x_sub_section_count, y_sub_section_count):
+
+        bin_values = [4]
+        channels = ['DAPI', 'A488', 'A555', 'A647']
+
+        dapi_im_path = experiment_directory + '/' + 'DAPI' '\Stain\cy_' + str(cycle_number) + '\Tiles'
+
+        # load numpy arrays in
+        numpy_path = experiment_directory + '/' + 'np_arrays'
+        os.chdir(numpy_path)
+        full_array = np.load('fm_array.npy', allow_pickle=False)
+
+        numpy_x = full_array[0]
+        numpy_y = full_array[1]
+
+        y_tile_count = numpy_x.shape[0]
+        x_tile_count = numpy_y.shape[1]
+
+        # determine number z slices
+        z_checker = 0
+        z_slice_count = 0
+        os.chdir(dapi_im_path)
+        while z_checker == 0:
+            file_name = 'z_' + str(z_slice_count) + '_x' + str(0) + '_y_' + str(0) + '_c_DAPI.tif'
+            if os.path.isfile(file_name) == 1:
+                z_slice_count += 1
+            else:
+                z_checker = 1
+
+        for channel in channels:
+            # generate imstack of z slices for tile
+            # channel = 'DAPI'
+            im_path = experiment_directory + '/' + channel + '\Stain\cy_' + str(cycle_number) + '\Tiles'
+            os.chdir(im_path)
+
+            z_stack = np.random.rand(z_slice_count, 2960, 5056).astype('uint16')
+            for x in range(0, x_tile_count):
+                for y in range(0, y_tile_count):
+                    for z in range(0, z_slice_count):
+                        im_path = experiment_directory + '/' + channel + '\Stain\cy_' + str(cycle_number) + '\Tiles'
+                        os.chdir(im_path)
+                        file_name = 'z_' + str(z) + '_x' + str(x) + '_y_' + str(y) + '_c_' + str(channel) + '.tif'
+                        image = tf.imread(file_name)
+                        z_stack[z] = image
+
+                        # break into sub sections (2x3)
+
+                    number_bins = len(bin_values)
+                    brenner_sub_selector = np.random.rand(z_slice_count, number_bins, y_sub_section_count,
+                                                          x_sub_section_count).astype('longlong')
+                    for z in range(0, z_slice_count):
+                        for y_sub in range(0, y_sub_section_count):
+                            for x_sub in range(0, x_sub_section_count):
+
+                                y_end = int((y_sub + 1) * (2960 / y_sub_section_count))
+                                y_start = int(y_sub * (2960 / y_sub_section_count))
+                                x_end = int((x_sub + 1) * (5056 / x_sub_section_count))
+                                x_start = int(x_sub * (5056 / x_sub_section_count))
+                                sub_image = z_stack[z][y_start:y_end, x_start:x_end]
+
+                                for b in range(0, number_bins):
+                                    bin_value = int(bin_values[b])
+                                    score = cycif.focus_score(sub_image, bin_value)
+                                    brenner_sub_selector[z][b][y_sub][x_sub] = score
+
+                    reconstruct_array = brenner_reconstruct_array(brenner_sub_selector, z_slice_count, number_bins)
+                    reconstruct_array = skimage.filters.median(reconstruct_array)
+                    image_reconstructor(reconstruct_array, channel, cycle_number, y, x)
+
+    def brenner_reconstruct_array(self, brenner_sub_selector, z_slice_count, number_bins):
+        '''
+        take in sub selector array and slice to find max values for brenner scores and then find mode for various bin levels
+        output array that shows what slice to grab each sub section from
+        :param brenner_sub_selector:
+        :return:
+        '''
+        # array to dictate the z slice to grab each sub section from
+        y_sections = np.shape(brenner_sub_selector)[2]
+        x_sections = np.shape(brenner_sub_selector)[3]
+
+        reconstruct_array = np.random.rand(y_sections, x_sections).astype('uint16')
+
+        temp_bin_max_indicies = np.random.rand(number_bins).astype('uint16')
+
+        for y in range(0, y_sections):
+            for x in range(0, x_sections):
+                for b in range(0, number_bins):
+                    sub_scores = brenner_sub_selector[0:z_slice_count, b, y, x]
+                    max_score = np.max(sub_scores)
+                    max_index = np.where(sub_scores == max_score)[0][0]
+                    temp_bin_max_indicies[b] = max_index
+                sub_section_index_mode = stats.mode(temp_bin_max_indicies)[0][0]
+                reconstruct_array[y][x] = sub_section_index_mode
+
+        return reconstruct_array
+
+    def image_reconstructor(self, reconstruct_array, channel, cycle_number, y_tile_number, x_tile_number):
+
+        y_sections = np.shape(reconstruct_array)[0]
+        x_sections = np.shape(reconstruct_array)[1]
+
+        cycle_types = ['Stain', 'Bleach']
+
+        for cycle_type in cycle_types:
+
+            im_path = experiment_directory + '/' + channel + '/' + cycle_type + '\cy_' + str(cycle_number) + '\Tiles'
+            os.chdir(im_path)
+            try:
+                os.mkdir('focused')
+            except:
+                t = 5
+
+            # rebuilt image container
+            rebuilt_image = np.random.rand(2960, 5056).astype('uint16')
+
+            for y in range(0, y_sections):
+                for x in range(0, x_sections):
+                    # define y and x start and ends subsection of rebuilt image
+                    y_end = int((y + 1) * (2960 / y_sections))
+                    y_start = int(y * (2960 / y_sections))
+                    x_end = int((x + 1) * (5056 / x_sections))
+                    x_start = int(x * (5056 / x_sections))
+
+                    # find z for specific subsection
+                    z_slice = reconstruct_array[y][x]
+                    # load in image to extract for subsection
+                    file_name = 'z_' + str(z_slice) + '_x' + str(x_tile_number) + '_y_' + str(
+                        y_tile_number) + '_c_' + str(channel) + '.tif'
+                    image = tf.imread(file_name)
+                    rebuilt_image[y_start:y_end, x_start:x_end] = image[y_start:y_end, x_start:x_end]
+
+            reconstruct_path = experiment_directory + '/' + channel + '/' + cycle_type + '\cy_' + str(
+                cycle_number) + '\Tiles' + '/focused'
+            os.chdir(reconstruct_path)
+            filename = 'x' + str(x_tile_number) + '_y_' + str(y_tile_number) + '_c_' + str(channel) + '.tif'
+            tf.imwrite(filename, rebuilt_image)
 
     def save_files(self, z_tile_stack, channel, cycle, experiment_directory, Stain_or_Bleach = 'Stain'):
 
@@ -1268,6 +1521,122 @@ class cycif:
 ############################################
 #depreciated or unused
 ############################################
+
+    def save_optimal_quick_tile(self, image, channel, cycle, experiment_directory):
+
+        file_name = 'quick_tile_' + str(channel) + '_' + 'cy' + str(cycle) + '.tif'
+
+        top_path = experiment_directory + '/' + 'Quick_Tile'
+
+        os.chdir(top_path)
+        imwrite(file_name, image, photometric='minisblack' )
+
+    def save_quick_tile(self, image, channel, cycle, experiment_directory, Stain_or_Bleach = 'Stain'):
+
+        file_name = 'quick_tile_' + str(channel)  + '_' + 'cy' + str(cycle) + '.tif'
+
+        top_path = experiment_directory + '/' + 'Quick_Tile'
+        bottom_path = experiment_directory + '/' + str(channel) + '/' + Stain_or_Bleach + '/' + 'cy_' + str(cycle) + '/' + 'Quick_Tile'
+
+        os.chdir(top_path)
+        imwrite(file_name, image, photometric='minisblack' )
+
+        os.chdir(bottom_path)
+        imwrite(file_name, image, photometric='minisblack' )
+
+    def image_metadata_generation(self, tile_x_number, tile_y_number, channel, experiment_directory):
+
+        ome = OME()
+
+        numpy_path = experiment_directory + '/' + 'np_arrays'
+        os.chdir(numpy_path)
+        full_array = np.load('fm_array.npy', allow_pickle=False)
+        exp_time_array = np.load('exp_array.npy', allow_pickle=False)
+
+        numpy_x = full_array[0]
+        numpy_y = full_array[1]
+
+        stage_x = numpy_x[tile_y_number][tile_x_number]
+        stage_y = numpy_y[tile_y_number][tile_x_number]
+
+        if channel == 'DAPI':
+            channel_array_index = 2
+            ex_wavelength = 405
+            em_wavelength = 455
+        if channel == 'A488':
+            channel_array_index = 3
+            ex_wavelength = 488
+            em_wavelength = 525
+        if channel == 'A555':
+            channel_array_index = 4
+            ex_wavelength = 540
+            em_wavelength = 590
+        if channel == 'A647':
+            channel_array_index = 5
+            ex_wavelength = 640
+            em_wavelength = 690
+
+        microscope_mk4 = Microscope(
+            manufacturer='ASI',
+            model='AutoCyPlex',
+            serial_number='CFIC-1',
+        )
+
+        objective_16x = Objective(
+            manufacturer='Nikon',
+            model='16x water dipping',
+            nominal_magnification=21.0,
+        )
+
+        instrument = Instrument(
+            microscope=microscope_mk4,
+            objectives=[objective_16x],
+        )
+
+        p_type = PixelType('uint16')
+        p_id = PixelsID('Pixels:0')
+        i_id = ImageID('Image:0')
+        c_id = ChannelID('Channel:1:' + str(channel_array_index - 2))
+
+        channel = Channel(
+            id=c_id,
+            emission_wavelength=em_wavelength,
+            emission_wavelength_unit='nm',
+            excitation_wavelength=ex_wavelength,
+            excitation_wavelength_unit='nm',
+            samples_per_pixel=1
+        )
+
+        plane = Plane(
+            the_c=0,
+            the_t=0,
+            the_z=0,
+            exposure_time=exp_time_array[channel_array_index - 2],
+            exposure_time_unit='ms',
+            position_x=stage_x,
+            position_y=stage_y,
+            position_z=1
+        )
+
+        image_pixels = Pixels(dimension_order='XYZCT', id=p_id, size_c=1, size_t=1, size_x=5056, size_y=2960, size_z=1,
+                              type=p_type,
+                              physical_size_x=202,
+                              physical_size_x_unit='nm',
+                              physical_size_y=202,
+                              physical_size_y_unit='nm',
+                              physical_size_z=1000,
+                              physical_size_z_unit='nm',
+                              planes=[plane],
+                              channels=[channel], metadata_only = 'True')
+
+        image1 = Image(id=i_id, pixels=image_pixels)
+        ome.images.append(image1)
+        ome.instruments.append(instrument)
+        ome.images[0].instrument_ref = InstrumentRef(id=instrument.id)
+
+        metadata = ome_types.to_xml(ome)
+
+        return metadata
 
     def z_scan_exposure(self, z_range, seed_exposure, channel='DAPI'):
         '''
