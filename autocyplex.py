@@ -965,11 +965,18 @@ class cycif:
 
         for channel in channels:
             z_tile_stack = self.core_tile_acquire(experiment_directory, channel, z_slices)
-            #self.optimal_quick_preview_qt(z_tile_stack, channel, cycle_number, experiment_directory)
-            #self.quick_tile_all_z_save(z_tile_stack, channel, cycle_number, experiment_directory, stain_bleach)
             self.save_files(z_tile_stack, channel, cycle_number, experiment_directory, stain_bleach)
 
         self.marker_excel_file_generation(experiment_directory, cycle_number)
+
+    def full_cycle(self, experiment_directory, cycle_number, offset_array, stain_valve, heater_state = 0):
+
+        z_slices = 7
+
+        pump.liquid_action('Stain', stain_valve, heater_state)  # nuc is valve=7, pbs valve=8, bleach valve=1 (action, stain_valve, heater state (off = 0, on = 1))
+        microscope.cycle_acquire(cycle_number, experiment_directory, z_slices, 'Stain', offset_array)
+        pump.liquid_action('Bleach')  # nuc is valve=7, pbs valve=8, bleach valve=1 (action, stain_valve, heater state (off = 0, on = 1))
+        microscope.cycle_acquire(cycle_number, experiment_directory, z_slices, 'Bleach', offset_array)
 
 ######Folder System Generation########################################################
 
@@ -1914,135 +1921,12 @@ class arduino:
         client.publish(full_topic, message)
         client.loop_stop()
 
-    def auto_load(self, time_small=29, time_large=40):
-        '''
-        Load in all 8 liquids into multiplexer. Numbers 2-7 just reach multiplexer while 1 and 8 flow through more.
+    def heater_state(self, state):
 
-        :param float time_small: time in secs to pump liquid from Eppendorf to multiplexer given a speed of 7ms per step.
-        :param float time_large: time in secs to load larger volume liquids of 1 and 8 into multiplexer. Will make default for both.
-        :return: nothing
-        '''
-
-        self.mqtt_publish(170, 'peristaltic')  # turn pump on
-
-        for x in range(3, 8):
-            on_command = (x * 100) + 10  # multiplication by 100 forces x value into the 1st spot on a 3 digit code.
-            off_command = (x * 100) + 00  # multiplication by 100 forces x value into the 1st spot on a 3 digit code.
-            self.mqtt_publish(on_command, 'valve')
-            time.sleep(time_small)
-            self.mqtt_publish(off_command, 'valve')
-
-        for x in range(1, 9, 7):
-            on_command = (x * 100) + 10  # multiplication by 100 forces x value into the 1st spot on a 3 digit code.
-            off_command = (x * 100) + 00  # multiplication by 100 forces x value into the 1st spot on a 3 digit code.
-            self.mqtt_publish(on_command, 'valve')
-            time.sleep(time_large)
-            self.mqtt_publish(off_command, 'valve')
-
-        self.mqtt_publish(810, 'valve')
-        time.sleep(60)
-        self.mqtt_publish(800, 'valve')
-
-        self.mqtt_publish(0o70, 'peristaltic')  # turn pump off
-
-    def dispense(self, liquid_selection, volume, plex_chamber_time=24):
-        '''
-        Moves volume defined of liquid selected into chamber.
-        Acts different if volume requested is larger than volume from multiplexer through chamber.
-        Difference being PBS flow is not activated if volume is larger, but is if not.
-        Make sure to have volume be greater than chamber volume of 60uL
-
-        :param int liquid_selection: liquid number to be dispensed
-        :param int volume: volume of chosen liquid to be dispensed in uL
-        :param float plex_chamber_time: time in secs to flow from multiplexer to chambers end.
-        :return: nothing
-        '''
-
-        on_command = (
-                                 liquid_selection * 100) + 10  # multiplication by 100 forces x value into the 1st spot on a 3 digit code.
-        off_command = (
-                                  liquid_selection * 100) + 00  # multiplication by 100 forces x value into the 1st spot on a 3 digit code.
-        speed = 10  # in uL per second
-        time_dispense_volume = volume / speed
-        transition_zone_time = 6  # time taken at 7ms steps to move past transition zone in liquid front
-
-        if time_dispense_volume >= (plex_chamber_time + transition_zone_time):
-            self.mqtt_publish(on_command, 'valve')
-            self.mqtt_publish(170, 'peristaltic')  # turn pump on
-            time.sleep(time_dispense_volume)
-            self.mqtt_publish(0o70, 'peristaltic')  # turn pump off
-            self.mqtt_publish(off_command, 'valve')
-
-        elif time_dispense_volume < (plex_chamber_time + transition_zone_time):
-            self.mqtt_publish(on_command, 'valve')
-            self.mqtt_publish(170, 'peristaltic')  # turn pump on
-            time.sleep(time_dispense_volume)
-            self.mqtt_publish(off_command, 'valve')
-
-            self.mqtt_publish(810, 'valve')  # start PBS flow
-            time.sleep(
-                plex_chamber_time + transition_zone_time - time_dispense_volume * 3 / 4)  # adjust time to get front 1/4 into chamber drain line
-            self.mqtt_publish(0o70, 'peristaltic')  # turn pump off
-            self.mqtt_publish(800, 'valve')  # end PBS flow
-
-    def flow(self, liquid_selection, run_time=-1, chamber_volume=60, plex_chamber_time=24):
-        '''
-        Flow liquid selected through chamber. If defaults are used, flows through chamber volume 4x plus volume to reach chamber from multiplexer.
-        If time is used, it overrides the last two parameters of chamber_volume and plex_chamber_time.
-
-        :param int liquid_selection: liquid number to be dispensed
-        :param int time: time in secs to flow fluid in absolute total
-        :param float chamber_volume: volume in uL that chamber holds
-        :param float plex_chamber_time: time in secs for liquid to go from multiplexer to end of chamber
-        :return: nothing
-        '''
-
-        on_command = (
-                                 liquid_selection * 100) + 10  # multiplication by 100 forces x value into the 1st spot on a 3 digit code.
-        off_command = (
-                                  liquid_selection * 100) + 00  # multiplication by 100 forces x value into the 1st spot on a 3 digit code.
-        speed = 11  # in uL per second
-        time_chamber_volume = chamber_volume / speed
-        transition_zone_time = 6  # time taken at 7ms steps to move past transition zone in liquid front
-
-        if run_time == -1:
-            self.mqtt_publish(on_command, 'valve')
-            self.mqtt_publish(170, 'peristaltic')  # turn pump on
-            time.sleep(plex_chamber_time + transition_zone_time + 4 * time_chamber_volume)
-            self.mqtt_publish(0o70, 'peristaltic')  # turn pump off
-            self.mqtt_publish(off_command, 'valve')
-
-        else:
-            self.mqtt_publish(on_command, 'valve')
-            self.mqtt_publish(170, 'peristaltic')  # turn pump on
-            time.sleep(run_time)
-            self.mqtt_publish(0o70, 'peristaltic')  # turn pump off
-            self.mqtt_publish(off_command, 'valve')
-
-    def bleach(self, run_time):
-        '''
-        Flows bleach solution into chamber and keeps it on for time amount of time. Uses flow function as backbone.
-
-        :param int time: time in secs for bleach solution to rest on sample
-        :return: nothing
-        '''
-
-        self.flow(1)  # flow bleach solution through chamber. Should be at number 8 slot.
-        time.sleep(run_time)
-        self.flow(8)  # Flow wash with PBS
-
-    def stain(self, liquid_selection, run_time=3600):
-        '''
-        Flows stain solution into chamber and keeps it on for time amount of time. Uses dispense function as backbone.
-
-        :param int liquid_selection: liquid number to be dispensed
-        :param int time: time in secs for bleach solution to rest on sample
-        :return: nothing
-        '''
-
-        self.dispense(liquid_selection, 200)
-        time.sleep(run_time)
-        self.flow(8)  # flow wash with PBS
+        if state == 'on':
+            self.mqtt_publish(210, 'dc_pump')
+        elif state == 'off':
+            self.mqtt_publish(200, 'dc_pump')
 
     def chamber(self, fill_drain, run_time=27):
         '''
@@ -2063,29 +1947,6 @@ class arduino:
             time.sleep(run_time)
             self.mqtt_publish(101, 'dc_pump')
 
-    def nuc_touch_up(self, liquid_selection, run_time=60):
-        '''
-        Flows hoescht solution into chamber and keeps it on for time amount of time. Uses dispense function as backbone.
-
-        :param int liquid_selection: liquid number to be dispensed
-        :param int time: time hoescht solution rests on sample
-        :return: nothing
-        '''
-
-        self.dispense(liquid_selection, 200)
-        time.sleep(run_time)
-        self.flow(8)  # flow wash with PBS
-
-    def primary_secondary_cycle(self, primary_liq_selection, secondary_liquid_selection):
-        '''
-        Puts primary stain on and then secondary stain.
-
-        :param int primary_liq_selection: slot that contains primary antibody solution
-        :param int secondary_liquid_selection: slot that contains secondary antibody solution
-        :return: nothing
-        '''
-        self.stain(primary_liq_selection)
-        self.stain(secondary_liquid_selection)
 
 class fluidics:
 
@@ -2216,7 +2077,6 @@ class fluidics:
 
             time.sleep(time_step)
 
-
         #wb.save(filename = file_name)
 
         if plot == 1:
@@ -2224,7 +2084,7 @@ class fluidics:
             plt.show()
 
 
-    def liquid_action(self, action_type, stain_valve = 0):
+    def liquid_action(self, action_type, stain_valve = 0, heater_state = 0):
 
         bleach_valve = 1
         pbs_valve = 8
@@ -2250,11 +2110,23 @@ class fluidics:
 
         elif action_type == 'Stain':
 
+            if heater_state == 1:
+                arduino.heater_state(1)
+                arduino.chamber('drain')
+            else:
+                pass
+
             self.valve_select(stain_valve)
             self.flow(500)
             time.sleep(stain_flow_time)
             self.flow(0)
             time.sleep(stain_inc_time*60)
+
+            if heater_state == 1:
+                arduino.heater_state(0)
+                arduino.chamber('fill')
+            else:
+                pass
 
             self.valve_select(pbs_valve)
             self.flow(500)
@@ -2268,7 +2140,7 @@ class fluidics:
             time.sleep(60)
             self.flow(0)
 
-        elif action_type == 'Nuc Touchup':
+        elif action_type == 'Nuc_Touchup':
 
             self.valve_select(nuc_valve)
             self.flow(500)
