@@ -2090,7 +2090,10 @@ class fluidics:
         pbs_valve = 8
         bleach_time = 3 #minutes
         stain_flow_time = 45 #seconds
-        stain_inc_time = 45 #minutes
+        if heater_state == 0:
+            stain_inc_time = 45 #minutes
+        if heater_state == 1:
+            stain_inc_time = 45  # minutes
         nuc_valve = 7
         nuc_flow_time = 60 #seconds
         nuc_inc_time = 3 #minutes
