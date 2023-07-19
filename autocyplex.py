@@ -2093,7 +2093,7 @@ class fluidics:
         if heater_state == 0:
             stain_inc_time = 45 #minutes
         if heater_state == 1:
-            stain_inc_time = 45  # minutes
+            stain_inc_time = 45  #minutes
         nuc_valve = 7
         nuc_flow_time = 60 #seconds
         nuc_inc_time = 3 #minutes
