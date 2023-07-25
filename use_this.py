@@ -1,59 +1,93 @@
-#from autocif import *
+from autocyplex import *
 from pycromanager import Core, Studio, Magellan
-#microscope = cycif() # initialize cycif object
-core = Core()
-
-#microscope = cycif() # initialize cycif object
-#magellan = Magellan()
-
-xyz_points = {'x':[1000,1000,2000, 2000], 'y':[2340,2680,2340,2680], 'z':[1100,1100,1103, 1105]}
-
-def snake_order(xyz_points):
-    '''
-    Takes set of XYZ points and makes snake pattern order for points going left to right and top to bottom. Assumes points form recilinear pattern
-
-    :param dictionary xyz_points: XY locations from MM surface and z from autofocus at each XY point
-    :return: list that is the order for points to be acquired in
-    '''
-    unique_x_values = list(set(sorted(xyz_points['x'], reverse = True))) #all unique values and sorted from highest to lowest in list form
-    unique_y_values = list(set(sorted(xyz_points['y'], reverse = True)))
-    num_unique_x_positions = len(unique_x_values)
-    num_unique_y_positions = len(unique_y_values)
-    snake_order = []
-
-    for n in range(0, num_unique_y_positions):
-        y_value = unique_y_values[n]
-        if n % 2 == 1:
-            unique_x_values = list(set(sorted(xyz_points['x'], reverse=True)))
-        elif n % 2 == 0:
-            unique_x_values = list(set(sorted(xyz_points['x'])))
-        for m in range(0, num_unique_x_positions):
-            x_value = unique_x_values[m]
-            print(x_value)
-            position_index = xy_point_index(xyz_points, x_value, y_value)
-            snake_order.append(position_index)
-
-    return snake_order
+microscope = cycif() # initialize cycif object
 
 
-def dict_index_array(dictionary, key_value, value):
-    term_array = dictionary[key_value]
-    index_array = []
-    term_count = len(term_array)
-    for x in range(0, term_count):
-        term = term_array[x]
-        if term == value:
-            index_array.append(x)
 
-    return index_array
+experiment_directory = r'E:\auto'
 
-def xy_point_index(xyz_points, x_point, y_point):
-    indicies_x = dict_index_array(xyz_points, 'x', x_point)
-    indicies_y = dict_index_array(xyz_points, 'y', y_point)
-    index = list(set(indicies_y) & set(indicies_x))[0]
-    return index
 
-print(core.get_exposure() )
+
+microscope.file_structure(experiment_directory, 1)
+xy_points = microscope.tile_xy_pos('New Surface 1')
+xyz_points = microscope.nonfocus_tile_DAPI(xy_points)
+array = microscope.tile_pattern(xyz_points)
+
+off_array = [-3,-5,-6]
+fm_array = microscope.fm_channel_initial(experiment_directory, array, off_array)
+microscope.sp_array(experiment_directory, 'DAPI')
+sample_grid = microscope.tile_subsampler(experiment_directory)
+print(fm_array[2])
+
+sample_mid_z = fm_array[2][0][0]
+
+
+scan_range = 20
+sample_span = [sample_mid_z - scan_range/2, sample_mid_z , sample_mid_z + scan_range/2]
+
+
+for x in range(0, 3):
+    for y in range(0, 3):
+        for points in range(0, 3):
+            z_slice = int(sample_span[points])
+            im = microscope.image_capture(experiment_directory, 'DAPI',25, y, x, z_slice)
+            #cycif.auto_exposure_calculation(im, 0.99, 'DAPI', points, z_slice, x, y)
+            div_im = microscope.image_sub_divider(im, 2, 2)
+            microscope.sub_divided_2_brenner_sp(experiment_directory, div_im, 'DAPI', points, z_slice, x, y)
+
+#cycif.calc_array_solver(experiment_directory, 'DAPI')
+#cycif.calc_array_2_exp_array(experiment_directory, 'DAPI', 0.5)
+microscope.sp_array_focus_solver(experiment_directory, 'DAPI')
+#microscope.sp_array_filter(experiment_directory, 'DAPI')
+microscope.sp_array_surface_2_fm(experiment_directory, 'DAPI')
+
+numpy_path = experiment_directory + '/' + 'np_arrays'
+
+os.chdir(numpy_path)
+fm_array = np.load('fm_array.npy', allow_pickle=False)
+
+print(fm_array[2])
+
+'''
+def focus_expose(self, experiment_directory, channel, ):
+    experiment_directory = r'D:\Images\AutoCyPlex\7_18_23 focus z stack sample set\dapi_full_frame_good_tissue_1um_1'
+    os.chdir(experiment_directory)
+    filename = 'dapi_full_frame_good_tissue_1um_1_MMStack_3-Pos000_000.ome.tif'
+    stack = io.imread(filename, plugin="tifffile")
+    start_time = time.time()
+
+    cycif.sp_array(experiment_directory, 'DAPI', 3, 4)  # pass
+    cycif.exp_calc_array(experiment_directory, 'DAPI', 3, 4)
+    sample_grid = cycif.tile_subsampler(experiment_directory)  # pass
+
+    sample_high_z = 25
+    scan_range = 17
+    sample_span = [sample_high_z - scan_range, sample_high_z - scan_range / 2, sample_high_z]
+
+    for points in range(0, 3):
+        z_slice = int(sample_span[points])
+        for y in range(0, 3):
+            for x in range(0, 4):
+                im = image_capture(stack, y, x, z_slice)
+                cycif.auto_exposure_calculation(im, 0.99, 'DAPI', points, z_slice, x, y)
+                div_im = cycif.image_sub_divider(im, 24, 32)
+                cycif.sub_divided_2_brenner_sp(experiment_directory, div_im, 'DAPI', points, z_slice, x, y)
+
+    cycif.calc_array_solver(experiment_directory, 'DAPI')
+    cycif.calc_array_2_exp_array(experiment_directory, 'DAPI', 0.5)
+    cycif.sp_array_focus_solver(experiment_directory, 'DAPI')
+    cycif.sp_array_filter(experiment_directory, 'DAPI')
+    cycif.sp_array_surface_2_fm(experiment_directory, 'DAPI')
+
+    stop_time = time.time()
+    print(stop_time - start_time)
+
+    re_image = cycif.fm_rebuilt_image(stack)
+
+    os.chdir(r'D:\Images\AutoCyPlex\7_18_23 focus z stack sample set\dapi_full_frame_good_tissue_1um_1')
+    io.imsave('dapi_rebuild.tif', re_image)
+
+'''
 
 
 

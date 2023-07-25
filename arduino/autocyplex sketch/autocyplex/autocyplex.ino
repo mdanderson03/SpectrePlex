@@ -262,7 +262,7 @@ void loop() {
         }
       }
 
-      if (cmd1 == 1){
+      if (cmd1 == 2){
         if (cmd2 == 1){
           digitalWrite(5, HIGH);
         }

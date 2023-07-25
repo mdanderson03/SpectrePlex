@@ -7,6 +7,40 @@ from skimage import io, filters
 import matplotlib.pyplot as plt
 
 
+def focus_score(self, image, bin_level):
+    '''
+    Calculates focus score on image with Brenners algorithm on downsampled image.
+
+    Image is downsampled by [binning_size x binning_size], where binning_size is currently hardcoded in.
+
+    :param numpy image: single image from hooked from acquistion
+    :return: focus score for image
+    :rtype: float
+    '''
+    # Note: Uniform background is a bit mandatory
+
+    # binning_size = bin_level
+    binning_size = 1
+    image_binned = measure.block_reduce(image, binning_size)
+
+    # do Brenner score
+    a = image_binned[1::bin_level, ::bin_level]
+    # a = image_binned[2:, :]
+    a = a
+    b = image_binned[:-1:bin_level, ::bin_level]
+    # b = image_binned[:-2, :]
+    b = b
+    c = (a - b)
+    c = (c * c)
+    c = c / 100000
+    c = c.astype('int64')
+    # tf.imwrite('c.tif', c)
+    f_score = c.sum().astype('longlong')
+
+    return f_score
+
+
+
 def image_percentile_level(image, cut_off_threshold):
     '''
     Takes in image and cut off threshold and finds pixel value that exists at that threshold point.

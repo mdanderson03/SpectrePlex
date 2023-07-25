@@ -30,8 +30,8 @@ from Elveflow64 import *
 
 
 
-client = mqtt.Client('autocyplex_server')
-client.connect('10.3.141.1', 1883)
+#client = mqtt.Client('autocyplex_server')
+#client.connect('10.3.141.1', 1883)
 
 core = Core()
 magellan = Magellan()
@@ -129,7 +129,7 @@ class cycif:
 
         return 1 / f_score_shadow
 
-    def sp_array(self, experiment_directory, channel, y_tiles, x_tiles):
+    def sp_array(self, experiment_directory, channel):
         '''
         Generate super pixel array as defined in powerpoint autofocus network
         :param string experiment_directory:
@@ -142,11 +142,16 @@ class cycif:
         numpy_path = experiment_directory +'/' + 'np_arrays'
         os.chdir(numpy_path)
 
-        x_pixel_count = int((0.9 * x_tiles + 0.1) * 32)
-        y_pixel_count = int((0.9 * y_tiles + 0.1) * 24)
+        fm_array = np.load('fm_array.npy', allow_pickle=False)
+
+        y_tiles = np.shape(fm_array[0])[0]
+        x_tiles = np.shape(fm_array[0])[1]
+
+        x_pixel_count = int((x_tiles + 0.1) * 32)
+        y_pixel_count = int((y_tiles + 0.1) * 24)
         sp_array = np.random.rand(5, y_pixel_count, x_pixel_count, 2).astype('float64')
 
-        filename = channel + '_sp_array,npy'
+        filename = channel + '_sp_array.npy'
         np.save(filename, sp_array)
 
     def tile_subsampler(self, experiment_directory):
@@ -212,8 +217,8 @@ class cycif:
 
         derivative_jump = 15
 
-        y_subdivisions = 24
-        x_subdivisions = 32
+        y_subdivisions = 2
+        x_subdivisions = 2
 
         y_offset = int(y_subdivisions * y_tile_number)
         x_offset = int(x_subdivisions * x_tile_number)
@@ -221,11 +226,11 @@ class cycif:
         for y in range(y_offset, y_subdivisions + y_offset):
             for x in range(x_offset, x_subdivisions + x_offset):
 
-                score = cycif.focus_score(sub_divided_image[y][x], derivative_jump)
+                score = self.focus_score(sub_divided_image[y - y_offset][x - x_offset], derivative_jump)
                 sp_array_slice[y][x][0] = score
                 sp_array_slice[y][x][1] = z_position
 
-        np.save(file_name)
+        np.save(file_name, sp_array)
 
     def sp_array_focus_solver(self, experiment_directory, channel):
         '''
@@ -252,8 +257,10 @@ class cycif:
                 positions = sp_array[0:3, y, x, 1]
                 three_point_array = np.stack((scores, positions), axis=1)
 
-                a, b, c, predicted_focus = gauss_jordan_solver(three_point_array)
+
+                a, b, c, predicted_focus = self.gauss_jordan_solver(three_point_array)
                 sp_array[3][y][x][0] = predicted_focus
+                print(predicted_focus)
 
             np.save(file_name, sp_array)
 
@@ -327,7 +334,7 @@ class cycif:
 
         depth_of_focus = 2 #in microns
 
-        point_list = cycif.map_2_points(experiment_directory, channel)
+        point_list = self.map_2_points(experiment_directory, channel)
         X = point_list[:, 0:2]
         y = point_list[:, 2]
 
@@ -351,8 +358,8 @@ class cycif:
 
         #calc number of slices needed
 
-        high_z = cycif.plane_2_z(coefficents, [0, 0])
-        low_z = cycif.plane_2_z(coefficents, [5056, 2960])
+        high_z = self.plane_2_z(coefficents, [0, 0])
+        low_z = self.plane_2_z(coefficents, [5056, 2960])
         corner_corner_difference = math.fabs(high_z - low_z)
         number_planes = int(corner_corner_difference/depth_of_focus) + 1
 
@@ -362,7 +369,7 @@ class cycif:
 
                 x_point = 5056 * x + 2528
                 y_point = 2060 * y + 1480
-                focus_z = cycif.plane_2_z(coefficents, [x_point, y_point])
+                focus_z = self.plane_2_z(coefficents, [x_point, y_point])
                 fm_array[channel_index][y][x] = focus_z + (number_planes - 1)/2 * depth_of_focus
                 fm_array[channel_index + 1][y][x] = number_planes
 
@@ -389,8 +396,8 @@ class cycif:
         for y in range(0, y_fm_section):
             for x in range(0, x_fm_section):
 
-                x_coord = x * 158
-                y_coord = y * 123
+                x_coord = x * 2528
+                y_coord = y * 1480
                 z_coord = z_array[y][x]
                 single_point = np.array([x_coord, y_coord, z_coord])
                 single_point = np.expand_dims(single_point, axis=0)
@@ -450,7 +457,7 @@ class cycif:
     #This section is the for the exposure functions.
     ###########################################################
 
-    def auto_exposure_calculation(image, cut_off_threshold, channel, point_number, z_position, x_tile_number,
+    def auto_exposure_calculation(self, experiment_directory,  image, cut_off_threshold, channel, point_number, z_position, x_tile_number,
                                   y_tile_number):
         '''
         Takes in subdivided image and calculated brenner score at each subsection and properly places into sp_array
@@ -469,13 +476,13 @@ class cycif:
         calc_array = np.load(file_name, allow_pickle=False)
         calc_array_slice = calc_array[point_number]
 
-        intensity = image_percentile_level(image, cut_off_threshold)
+        intensity = cycif.image_percentile_level(image, cut_off_threshold)
         calc_array_slice[y_tile_number][x_tile_number][0] = intensity
         calc_array_slice[y_tile_number][x_tile_number][1] = z_position
 
         np.save(file_name, calc_array)
 
-    def calc_array_solver(experiment_directory, channel):
+    def calc_array_solver(self, experiment_directory, channel):
 
         numpy_path = experiment_directory + '/' + 'np_arrays'
         os.chdir(numpy_path)
@@ -493,7 +500,7 @@ class cycif:
                 positions = calc_array[0:3, y, x, 1]
                 three_point_array = np.stack((scores, positions), axis=1)
 
-                a, b, c, predicted_focus = gauss_jordan_solver(three_point_array)
+                a, b, c, predicted_focus = cycif.gauss_jordan_solver(three_point_array)
                 peak_int = (-(b * b) / (4 * a) + c)
                 calc_array[3][y][x][0] = peak_int
                 calc_array[3][y][x][1] = predicted_focus
@@ -501,7 +508,7 @@ class cycif:
 
         np.save(file_name, calc_array)
 
-    def calc_array_2_exp_array(experiment_directory, channel, fraction_dynamic_range):
+    def calc_array_2_exp_array(self, experiment_directory, channel, fraction_dynamic_range):
         numpy_path = experiment_directory + '/' + 'np_arrays'
         os.chdir(numpy_path)
         file_name = channel + '_exp_calc_array.npy'
@@ -605,7 +612,12 @@ class cycif:
 
         return new_numpy
 
-    def fm_channel_initial(self, full_array, off_array):
+    def fm_channel_initial(self, experiment_directory, full_array, off_array):
+
+
+        numpy_path = experiment_directory + '/' + 'np_arrays'
+        os.chdir(numpy_path)
+        file_name = 'fm_array.npy'
 
         a488_channel_offset = off_array[0] #determine if each of these are good and repeatable offsets
         a555_channel_offset = off_array[1]
@@ -622,6 +634,8 @@ class cycif:
         full_array[3] = full_array[2] + a488_channel_offset #index for a488 = 3
         full_array[4] = full_array[2] + a555_channel_offset
         full_array[5] = full_array[2] + a647_channel_offset
+
+        np.save(file_name, full_array)
 
         return full_array
 
@@ -845,44 +859,31 @@ class cycif:
 #experimental using core snap and not pycromanager acquire
 ############################################
 
-    def focus_expose(self, experiment_directory, channel, ):
 
-        experiment_directory = r'D:\Images\AutoCyPlex\7_18_23 focus z stack sample set\dapi_full_frame_good_tissue_1um_1'
-        os.chdir(experiment_directory)
-        filename = 'dapi_full_frame_good_tissue_1um_1_MMStack_3-Pos000_000.ome.tif'
-        stack = io.imread(filename, plugin="tifffile")
-        start_time = time.time()
+    def image_capture(self, experiment_directory, channel, exp_time, x,y,z):
 
-        sp_array(experiment_directory, 'DAPI', 3, 4)  # pass
-        exp_calc_array(experiment_directory, 'DAPI', 3, 4)
-        sample_grid = tile_subsampler(experiment_directory)  # pass
+        numpy_path = experiment_directory + '/' + 'np_arrays'
+        os.chdir(numpy_path)
+        fm_array = np.load('fm_array.npy', allow_pickle=False)
 
-        sample_high_z = 25
-        scan_range = 17
-        sample_span = [sample_high_z - scan_range, sample_high_z - scan_range / 2, sample_high_z]
+        numpy_x = fm_array[0]
+        numpy_y = fm_array[1]
+        numpy_z = fm_array[2]
 
-        for points in range(0, 3):
-            z_slice = int(sample_span[points])
-            for y in range(0, 3):
-                for x in range(0, 4):
-                    im = image_capture(stack, y, x, z_slice)
-                    auto_exposure_calculation(im, 0.99, 'DAPI', points, z_slice, x, y)
-                    div_im = image_sub_divider(im, 24, 32)
-                    sub_divided_2_brenner_sp(experiment_directory, div_im, 'DAPI', points, z_slice, x, y)
+        core.set_config("Color", channel)
+        core.set_exposure(exp_time)
 
-        calc_array_solver(experiment_directory, 'DAPI')
-        calc_array_2_exp_array(experiment_directory, 'DAPI', 0.5)
-        sp_array_focus_solver(experiment_directory, 'DAPI')
-        sp_array_filter(experiment_directory, 'DAPI')
-        sp_array_surface_2_fm(experiment_directory, 'DAPI')
+        core.set_xy_position(numpy_x[y][x], numpy_y[y][x])
+        time.sleep(.5)
+        core.set_position(numpy_z[y][x])
 
-        stop_time = time.time()
-        print(stop_time - start_time)
+        core.snap_image()
+        tagged_image = core.get_tagged_image()
+        pixels = np.reshape(tagged_image.pix, newshape=[tagged_image.tags["Height"], tagged_image.tags["Width"]])
 
-        re_image = fm_rebuilt_image(stack)
+        return pixels
 
-        os.chdir(r'D:\Images\AutoCyPlex\7_18_23 focus z stack sample set\dapi_full_frame_good_tissue_1um_1')
-        io.imsave('dapi_rebuild.tif', re_image)
+
 
 
 
@@ -1113,14 +1114,14 @@ class cycif:
 
         self.marker_excel_file_generation(experiment_directory, cycle_number)
 
-    def full_cycle(self, experiment_directory, cycle_number, offset_array, stain_valve, heater_state = 0):
+    #def full_cycle(self, experiment_directory, cycle_number, offset_array, stain_valve, heater_state = 0):
 
-        z_slices = 7
+     #   z_slices = 7
 
-        pump.liquid_action('Stain', stain_valve, heater_state)  # nuc is valve=7, pbs valve=8, bleach valve=1 (action, stain_valve, heater state (off = 0, on = 1))
-        microscope.cycle_acquire(cycle_number, experiment_directory, z_slices, 'Stain', offset_array)
-        pump.liquid_action('Bleach')  # nuc is valve=7, pbs valve=8, bleach valve=1 (action, stain_valve, heater state (off = 0, on = 1))
-        microscope.cycle_acquire(cycle_number, experiment_directory, z_slices, 'Bleach', offset_array)
+      #  pump.liquid_action('Stain', stain_valve, heater_state)  # nuc is valve=7, pbs valve=8, bleach valve=1 (action, stain_valve, heater state (off = 0, on = 1))
+       # microscope.cycle_acquire(cycle_number, experiment_directory, z_slices, 'Stain', offset_array)
+        #pump.liquid_action('Bleach')  # nuc is valve=7, pbs valve=8, bleach valve=1 (action, stain_valve, heater state (off = 0, on = 1))
+        #microscope.cycle_acquire(cycle_number, experiment_directory, z_slices, 'Bleach', offset_array)
 
 ######Folder System Generation########################################################
 
@@ -1480,37 +1481,7 @@ class cycif:
             os.chdir(quick_tile_path)
             tf.imwrite(channel + '_cy' + str(cycle_number) + '_placed.tif', placed_image)
 
-    def focus_score(self, image, bin_level):
-        '''
-        Calculates focus score on image with Brenners algorithm on downsampled image.
 
-        Image is downsampled by [binning_size x binning_size], where binning_size is currently hardcoded in.
-
-        :param numpy image: single image from hooked from acquistion
-        :return: focus score for image
-        :rtype: float
-        '''
-        # Note: Uniform background is a bit mandatory
-
-        # binning_size = bin_level
-        binning_size = 1
-        image_binned = measure.block_reduce(image, binning_size)
-
-        # do Brenner score
-        a = image_binned[1::bin_level, ::bin_level]
-        # a = image_binned[2:, :]
-        a = a
-        b = image_binned[:-1:bin_level, ::bin_level]
-        # b = image_binned[:-2, :]
-        b = b
-        c = (a - b)
-        c = (c * c)
-        c = c / 100000
-        c = c.astype('int64')
-        # tf.imwrite('c.tif', c)
-        f_score = c.sum().astype('longlong')
-
-        return f_score
 
     def infocus(self, experiment_directory, cycle_number, x_sub_section_count, y_sub_section_count):
 
@@ -1724,7 +1695,7 @@ class arduino:
     def __init__(self):
         return
 
-    def mqtt_publish(self, message, subtopic, topic="control", client=client):
+    #def mqtt_publish(self, message, subtopic, topic="control", client=client):
         '''
         takes message and publishes message to server defined by client and under topic of topic/subtopic
 
@@ -1734,11 +1705,11 @@ class arduino:
         :return:
         '''
 
-        full_topic = topic + "/" + subtopic
+        #full_topic = topic + "/" + subtopic
 
-        client.loop_start()
-        client.publish(full_topic, message)
-        client.loop_stop()
+        #client.loop_start()
+       # client.publish(full_topic, message)
+        #client.loop_stop()
 
     def heater_state(self, state):
 
