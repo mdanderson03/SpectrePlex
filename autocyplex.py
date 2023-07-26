@@ -452,6 +452,24 @@ class cycif:
 
         return a,b,c,derivative
 
+    #########################################################
+    # Setup fm_array and sp_array alongside auto focus updates and flat values
+    #########################################################
+
+    def establish_fm_array(self, experiment_directory, desired_cycle_count, z_slices, off_array, autofocus = 0):
+        # non autofocus. Need to build in auto focus ability
+        self.file_structure(experiment_directory, desired_cycle_count)
+        xy_points = self.tile_xy_pos('New Surface 1')
+        xyz_points = self.nonfocus_tile_DAPI(xy_points)
+        array = self.tile_pattern(xyz_points)
+        self.fm_channel_initial(experiment_directory, array, off_array, z_slices)
+
+        if autofocus == 1:
+            self.fm_array_update_autofocus()
+        else:
+            pass
+
+    def fm_array_update_autofocus(self):
 
     ###########################################################
     #This section is the for the exposure functions.
@@ -585,10 +603,6 @@ class cycif:
         return xy
 
 
-############################################################################################
-#####focus_tile is depreciated. Need to convert this to not go to every tile, but an even sampling of them
-    #######################################################################################
-
     def tile_pattern(self, numpy_array):
         '''
         Takes numpy array with N rows and known tile pattern and casts into new array that follows
@@ -612,7 +626,7 @@ class cycif:
 
         return new_numpy
 
-    def fm_channel_initial(self, experiment_directory, full_array, off_array):
+    def fm_channel_initial(self, experiment_directory, full_array, off_array, z_slices):
 
 
         numpy_path = experiment_directory + '/' + 'np_arrays'
@@ -623,50 +637,37 @@ class cycif:
         a555_channel_offset = off_array[1]
         a647_channel_offset = off_array[2]
 
+        slice_gap = 1 # space between z slices in microns
+
         dummy_channel = np.empty_like(full_array[0])
         dummy_channel = np.expand_dims(dummy_channel, axis=0)
         channel_count = np.shape(full_array)[0]
 
-        while channel_count < 6:
+        while channel_count < 10:
             full_array = np.append(full_array, dummy_channel, axis = 0)
             channel_count = np.shape(full_array)[0]
 
-        full_array[3] = full_array[2] + a488_channel_offset #index for a488 = 3
-        full_array[4] = full_array[2] + a555_channel_offset
-        full_array[5] = full_array[2] + a647_channel_offset
+        full_array[4] = full_array[2] + a488_channel_offset #index for a488 = 3
+        full_array[6] = full_array[2] + a555_channel_offset
+        full_array[8] = full_array[2] + a647_channel_offset
+
+        y_tiles = np.shape(full_array[0])[0]
+        x_tiles = np.shape(full_array[0])[1]
+        z_slice_array = np.ones(y_tiles, x_tiles) * z_slices
+
+        full_array[3] = z_slice_array
+        full_array[5] = z_slice_array
+        full_array[7] = z_slice_array
+        full_array[9] = z_slice_array
+
+        full_array[2] = full_array[2] + int(z_slice_array * slice_gap)
+        full_array[4] = full_array[4] + int(z_slice_array * slice_gap)
+        full_array[6] = full_array[6]+ int(z_slice_array * slice_gap)
+        full_array[8] = full_array[8]+ int(z_slice_array * slice_gap)
 
         np.save(file_name, full_array)
 
         return full_array
-
-    def focus_tile_DAPI(self, full_array_no_pattern, z_range, exposure_time):
-         '''
-         Takes dictionary of XY coordinates, moves to each of them, executes autofocus algorithm from method
-         auto_focus and outputs the paired in focus z coordinate
-
-         :param dictionary tile_points_xy: dictionary containing all XY coordinates. In the form: {{x:(int)}, {y:(int)}}
-         :param MMCore_Object core: Object made from Bridge.core()
-         :param list z_centers: list of z points associated with xy points where the slide tilt was compensated for
-
-         :return: XYZ points where XY are stage coords and Z is in focus coordinate. {{x:(int)}, {y:(int)}, {z:(float)}}
-         :rtype: dictionary
-         '''
-
-         z_temp = []
-         num = np.shape(full_array_no_pattern)[1]
-         for q in range(0, num):
-             z_range = [z_range[0], z_range[1], z_range[2]]
-
-             new_x = full_array_no_pattern[0][q]
-             new_y = full_array_no_pattern[1][q]
-             core.set_xy_position(new_x, new_y)
-             z_focused = self.auto_focus(z_range, exposure_time,'DAPI')  # here is where autofocus results go. = auto_focus
-             z_temp.append(z_focused)
-         z_temp = np.expand_dims(z_temp, axis = 0)
-         xyz = np.append(full_array_no_pattern, z_temp, axis =0)
-
-
-         return xyz
 
     def nonfocus_tile_DAPI(self, full_array_no_pattern):
          '''
@@ -690,173 +691,8 @@ class cycif:
          return xyz
 
 
-    def focus_tile_stain(self, full_array_with_pattern, search_range, channel, exposure_time):
-         '''
-         Takes dictionary of XY coordinates, moves to each of them, executes autofocus algorithm from method
-         auto_focus and outputs the paired in focus z coordinate
-
-         :param dictionary tile_points_xy: dictionary containing all XY coordinates. In the form: {{x:(int)}, {y:(int)}}
-         :param list z_centers: list of z points associated with xy points where the slide tilt was compensated for
-
-         :return: XYZ points where XY are stage coords and Z is in focus coordinate. {{x:(int)}, {y:(int)}, {z:(float)}}
-         :rtype: dictionary
-         '''
-
-         if channel == 'A488':
-             channel_index = 3
-         if channel == 'A555':
-             channel_index = 4
-         if channel == 'A647':
-             channel_index = 5
-
-         #exposure_time = cycif.auto_expose(50, 2500, channel)
-
-         shape = np.shape(full_array_with_pattern)
-         x_tiles = shape[2]
-         y_tiles = shape[1]
-         for x in range(0, x_tiles):
-             for y in range(0, y_tiles):
-                 center = full_array_with_pattern[channel_index][y][x]
-                 z_range = [center - search_range/2, center + search_range/2, search_range/2]
-                 new_x = full_array_with_pattern[0][y][x]
-                 new_y = full_array_with_pattern[1][y][x]
-                 core.set_xy_position(new_x, new_y)
-                 z_focused = self.auto_focus(z_range, exposure_time,channel)  # here is where autofocus results go. = auto_focus
-                 full_array_with_pattern[channel_index][y][x] = z_focused
-
-         return full_array_with_pattern
-
- ########################################################################################################################
-
-
-
-    def tiled_acquire(self, full_array, channel, exposure_time, cycle_number, directory_name='E://test_control_staining'):
-
-        add_on_folder = 'cycle_' + str(cycle_number)
-        full_directory_path = directory_name + add_on_folder
-        if os.path.exists(full_directory_path) == 'False':
-            os.mkdir(full_directory_path)
-        time.sleep(0.5)
-
-        if channel == 'DAPI':
-            channel_index = 2
-        if channel == 'A488':
-            channel_index = 2
-        if channel == 'A555':
-            channel_index = 2
-        if channel == 'A647':
-            channel_index = 2
-
-
-        numpy_x = full_array[0]
-        numpy_y = full_array[1]
-        numpy_z = full_array[channel_index]
-        x_tile_count = np.unique(numpy_x).size
-        y_tile_count = np.unique(numpy_y).size
-
-        core.set_xy_position(numpy_x[0][0], numpy_y[0][0])
-        core.set_position(numpy_z[0][0])
-
-        with XYTiledAcquisition(directory=full_directory_path, name=channel, show_display=False, tile_overlap=10) as acq:
-            for y in range(0, y_tile_count):
-                if y % 2 != 0:
-                    for x in range(x_tile_count -1, -1, -1):
-                        print(x,y)
-                        event = {'channel': {'group': 'Color', 'config': channel}, 'exposure': exposure_time, 'row': y,
-                                 'col': x}
-
-                        core.set_position(numpy_z[y][x])
-                        time.sleep(0.5)
-
-                        acq.acquire(event)
-
-                elif y % 2 == 0:
-                    for x in range(0, x_tile_count):
-                        print(x, y)
-                        event = {'channel': {'group': 'Color', 'config': channel}, 'exposure': exposure_time, 'row': y,
-                                 'col': x}
-
-                        core.set_position(numpy_z[y][x])
-                        time.sleep(0.5)
-
-                        acq.acquire(event)
-
-
-
-    def fm_map_generate(self, channels=['DAPI', 'A488', 'A555', 'A647']):
-        '''
-        Takes generated micro-magellan surface with name: surface_name and extracts all points from it.
-        uses multi_d_acquistion to acquire all images in defined surface via xyz_acquire method,  auto exposes DAPI, A488, A555 and A647 channels.
-        Takes autofocus from center tile in surface and applies value to every other tile in surface
-
-        ::param str directory_name: highest level folder name to store all images in
-        :param: list[str] channels: list that contains strings with channel names
-        :return: Nothing
-        '''
-
-        surface_name = 'New Surface 1'
-        tile_surface_xy = self.tile_xy_pos(surface_name)  # pull center tile coords from manually made surface
-        z_center = magellan.get_surface(surface_name).get_points().get(0).z
-        dapi_z_range = [z_center - 20, z_center + 20, 10]
-
-        exp_time_array = []
-
-        for channel in channels:
-
-            if channel == 'DAPI':
-
-                auto_focus_exposure_time = self.auto_initial_expose(50, 2500, 'DAPI', dapi_z_range, surface_name)
-                tile_surface_xyz = self.focus_tile_DAPI(tile_surface_xy, dapi_z_range, auto_focus_exposure_time)
-                tile_surface_xyz = self.tile_pattern(tile_surface_xyz)
-                tile_surface_xyz = self.median_fm_filter(tile_surface_xyz, 'DAPI')
-                full_array = tile_surface_xyz
-                z_focused = tile_surface_xyz[2][0][0]
-                exp_time = self.auto_expose(auto_focus_exposure_time, 2500, z_focused, [channel], surface_name)
-                exp_time_array.append(exp_time)
-
-                full_array = self.fm_channel_initial(full_array)
-
-            if channel != 'DAPI':
-
-                if channel == 'A488':
-                    channel_index = 3
-                if channel == 'A555':
-                    channel_index = 4
-                if channel == 'A647':
-                    channel_index = 5
-
-                full_array = self.focus_tile_stain(full_array, 15,  channel)
-                z_focused = full_array[channel_index][0][0]
-                exp_time = self.auto_expose(60, 2500, z_focused, [channel], surface_name)
-                exp_time_array.append(exp_time)
-
-        np.save('exp_array.npy', exp_time_array)
-        np.save('fm_array.npy', full_array)
-
-        return exp_time_array, full_array
-
-
-    def acquire_all_tiled_surfaces(self, cycle_number, channels=['DAPI', 'A488', 'A555', 'A647'], directory_name='E://test_control_staining/'):
-
-        full_array = np.load('fm_array.npy', allow_pickle=False)
-        exp_time_array = np.load('exp_array.npy', allow_pickle=False)
-
-        for channel in channels:
-
-            if channel == 'DAPI':
-                channel_index = 0
-            if channel == 'A488':
-                channel_index = 1
-            if channel == 'A555':
-                channel_index = 2
-            if channel == 'A647':
-                channel_index = 3
-
-            exp_time = exp_time_array[channel_index]
-            self.tiled_acquire(full_array, channel, exp_time, cycle_number, directory_name)
-
 ############################################
-#experimental using core snap and not pycromanager acquire
+#Using core snap and not pycromanager acquire
 ############################################
 
 
@@ -884,11 +720,7 @@ class cycif:
         return pixels
 
 
-
-
-
-
-    def core_tile_acquire(self, experiment_directory, channel = 'DAPI', z_slices = 3):
+    def core_tile_acquire(self, experiment_directory, channel = 'DAPI'):
         '''
         Makes numpy files that contain all tiles and z slices. Order is z, tiles.
 
@@ -906,14 +738,12 @@ class cycif:
         height_pixels = 2960
         width_pixels = 5056
 
-        z_end = int((z_slices - 1)/2)
-        z_start = (-1*z_end)
-
         numpy_x = full_array[0]
         numpy_y = full_array[1]
         x_tile_count = np.unique(numpy_x).size
         y_tile_count = np.unique(numpy_y).size
         total_tile_count = x_tile_count * y_tile_count
+        z_slices = full_array[3][0][0]
 
         core.set_xy_position(numpy_x[0][0], numpy_y[0][0])
         time.sleep(1)
@@ -925,13 +755,13 @@ class cycif:
             channel_index = 2
             tif_stack_c_index = 0
         if channel == 'A488':
-            channel_index = 3
+            channel_index = 4
             tif_stack_c_index = 1
         if channel == 'A555':
-            channel_index = 4
+            channel_index = 6
             tif_stack_c_index = 2
         if channel == 'A647':
-            channel_index = 5
+            channel_index = 8
             tif_stack_c_index = 3
 
         numpy_z = full_array[channel_index]
@@ -940,17 +770,20 @@ class cycif:
         core.set_exposure(exp_time)
         tile_counter = 0
 
+
         for y in range(0, y_tile_count):
             if y % 2 != 0:
                 for x in range(x_tile_count - 1, -1, -1):
 
+                    z_end = numpy_z[y][x]
+                    z_start = z_end - z_slices
                     core.set_xy_position(numpy_x[y][x], numpy_y[y][x])
                     time.sleep(.5)
 
                     z_counter = 0
 
-                    for z in range(z_start, z_end + 1, 1):
-                        core.set_position(numpy_z[y][x] + 2*z)
+                    for z in range(z_start, z_end):
+                        core.set_position(numpy_z[y][x])
                         core.snap_image()
                         tagged_image = core.get_tagged_image()
                         pixels = np.reshape(tagged_image.pix,newshape=[tagged_image.tags["Height"], tagged_image.tags["Width"]])
@@ -958,7 +791,6 @@ class cycif:
 
                         z_counter += 1
 
-                    #print(tile_counter)
                     tile_counter += 1
 
 
@@ -970,8 +802,8 @@ class cycif:
 
                     z_counter = 0
 
-                    for z in range(z_start, z_end + 1, 1):
-                        core.set_position(numpy_z[y][x] + 2*z)
+                    for z in range(z_start, z_end):
+                        core.set_position(numpy_z[y][x])
                         core.snap_image()
                         tagged_image = core.get_tagged_image()
                         pixels = np.reshape(tagged_image.pix,
@@ -982,7 +814,6 @@ class cycif:
 
                         z_counter += 1
 
-                    #print(tile_counter)
                     tile_counter += 1
 
         return tif_stack
