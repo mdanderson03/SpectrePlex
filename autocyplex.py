@@ -465,11 +465,38 @@ class cycif:
         self.fm_channel_initial(experiment_directory, array, off_array, z_slices)
 
         if autofocus == 1:
-            self.fm_array_update_autofocus()
+            self.fm_array_update_autofocus_autoexpose(experiment_directory)
         else:
             pass
 
-    def fm_array_update_autofocus(self):
+    def fm_array_update_autofocus_autoexpose(self, experiment_directory):
+
+        numpy_path = experiment_directory +'/' + 'np_arrays'
+        os.chdir(numpy_path)
+        file_name = 'fm_array.npy'
+        fm_array = np.load(file_name, allow_pickle=False)
+
+        y_tiles = np.shape(fm_array[0])[0]
+        x_tiles = np.shape(fm_array[0])[1]
+        scan_range = 20
+        sample_span = [sample_mid_z - scan_range / 2, sample_mid_z, sample_mid_z + scan_range / 2]
+
+        for x in range(0, x_tiles):
+            for y in range(0, y_tiles):
+                for points in range(0, 3):
+                    z_slice = int(sample_span[points])
+                    im = self.image_capture(experiment_directory, 'DAPI', 25, y, x, z_slice)
+                    # cycif.auto_exposure_calculation(im, 0.99, 'DAPI', points, z_slice, x, y)
+                    div_im = self.image_sub_divider(im, 2, 2)
+                    self.sub_divided_2_brenner_sp(experiment_directory, div_im, 'DAPI', points, z_slice, x, y)
+
+        # self.calc_array_solver(experiment_directory, 'DAPI')
+        # self.calc_array_2_exp_array(experiment_directory, 'DAPI', 0.5)
+        self.sp_array_focus_solver(experiment_directory, 'DAPI')
+        #self.sp_array_filter(experiment_directory, 'DAPI')
+        self.sp_array_surface_2_fm(experiment_directory, 'DAPI')
+
+        np.save('fm_array.npy', fm_array)
 
     ###########################################################
     #This section is the for the exposure functions.
@@ -553,16 +580,6 @@ class cycif:
         exp_array[index] = int(predicted_exp_time)
 
         np.save('exp_array.npy', exp_array)
-
-
-
-
-
-
-
-
-
-
 
 
 
@@ -922,25 +939,15 @@ class cycif:
         self.save_quick_tile(pna_stack, channel, cycle, experiment_directory, stain_bleach)
 
 
-    def cycle_acquire(self, cycle_number, experiment_directory, z_slices, stain_bleach, offset_array, exp_time_array = 0, channels = ['DAPI', 'A488', 'A555', 'A647']):
+    def image_cycle_acquire(self, cycle_number, experiment_directory, z_slices, stain_bleach, exp_time_array, offset_array, channels = ['DAPI', 'A488', 'A555', 'A647']):
 
-        self.file_structure(experiment_directory, cycle_number)
-        xy_pos = self.tile_xy_pos('New Surface 1')
-        xyz_pos = self.nonfocus_tile_DAPI(xy_pos)
-        xyz_tile_pattern = self.tile_pattern(xyz_pos)
-        fm_array = self.fm_channel_initial(xyz_tile_pattern, offset_array)
+        self.establish_fm_array(experiment_directory, cycle_number, z_slices, offset_array)
 
-        np.save('fm_array.npy', fm_array)
-
-        if exp_time_array == 0:
-            exp_time = self.auto_expose(experiment_directory, 300, 5000)
-        else:
-            exp_time = exp_time_array
-
+        exp_time = exp_time_array
         np.save('exp_array.npy', exp_time)
 
         for channel in channels:
-            z_tile_stack = self.core_tile_acquire(experiment_directory, channel, z_slices)
+            z_tile_stack = self.core_tile_acquire(experiment_directory, channel)
             self.save_files(z_tile_stack, channel, cycle_number, experiment_directory, stain_bleach)
 
         self.marker_excel_file_generation(experiment_directory, cycle_number)
