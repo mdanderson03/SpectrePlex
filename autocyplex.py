@@ -654,7 +654,7 @@ class cycif:
         a555_channel_offset = off_array[1]
         a647_channel_offset = off_array[2]
 
-        slice_gap = 1 # space between z slices in microns
+        slice_gap = 2 # space between z slices in microns
 
         dummy_channel = np.empty_like(full_array[0])
         dummy_channel = np.expand_dims(dummy_channel, axis=0)
@@ -668,19 +668,21 @@ class cycif:
         full_array[6] = full_array[2] + a555_channel_offset
         full_array[8] = full_array[2] + a647_channel_offset
 
-        y_tiles = np.shape(full_array[0])[0]
-        x_tiles = np.shape(full_array[0])[1]
-        z_slice_array = np.ones(y_tiles, x_tiles) * z_slices
+        y_tiles = int(np.shape(full_array[0])[0])
+        x_tiles = int(np.shape(full_array[0])[1])
+        z_slice_array = np.ones((y_tiles, x_tiles))
+        z_slice_array = z_slice_array * z_slices
 
         full_array[3] = z_slice_array
         full_array[5] = z_slice_array
         full_array[7] = z_slice_array
         full_array[9] = z_slice_array
 
-        full_array[2] = full_array[2] + int(z_slice_array * slice_gap)
-        full_array[4] = full_array[4] + int(z_slice_array * slice_gap)
-        full_array[6] = full_array[6]+ int(z_slice_array * slice_gap)
-        full_array[8] = full_array[8]+ int(z_slice_array * slice_gap)
+
+        full_array[2] = full_array[2] + int((z_slice_array[0][0] * slice_gap)/2)
+        full_array[4] = full_array[4] + int((z_slice_array[0][0] * slice_gap)/2)
+        full_array[6] = full_array[6] + int((z_slice_array[0][0] * slice_gap)/2)
+        full_array[8] = full_array[8] + int((z_slice_array[0][0] * slice_gap)/2)
 
         np.save(file_name, full_array)
 
@@ -761,11 +763,12 @@ class cycif:
         y_tile_count = np.unique(numpy_y).size
         total_tile_count = x_tile_count * y_tile_count
         z_slices = full_array[3][0][0]
+        slice_gap = 2
 
         core.set_xy_position(numpy_x[0][0], numpy_y[0][0])
         time.sleep(1)
 
-        tif_stack = np.random.rand(z_slices, total_tile_count, height_pixels, width_pixels).astype('float16')
+        tif_stack = np.random.rand(int(z_slices), total_tile_count, height_pixels, width_pixels).astype('float16')
 
 
         if channel == 'DAPI':
@@ -792,15 +795,16 @@ class cycif:
             if y % 2 != 0:
                 for x in range(x_tile_count - 1, -1, -1):
 
-                    z_end = numpy_z[y][x]
-                    z_start = z_end - z_slices
+                    z_end = int(numpy_z[y][x])
+                    z_start = int(z_end - z_slices * slice_gap)
                     core.set_xy_position(numpy_x[y][x], numpy_y[y][x])
                     time.sleep(.5)
 
                     z_counter = 0
 
-                    for z in range(z_start, z_end):
-                        core.set_position(numpy_z[y][x])
+                    for z in range(z_start, z_end, slice_gap):
+                        core.set_position(z)
+                        time.sleep(0.5)
                         core.snap_image()
                         tagged_image = core.get_tagged_image()
                         pixels = np.reshape(tagged_image.pix,newshape=[tagged_image.tags["Height"], tagged_image.tags["Width"]])
@@ -814,13 +818,16 @@ class cycif:
             elif y % 2 == 0:
                 for x in range(0, x_tile_count):
 
+                    z_end = int(numpy_z[y][x])
+                    z_start = int(z_end - z_slices * slice_gap)
                     core.set_xy_position(numpy_x[y][x], numpy_y[y][x])
                     time.sleep(.5)
 
                     z_counter = 0
 
-                    for z in range(z_start, z_end):
-                        core.set_position(numpy_z[y][x])
+                    for z in range(z_start, z_end, slice_gap):
+                        core.set_position(z)
+                        time.sleep(0.5)
                         core.snap_image()
                         tagged_image = core.get_tagged_image()
                         pixels = np.reshape(tagged_image.pix,
@@ -950,7 +957,7 @@ class cycif:
             z_tile_stack = self.core_tile_acquire(experiment_directory, channel)
             self.save_files(z_tile_stack, channel, cycle_number, experiment_directory, stain_bleach)
 
-        self.marker_excel_file_generation(experiment_directory, cycle_number)
+        #self.marker_excel_file_generation(experiment_directory, cycle_number)
 
     #def full_cycle(self, experiment_directory, cycle_number, offset_array, stain_valve, heater_state = 0):
 
@@ -1036,7 +1043,7 @@ class cycif:
     def file_structure(self, experiment_directory, highest_cycle_count):
 
         channels = ['DAPI', 'A488', 'A555', 'A647']
-        cycles = np.linspace(0,highest_cycle_count,highest_cycle_count).astype(int)
+        cycles = np.linspace(0,highest_cycle_count).astype(int)
 
         #folder layer one
         os.chdir(experiment_directory)
