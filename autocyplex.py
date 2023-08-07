@@ -456,13 +456,18 @@ class cycif:
     # Setup fm_array and sp_array alongside auto focus updates and flat values
     #########################################################
 
-    def establish_fm_array(self, experiment_directory, desired_cycle_count, z_slices, off_array, autofocus = 0):
+    def establish_fm_array(self, experiment_directory, desired_cycle_count, z_slices, off_array, x_crop_percentage = 0, autofocus = 0):
         # non autofocus. Need to build in auto focus ability
         self.file_structure(experiment_directory, desired_cycle_count)
         xy_points = self.tile_xy_pos('New Surface 1')
         xyz_points = self.nonfocus_tile_DAPI(xy_points)
-        array = self.tile_pattern(xyz_points)
-        self.fm_channel_initial(experiment_directory, array, off_array, z_slices)
+        self.tile_pattern(xyz_points)
+        self.x_overlap_adjuster(x_crop_percentagfe, experiment_directory)
+
+        if x_crop_percentage != 0:
+            self.fm_channel_initial(experiment_directory, array, off_array, z_slices)
+        else:
+            pass
 
         if autofocus == 1:
             self.fm_array_update_autofocus_autoexpose(experiment_directory)
@@ -643,12 +648,13 @@ class cycif:
 
         return new_numpy
 
-    def fm_channel_initial(self, experiment_directory, full_array, off_array, z_slices):
+    def fm_channel_initial(self, experiment_directory, off_array, z_slices):
 
 
         numpy_path = experiment_directory + '/' + 'np_arrays'
         os.chdir(numpy_path)
         file_name = 'fm_array.npy'
+        fm_array = np.load(file_name, allow_pickle=False)
 
         a488_channel_offset = off_array[0] #determine if each of these are good and repeatable offsets
         a555_channel_offset = off_array[1]
@@ -656,27 +662,27 @@ class cycif:
 
         slice_gap = 2 # space between z slices in microns
 
-        dummy_channel = np.empty_like(full_array[0])
+        dummy_channel = np.empty_like(fm_array[0])
         dummy_channel = np.expand_dims(dummy_channel, axis=0)
-        channel_count = np.shape(full_array)[0]
+        channel_count = np.shape(fm_array)[0]
 
         while channel_count < 10:
-            full_array = np.append(full_array, dummy_channel, axis = 0)
-            channel_count = np.shape(full_array)[0]
+            full_array = np.append(fm_array, dummy_channel, axis = 0)
+            channel_count = np.shape(fm_array)[0]
 
-        full_array[4] = full_array[2] + a488_channel_offset #index for a488 = 3
-        full_array[6] = full_array[2] + a555_channel_offset
-        full_array[8] = full_array[2] + a647_channel_offset
+        fm_array[4] = fm_array[2] + a488_channel_offset #index for a488 = 3
+        fm_array[6] = fm_array[2] + a555_channel_offset
+        fm_array[8] = fm_array[2] + a647_channel_offset
 
-        y_tiles = int(np.shape(full_array[0])[0])
-        x_tiles = int(np.shape(full_array[0])[1])
+        y_tiles = int(np.shape(fm_array[0])[0])
+        x_tiles = int(np.shape(fm_array[0])[1])
         z_slice_array = np.ones((y_tiles, x_tiles))
         z_slice_array = z_slice_array * z_slices
 
-        full_array[3] = z_slice_array
-        full_array[5] = z_slice_array
-        full_array[7] = z_slice_array
-        full_array[9] = z_slice_array
+        fm_array[3] = z_slice_array
+        fm_array[5] = z_slice_array
+        fm_array[7] = z_slice_array
+        fm_array[9] = z_slice_array
 
 
         full_array[2] = full_array[2] + int((z_slice_array[0][0] * slice_gap)/2)
@@ -731,7 +737,11 @@ class cycif:
         # populate new_fm_array with y values
 
         for y in range(0, y_tiles):
-            new_fm_array[0, y, 0:x_tiles] = fm_array[0][y][0]
+            new_fm_array[0, y, 0:x_tiles] = fm_array[1][y][0]
+
+        # populate new_fm_array with dapi z values
+
+        new_fm_array[0, 0:y_tiles, 0:x_tiles] = fm_array[2][0][0]
 
         np.save('fm_array.npy', new_fm_array)
 
@@ -746,6 +756,10 @@ class cycif:
          :rtype: dictionary
          '''
 
+         numpy_path = experiment_directory + '/' + 'np_arrays'
+         os.chdir(numpy_path)
+         file_name = 'fm_array.npy'
+
          z_pos = magellan.get_surface('New Surface 1').get_points().get(0).z
          num = np.shape(full_array_no_pattern)[1]
          z_temp = []
@@ -754,7 +768,7 @@ class cycif:
          z_temp = np.expand_dims(z_temp, axis = 0)
          xyz = np.append(full_array_no_pattern, z_temp, axis =0)
 
-         return xyz
+         np.save(file_name, xyz)
 
 
 ############################################
