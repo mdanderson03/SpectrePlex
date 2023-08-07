@@ -688,6 +688,53 @@ class cycif:
 
         return full_array
 
+    def x_overlap_adjuster(self, crop_each_side_percentage, experiment_directory):
+
+        # load in fm array
+        numpy_path = experiment_directory + '/' + 'np_arrays'
+        os.chdir(numpy_path)
+        file_name = 'fm_array.npy'
+        fm_array = np.load(file_name, allow_pickle=False)
+
+        # Find pixels in each dimensions
+        x_tiles = np.shape(fm_array[0])[1]
+        y_tiles = np.shape(fm_array[0])[0]
+
+        x_pixels = ((x_tiles - 1) * (0.9) + 1) * 5056
+
+        # Find number tiles in adjusted grid
+
+        new_frame_x = int(1 - 2 * crop_each_side_percentage * 5056)
+        new_x_tiles = (x_pixels / new_frame_x - 1) / 0.9 + 1
+        new_x_tiles = math.ceil(new_x_tiles)
+
+        # generate new blank fm_array numpy array
+
+        new_fm_array = np.random.rand(10, y_tiles, new_x_tiles).astype('int16')
+
+        # Find border where x starts on the left (not center point, but x value for left most edge of left most tile
+
+        left_x_center = fm_array[0][0][0]
+        left_most_x = left_x_center - 2528 * 0.197
+
+        # Find center point in new image that makes edge of image align with left_most_x
+        # Also find x to x + i spacing and populate rest of x values in new_fm_array
+
+        x_col_0 = left_most_x + new_frame_x / 2 * 0.197
+        x_spacing = (0.9) * new_frame_x
+
+        # Populate new_fm_array with row 0 x values
+
+        for x in range(0, x_tiles):
+            new_fm_array[0, 0:y_tiles, x] = x_col_0 + x * x_spacing
+
+        # populate new_fm_array with y values
+
+        for y in range(0, y_tiles):
+            new_fm_array[0, y, 0:x_tiles] = fm_array[0][y][0]
+
+        np.save('fm_array.npy', new_fm_array)
+
     def nonfocus_tile_DAPI(self, full_array_no_pattern):
          '''
          Makes micromagellen z the focus position at each XY point for DAPI
