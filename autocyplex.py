@@ -460,14 +460,15 @@ class cycif:
         # non autofocus. Need to build in auto focus ability
         self.file_structure(experiment_directory, desired_cycle_count)
         xy_points = self.tile_xy_pos('New Surface 1')
-        xyz_points = self.nonfocus_tile_DAPI(xy_points)
-        self.tile_pattern(xyz_points)
-        self.x_overlap_adjuster(x_crop_percentagfe, experiment_directory)
+        xyz_points = self.nonfocus_tile_DAPI(xy_points, experiment_directory)
+        self.tile_pattern(xyz_points, experiment_directory)
 
         if x_crop_percentage != 0:
-            self.fm_channel_initial(experiment_directory, array, off_array, z_slices)
+            self.x_overlap_adjuster(x_crop_percentage, experiment_directory)
         else:
             pass
+
+        self.fm_channel_initial(experiment_directory, off_array, z_slices)
 
         if autofocus == 1:
             self.fm_array_update_autofocus_autoexpose(experiment_directory)
@@ -625,7 +626,7 @@ class cycif:
         return xy
 
 
-    def tile_pattern(self, numpy_array):
+    def tile_pattern(self, numpy_array, experiment_directory):
         '''
         Takes numpy array with N rows and known tile pattern and casts into new array that follows
         south-north, west-east snake pattern.
@@ -636,6 +637,10 @@ class cycif:
         :param y_tiles: number y tiles in pattern
         :return: numpy array with dimensions [N,x_tiles,y_tiles] with above snake pattern
         '''
+        numpy_path = experiment_directory + '/' + 'np_arrays'
+        os.chdir(numpy_path)
+        filename = 'fm_array.npy'
+
         y_tiles = np.unique(numpy_array[1]).size
         x_tiles = np.unique(numpy_array[0]).size
         layers = np.shape(numpy_array)[0]
@@ -645,6 +650,9 @@ class cycif:
         for x in range(0, layers):
             new_numpy[x] = numpy_array[x].transpose()
             new_numpy[x, ::, 1:y_tiles:2] = np.flipud(new_numpy[x, ::, 1:y_tiles:2])
+
+
+        np.save(filename, new_numpy)
 
         return new_numpy
 
@@ -667,13 +675,13 @@ class cycif:
         channel_count = np.shape(fm_array)[0]
 
         while channel_count < 10:
-            full_array = np.append(fm_array, dummy_channel, axis = 0)
+            fm_array = np.append(fm_array, dummy_channel, axis = 0)
             channel_count = np.shape(fm_array)[0]
 
         fm_array[4] = fm_array[2] + a488_channel_offset #index for a488 = 3
         fm_array[6] = fm_array[2] + a555_channel_offset
         fm_array[8] = fm_array[2] + a647_channel_offset
-
+        print(np.shape(fm_array))
         y_tiles = int(np.shape(fm_array[0])[0])
         x_tiles = int(np.shape(fm_array[0])[1])
         z_slice_array = np.ones((y_tiles, x_tiles))
@@ -685,14 +693,14 @@ class cycif:
         fm_array[9] = z_slice_array
 
 
-        full_array[2] = full_array[2] + int((z_slice_array[0][0] * slice_gap)/2)
-        full_array[4] = full_array[4] + int((z_slice_array[0][0] * slice_gap)/2)
-        full_array[6] = full_array[6] + int((z_slice_array[0][0] * slice_gap)/2)
-        full_array[8] = full_array[8] + int((z_slice_array[0][0] * slice_gap)/2)
+        fm_array[2] = fm_array[2] + int((z_slice_array[0][0] * slice_gap)/2)
+        fm_array[4] = fm_array[4] + int((z_slice_array[0][0] * slice_gap)/2)
+        fm_array[6] = fm_array[6] + int((z_slice_array[0][0] * slice_gap)/2)
+        fm_array[8] = fm_array[8] + int((z_slice_array[0][0] * slice_gap)/2)
 
-        np.save(file_name, full_array)
+        np.save(file_name, fm_array)
 
-        return full_array
+        return fm_array
 
     def x_overlap_adjuster(self, crop_each_side_percentage, experiment_directory):
 
@@ -745,7 +753,7 @@ class cycif:
 
         np.save('fm_array.npy', new_fm_array)
 
-    def nonfocus_tile_DAPI(self, full_array_no_pattern):
+    def nonfocus_tile_DAPI(self, full_array_no_pattern, experiment_directory):
          '''
          Makes micromagellen z the focus position at each XY point for DAPI
          auto_focus and outputs the paired in focus z coordinate
@@ -769,6 +777,8 @@ class cycif:
          xyz = np.append(full_array_no_pattern, z_temp, axis =0)
 
          np.save(file_name, xyz)
+
+         return xyz
 
 
 ############################################
