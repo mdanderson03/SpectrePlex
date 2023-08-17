@@ -1795,26 +1795,26 @@ class fluidics:
         bleach_valve = 1
         pbs_valve = 8
         bleach_time = 3 #minutes
-        stain_flow_time = 45 #seconds
+        stain_flow_time = 60 #seconds
         if heater_state == 0:
             stain_inc_time = 45 #minutes
         if heater_state == 1:
             stain_inc_time = 45  #minutes
         nuc_valve = 7
-        nuc_flow_time = 60 #seconds
+        nuc_flow_time = 70 #seconds
         nuc_inc_time = 3 #minutes
 
         if action_type == 'Bleach':
 
             self.valve_select(bleach_valve)
-            self.flow(500)
-            time.sleep(60)
+            self.flow(400)
+            time.sleep(70)
             self.flow(0)
             time.sleep(bleach_time*60)
 
             self.valve_select(pbs_valve)
-            self.flow(500)
-            time.sleep(60)
+            self.flow(400)
+            time.sleep(70)
             self.flow(0)
 
         elif action_type == 'Stain':
@@ -1826,7 +1826,7 @@ class fluidics:
                 pass
 
             self.valve_select(stain_valve)
-            self.flow(500)
+            self.flow(400)
             time.sleep(stain_flow_time)
             self.flow(0)
             time.sleep(stain_inc_time*60)
@@ -1839,27 +1839,27 @@ class fluidics:
 
             self.valve_select(pbs_valve)
             self.flow(500)
-            time.sleep(60)
+            time.sleep(70)
             self.flow(0)
 
         elif action_type == "Wash":
 
             self.valve_select(pbs_valve)
-            self.flow(500)
-            time.sleep(60)
+            self.flow(400)
+            time.sleep(70)
             self.flow(0)
 
         elif action_type == 'Nuc_Touchup':
 
             self.valve_select(nuc_valve)
-            self.flow(500)
+            self.flow(400)
             time.sleep(nuc_flow_time)
             self.flow(0)
             time.sleep(nuc_inc_time*60)
 
             self.valve_select(pbs_valve)
-            self.flow(500)
-            time.sleep(60)
+            self.flow(400)
+            time.sleep(70)
             self.flow(0)
 
 
