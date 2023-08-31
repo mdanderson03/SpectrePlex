@@ -6,10 +6,12 @@ from scipy.optimize import curve_fit
 import paho.mqtt.client as mqtt
 import matplotlib.pyplot as plt
 from skimage import io, measure, filters
+import skimage
 import os
 import math
 from datetime import datetime
 from tifffile import imsave, imwrite
+import tifffile as tf
 from openpyxl import load_workbook, Workbook
 from ome_types.model import Instrument, Microscope, Objective, InstrumentRef, Image, Pixels, Plane, Channel
 from ome_types.model.simple_types import UnitsLength, PixelType, PixelsID, ImageID, ChannelID
@@ -19,7 +21,9 @@ from sklearn.datasets import make_regression
 from sklearn.linear_model import HuberRegressor, LinearRegression, RANSACRegressor
 from sklearn.model_selection import cross_val_score
 from sklearn.model_selection import RepeatedKFold
-from ome_types import from_xml, OME, from_tiff
+from ome_types import from_xml, OME, from_tiff, to_xml
+from scipy import stats
+from copy import copy, deepcopy
 import sys
 from ctypes import *
 sys.path.append(r'C:\Users\CyCIF PC\Documents\GitHub\AutoCIF\Python_64_elveflow\DLL64')#add the path of the library here
@@ -1021,6 +1025,9 @@ class cycif:
 
         self.establish_fm_array(experiment_directory, cycle_number, z_slices, offset_array)
 
+        self.image_capture(experiment_directory, 'DAPI', 50, 0, 0, 0) #wake up lumencor light engine
+        time.sleep(5) #wait for it to wake up
+
         exp_time = exp_time_array
         np.save('exp_array.npy', exp_time)
 
@@ -1211,7 +1218,8 @@ class cycif:
             else:
                 cycle_start_search = 1
 
-        cycle_end = len(os.listdir(dapi_im_path)) + 1
+        #cycle_end = len(os.listdir(dapi_im_path)) + 1
+        cycle_end = 6
 
         for cycle_number in range(cycle_start, cycle_end):
             self.infocus(experiment_directory, cycle_number, 10 ,10)
@@ -1224,7 +1232,7 @@ class cycif:
         os.chdir(numpy_path)
         full_array = np.load('fm_array.npy', allow_pickle=False)
 
-        xml_metadata = cycif.metadata_generator(experiment_directory)
+        xml_metadata = self.metadata_generator(experiment_directory)
 
         numpy_x = full_array[0]
         numpy_y = full_array[1]
@@ -1276,7 +1284,7 @@ class cycif:
     def metadata_generator(self, experiment_directory):
 
         new_ome = OME()
-        ome = from_xml(r'C:\Users\mike\Documents\GitHub\AutoCIF/image.xml')
+        ome = from_xml(r'C:\Users\CyCIF PC \Documents\GitHub\AutoCIF/image.xml')
         ome = ome.images[0]
 
         numpy_path = experiment_directory + '/' + 'np_arrays'
@@ -1461,12 +1469,12 @@ class cycif:
 
                                 for b in range(0, number_bins):
                                     bin_value = int(bin_values[b])
-                                    score = cycif.focus_score(sub_image, bin_value)
+                                    score = self.focus_score(sub_image, bin_value)
                                     brenner_sub_selector[z][b][y_sub][x_sub] = score
 
-                    reconstruct_array = brenner_reconstruct_array(brenner_sub_selector, z_slice_count, number_bins)
+                    reconstruct_array = self.brenner_reconstruct_array(brenner_sub_selector, z_slice_count, number_bins)
                     reconstruct_array = skimage.filters.median(reconstruct_array)
-                    image_reconstructor(reconstruct_array, channel, cycle_number, y, x)
+                    self.image_reconstructor(experiment_directory, reconstruct_array, channel, cycle_number, y, x)
 
     def brenner_reconstruct_array(self, brenner_sub_selector, z_slice_count, number_bins):
         '''
@@ -1495,7 +1503,7 @@ class cycif:
 
         return reconstruct_array
 
-    def image_reconstructor(self, reconstruct_array, channel, cycle_number, y_tile_number, x_tile_number):
+    def image_reconstructor(self, experiment_directory, reconstruct_array, channel, cycle_number, y_tile_number, x_tile_number):
 
         y_sections = np.shape(reconstruct_array)[0]
         x_sections = np.shape(reconstruct_array)[1]
@@ -1793,9 +1801,9 @@ class fluidics:
     def liquid_action(self, action_type, stain_valve = 0, heater_state = 0):
 
         bleach_valve = 1
-        pbs_valve = 8
+        pbs_valve = 3
         bleach_time = 3 #minutes
-        stain_flow_time = 60 #seconds
+        stain_flow_time = 40 #seconds
         if heater_state == 0:
             stain_inc_time = 45 #minutes
         if heater_state == 1:
@@ -1807,13 +1815,15 @@ class fluidics:
         if action_type == 'Bleach':
 
             self.valve_select(bleach_valve)
-            self.flow(400)
+            time.sleep(5)
+            self.flow(500)
             time.sleep(70)
             self.flow(0)
             time.sleep(bleach_time*60)
 
             self.valve_select(pbs_valve)
-            self.flow(400)
+            time.sleep(5)
+            self.flow(500)
             time.sleep(70)
             self.flow(0)
 
@@ -1826,9 +1836,11 @@ class fluidics:
                 pass
 
             self.valve_select(stain_valve)
-            self.flow(400)
+            time.sleep(5)
+            self.flow(500)
             time.sleep(stain_flow_time)
             self.flow(0)
+            self.valve_select(pbs_valve)
             time.sleep(stain_inc_time*60)
 
             if heater_state == 1:
@@ -1837,7 +1849,7 @@ class fluidics:
             else:
                 pass
 
-            self.valve_select(pbs_valve)
+
             self.flow(500)
             time.sleep(70)
             self.flow(0)
@@ -1845,20 +1857,20 @@ class fluidics:
         elif action_type == "Wash":
 
             self.valve_select(pbs_valve)
-            self.flow(400)
+            self.flow(500)
             time.sleep(70)
             self.flow(0)
 
         elif action_type == 'Nuc_Touchup':
 
             self.valve_select(nuc_valve)
-            self.flow(400)
+            self.flow(500)
             time.sleep(nuc_flow_time)
             self.flow(0)
             time.sleep(nuc_inc_time*60)
 
             self.valve_select(pbs_valve)
-            self.flow(400)
+            self.flow(450)
             time.sleep(70)
             self.flow(0)
 
