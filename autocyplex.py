@@ -26,19 +26,21 @@ from scipy import stats
 from copy import copy, deepcopy
 import sys
 from ctypes import *
-sys.path.append(r'C:\Users\CyCIF PC\Documents\GitHub\AutoCIF\Python_64_elveflow\DLL64')#add the path of the library here
-sys.path.append(r'C:\Users\CyCIF PC\Documents\GitHub\AutoCIF\Python_64_elveflow')#add the path of the LoadElveflow.py
+#sys.path.append(r'C:\Users\CyCIF PC\Documents\GitHub\AutoCIF\Python_64_elveflow\DLL64')#add the path of the library here
+#sys.path.append(r'C:\Users\CyCIF PC\Documents\GitHub\AutoCIF\Python_64_elveflow')#add the path of the LoadElveflow.py
+#sys.path.append(r'C:\Users\mike\Documents\GitHub\AutoCIF\Python_64_elveflow\DLL64')#add the path of the library here
+#sys.path.append(r'C:\Users\mike\Documents\GitHub\AutoCIF\Python_64_elveflow')#add the path of the LoadElveflow.py
 
 from array import array
-from Elveflow64 import *
+#from Elveflow64 import *
 
 
 
 #client = mqtt.Client('autocyplex_server')
 #client.connect('10.3.141.1', 1883)
 
-core = Core()
-magellan = Magellan()
+#core = Core()
+#magellan = Magellan()
 
 global level
 level = []
@@ -128,10 +130,10 @@ class cycif:
         b = image[:-derivative_jump, :]
         b = b.astype('float64')
         c = (a - b)
-        c = c * c/10
+        c = c/100 * c/100
         f_score_shadow = c.sum(dtype=np.float64) + 0.00001
 
-        return 1 / f_score_shadow
+        return  f_score_shadow
 
     def sp_array(self, experiment_directory, channel):
         '''
@@ -460,7 +462,7 @@ class cycif:
     # Setup fm_array and sp_array alongside auto focus updates and flat values
     #########################################################
 
-    def establish_fm_array(self, experiment_directory, desired_cycle_count, z_slices, off_array, x_crop_percentage = 0, autofocus = 0):
+    def establish_fm_array(self, experiment_directory, desired_cycle_count, z_slices, off_array, initialize = 0, x_crop_percentage = 0, autofocus = 0):
         # non autofocus. Need to build in auto focus ability
         self.file_structure(experiment_directory, desired_cycle_count)
         xy_points = self.tile_xy_pos('New Surface 1')
@@ -472,7 +474,10 @@ class cycif:
         else:
             pass
 
-        self.fm_channel_initial(experiment_directory, off_array, z_slices)
+        if initialize == 1:
+            self.fm_channel_initial(experiment_directory, off_array, z_slices)
+        else:
+            pass
 
         if autofocus == 1:
             self.fm_array_update_autofocus_autoexpose(experiment_directory)
@@ -916,6 +921,143 @@ class cycif:
                     tile_counter += 1
 
         return tif_stack
+
+
+    def multi_channel_z_stack_capture(self, experiment_directory, cycle_number, Stain_or_Bleach, slice_gap = 2, channels = ['DAPI', 'A488', 'A555', 'A647']):
+        '''
+        Captures and saves all images in XY and Z dimensions. Order of operation is ZC XY(snake). Entire z stack with all
+        channels is made into a numpy data structure and saved before going to next tile and being reused. This is done
+        to reduce overall memory usage.
+
+
+        :param experiment_directory: directory that main experiment data is stored in
+        :param cycle_number: integer of what cycle number it is. Counts from 0
+        :param Stain_or_Bleach: string of Stain or Bleach depending on what action it is
+        :param slice_gap: micron spacing in z slices
+        :param channels: string list of what channels to acquire
+        :return:
+        '''
+
+
+        #load in focus map and exp array
+        numpy_path = experiment_directory +'/' + 'np_arrays'
+        os.chdir(numpy_path)
+        full_array = np.load('fm_array.npy', allow_pickle=False)
+        exp_time_array = np.load('exp_array.npy', allow_pickle=False)
+
+        height_pixels = 2960
+        width_pixels = 5056
+        #determine attributes like tile counts,z slices and channel counts
+        numpy_x = full_array[0]
+        numpy_y = full_array[1]
+        x_tile_count = np.unique(numpy_x).size
+        y_tile_count = np.unique(numpy_y).size
+        z_slices = full_array[3][0][0]
+        #go to upper left corner to start pattern
+        core.set_xy_position(numpy_x[0][0], numpy_y[0][0])
+        time.sleep(1)
+        #generate numpy data structure
+        zc_tif_stack = np.random.rand(4, int(z_slices), height_pixels, width_pixels).astype('float16')
+
+        for y in range(0, y_tile_count):
+            if y % 2 != 0:
+                for x in range(x_tile_count - 1, -1, -1):
+
+                    core.set_xy_position(numpy_x[y][x], numpy_y[y][x])
+                    time.sleep(0.5)
+
+                    for channel in channels:
+
+                        #determine the proper indecies to use for focus map z positions and exp array
+                        if channel == 'DAPI':
+                            channel_index = 2
+                            tif_stack_c_index = 0
+                            zc_index = 0
+                        if channel == 'A488':
+                            channel_index = 4
+                            tif_stack_c_index = 1
+                            zc_index = 1
+                        if channel == 'A555':
+                            channel_index = 6
+                            tif_stack_c_index = 2
+                            zc_index = 2
+                        if channel == 'A647':
+                            channel_index = 8
+                            tif_stack_c_index = 3
+                            zc_index = 3
+
+                        numpy_z = full_array[channel_index]
+                        exp_time = int(exp_time_array[tif_stack_c_index])
+                        core.set_config("Color", channel)
+                        core.set_exposure(exp_time)
+
+                        z_end = int(numpy_z[y][x])
+                        z_start = int(z_end - z_slices * slice_gap)
+                        z_counter = 0
+
+                        for z in range(z_start, z_end, slice_gap):
+                            core.set_position(z)
+                            time.sleep(0.1)
+                            core.snap_image()
+                            tagged_image = core.get_tagged_image()
+                            pixels = np.reshape(tagged_image.pix,newshape=[tagged_image.tags["Height"], tagged_image.tags["Width"]])
+                            zc_tif_stack[zc_index][z_counter] = pixels
+
+                            z_counter += 1
+
+                    #save zc stack
+                    self.zc_save(zc_tif_stack, channels, x, y, cycle_number, experiment_directory, Stain_or_Bleach)
+
+
+            elif y % 2 == 0:
+                for x in range(0, x_tile_count):
+
+                    core.set_xy_position(numpy_x[y][x], numpy_y[y][x])
+                    time.sleep(0.5)
+
+                    for channel in channels:
+
+                        # determine the proper indecies to use for focus map z positions and exp array
+                        if channel == 'DAPI':
+                            channel_index = 2
+                            tif_stack_c_index = 0
+                            zc_index = 0
+                        if channel == 'A488':
+                            channel_index = 4
+                            tif_stack_c_index = 1
+                            zc_index = 1
+                        if channel == 'A555':
+                            channel_index = 6
+                            tif_stack_c_index = 2
+                            zc_index = 2
+                        if channel == 'A647':
+                            channel_index = 8
+                            tif_stack_c_index = 3
+                            zc_index = 3
+
+                        numpy_z = full_array[channel_index]
+                        exp_time = int(exp_time_array[tif_stack_c_index])
+                        core.set_config("Color", channel)
+                        core.set_exposure(exp_time)
+
+                        z_end = int(numpy_z[y][x])
+                        z_start = int(z_end - z_slices * slice_gap)
+                        z_counter = 0
+
+                        for z in range(z_start, z_end, slice_gap):
+                            core.set_position(z)
+                            time.sleep(0.1)
+                            core.snap_image()
+                            tagged_image = core.get_tagged_image()
+                            pixels = np.reshape(tagged_image.pix,
+                                                newshape=[tagged_image.tags["Height"], tagged_image.tags["Width"]])
+                            zc_tif_stack[zc_index][z_counter] = pixels
+
+                            z_counter += 1
+
+                    self.zc_save(zc_tif_stack, channels, x, y, cycle_number, experiment_directory, Stain_or_Bleach)
+
+        return
     
     def quick_tile_placement(self, z_tile_stack, overlap = 10):
 
@@ -1021,12 +1163,23 @@ class cycif:
         self.save_quick_tile(pna_stack, channel, cycle, experiment_directory, stain_bleach)
 
 
-    def image_cycle_acquire(self, cycle_number, experiment_directory, z_slices, stain_bleach, exp_time_array, offset_array, channels = ['DAPI', 'A488', 'A555', 'A647']):
+    def image_cycle_acquire(self, cycle_number, experiment_directory, z_slices, stain_bleach, exp_time_array, offset_array, establish_fm_array = 0, channels = ['DAPI', 'A488', 'A555', 'A647']):
 
-        self.establish_fm_array(experiment_directory, cycle_number, z_slices, offset_array)
+        if establish_fm_array == 1:
+            self.establish_fm_array(experiment_directory, cycle_number, z_slices, offset_array, initialize=1)
+        else:
+            self.establish_fm_array(experiment_directory, cycle_number, z_slices, offset_array)
 
-        self.image_capture(experiment_directory, 'DAPI', 50, 0, 0, 0) #wake up lumencor light engine
-        time.sleep(5) #wait for it to wake up
+        start_image = self.image_capture(experiment_directory, 'DAPI', 50, 0, 0, 0) #wake up lumencor light engine
+
+        '''
+        std_dev = np.std(start_image)
+        if std_dev > threshold:
+            pass
+        else: 
+            time.sleep(10)
+        '''
+        time.sleep(10) #wait for it to wake up
 
         exp_time = exp_time_array
         np.save('exp_array.npy', exp_time)
@@ -1034,17 +1187,31 @@ class cycif:
         for channel in channels:
             z_tile_stack = self.core_tile_acquire(experiment_directory, channel)
             self.save_files(z_tile_stack, channel, cycle_number, experiment_directory, stain_bleach)
-
+        #self.multi_channel_z_stack_capture(experiment_directory, cycle_number, stain_bleach, slice_gap=2, channels = channels)
         #self.marker_excel_file_generation(experiment_directory, cycle_number)
 
-    #def full_cycle(self, experiment_directory, cycle_number, offset_array, stain_valve, heater_state = 0):
+    def full_cycle(self, experiment_directory, cycle_number, exp_time_array, offset_array, stain_valve, channels = ['DAPI', 'A488', 'A555', 'A647']):
 
-     #   z_slices = 7
+        z_slices = 6
 
-      #  pump.liquid_action('Stain', stain_valve, heater_state)  # nuc is valve=7, pbs valve=8, bleach valve=1 (action, stain_valve, heater state (off = 0, on = 1))
-       # microscope.cycle_acquire(cycle_number, experiment_directory, z_slices, 'Stain', offset_array)
-        #pump.liquid_action('Bleach')  # nuc is valve=7, pbs valve=8, bleach valve=1 (action, stain_valve, heater state (off = 0, on = 1))
-        #microscope.cycle_acquire(cycle_number, experiment_directory, z_slices, 'Bleach', offset_array)
+        if cycle_number == 0:
+            print('baseline bleach image acquiring')
+            microscope.image_cycle_acquire(cycle_number, experiment_directory, z_slices, 'Bleach', exp_time_array, offset_array, establish_fm_array = 1)
+        else:
+            print('Stain in progress')
+            pump.liquid_action('Stain', stain_valve)  # nuc is valve=7, pbs valve=8, bleach valve=1 (action, stain_valve, heater state (off = 0, on = 1))
+            print('touching up Hoescht')
+            pump.liquid_action('Nuc_Touchup')  # nuc is valve=7, pbs valve=8, bleach valve=1 (action, stain_valve, heater state (off = 0, on = 1))
+            print('washing')
+            pump.liquid_action('Wash')  # nuc is valve=7, pbs valve=8, bleach valve=1 (action, stain_valve, heater state (off = 0, on = 1))
+            print('stain image acquistion in progress')
+            self.image_cycle_acquire(cycle_number, experiment_directory, z_slices, 'Stain', exp_time_array, offset_array)
+            print('bleaching in progress')
+            pump.liquid_action('Bleach')  # nuc is valve=7, pbs valve=8, bleach valve=1 (action, stain_valve, heater state (off = 0, on = 1))
+            print('washing')
+            pump.liquid_action('Wash')  # nuc is valve=7, pbs valve=8, bleach valve=1 (action, stain_valve, heater state (off = 0, on = 1))
+            print('bleach images acquiring')
+            self.image_cycle_acquire(cycle_number, experiment_directory, z_slices, 'Bleach', exp_time_array, offset_array)
 
 ######Folder System Generation########################################################
 
@@ -1220,6 +1387,7 @@ class cycif:
 
         #cycle_end = len(os.listdir(dapi_im_path)) + 1
         cycle_end = 6
+        cycle_start = 1
 
         for cycle_number in range(cycle_start, cycle_end):
             self.infocus(experiment_directory, cycle_number, 10 ,10)
@@ -1284,7 +1452,8 @@ class cycif:
     def metadata_generator(self, experiment_directory):
 
         new_ome = OME()
-        ome = from_xml(r'C:\Users\CyCIF PC \Documents\GitHub\AutoCIF/image.xml')
+        ome = from_xml(r'C:\Users\mike\Documents\GitHub\AutoCIF/image.xml')
+        #ome = from_xml(r'C:\Users\CyCIF PC\Documents\GitHub\AutoCIF/image.xml')
         ome = ome.images[0]
 
         numpy_path = experiment_directory + '/' + 'np_arrays'
@@ -1299,9 +1468,9 @@ class cycif:
 
         y_gap = 532
         col_col_gap = 10
-        for r in range(3, -1, -1):
-            numpy_y[r][0] = numpy_y[r + 1][0] - y_gap
-            numpy_y[r][1] = numpy_y[r + 1][1] - y_gap - col_col_gap
+        #for r in range(3, -1, -1):
+        #    numpy_y[r][0] = numpy_y[r + 1][0] - y_gap
+        #    numpy_y[r][1] = numpy_y[r + 1][1] - y_gap - col_col_gap
 
         # sub in needed pixel size and pixel grid changes
         ome.pixels.physical_size_x = 0.2
@@ -1311,7 +1480,7 @@ class cycif:
         # sub in other optional numbers to make metadata more accurate
 
         for x in range(0, total_tile_count):
-            tile_metadata = copy.deepcopy(ome)
+            tile_metadata = deepcopy(ome)
             new_ome.images.append(tile_metadata)
 
         # sub in stage positional information into each tile. numpy[y][x]
@@ -1320,10 +1489,11 @@ class cycif:
             for y in range(0, y_tile_count):
 
                 for p in range(0, 4):
+
                     new_x = numpy_x[y][x] - 11000
                     new_y = numpy_y[y][x] + 2300
-                    new_ome.images[tile_counter].pixels.planes[p].position_y = copy.deepcopy(new_y)
-                    new_ome.images[tile_counter].pixels.planes[p].position_x = copy.deepcopy(new_x)
+                    new_ome.images[tile_counter].pixels.planes[p].position_y = deepcopy(new_y)
+                    new_ome.images[tile_counter].pixels.planes[p].position_x = deepcopy(new_x)
                     new_ome.images[tile_counter].pixels.tiff_data_blocks[p].ifd = (4 * tile_counter) + p
                 tile_counter += 1
 
@@ -1359,6 +1529,7 @@ class cycif:
         super_y = int(1.02 * (y_tile_count * fov_y_pixels))
         super_x = int(1.02 * (x_tile_count * fov_x_pixels))
         placed_image = np.random.rand(super_y, super_x).astype('uint16')
+        print(np.shape(placed_image))
 
         # transform numpy x and y coords into new shifted space that starts at zero and is in units of pixels and not um
         numpy_x_pixels = numpy_x / um_pixel
@@ -1391,12 +1562,25 @@ class cycif:
                     filename = 'x' + str(x) + '_y_' + str(y) + '_c_' + channel + '.tif'
                     image = io.imread(filename)
                     # define subsection of large array that fits dimensions of single FOV
-                    x_center = numpy_x_pixels[y][x]
-                    y_center = numpy_y_pixels[y][x]
-                    x_start = int(x_center - fov_x_pixels / 2)
-                    x_end = int(x_center + fov_x_pixels / 2)
-                    y_start = int(y_center - fov_y_pixels / 2)
-                    y_end = int(y_center + fov_y_pixels / 2)
+                    #x_center = numpy_x_pixels[y][x]
+                    #y_center = numpy_y_pixels[y][x]
+                    #x_start = int(x_center - fov_x_pixels / 2)
+                    #x_end = int(x_center + fov_x_pixels / 2)
+                    #y_start = int(y_center - fov_y_pixels / 2)
+                    #y_end = int(y_center + fov_y_pixels / 2)
+
+                    if x == 0 and y ==0:
+                        x_start = 0
+                        x_end = 5056
+                        y_start =0
+                        y_end = 2960
+                    else:
+
+                        x_start = int(x * fov_x_pixels * 0.87)
+                        x_end = x_start + 5056
+                        y_start = int(y * fov_y_pixels * 0.9)
+                        y_end = y_start + 2960
+
 
                     # placed_image[y_start:y_end, x_start:x_end] = placed_image[y_start:y_end, x_start:x_end] + image
                     placed_image[y_start:y_end, x_start:x_end] = image
@@ -1497,9 +1681,10 @@ class cycif:
                     sub_scores = brenner_sub_selector[0:z_slice_count, b, y, x]
                     max_score = np.max(sub_scores)
                     max_index = np.where(sub_scores == max_score)[0][0]
-                    temp_bin_max_indicies[b] = max_index
-                sub_section_index_mode = stats.mode(temp_bin_max_indicies)[0][0]
-                reconstruct_array[y][x] = sub_section_index_mode
+                    #temp_bin_max_indicies[b] = max_index
+                #sub_section_index_mode = stats.mode(temp_bin_max_indicies)[0][0]
+                #reconstruct_array[y][x] = sub_section_index_mode
+                reconstruct_array[y][x] = max_index
 
         return reconstruct_array
 
@@ -1543,6 +1728,32 @@ class cycif:
             os.chdir(reconstruct_path)
             filename = 'x' + str(x_tile_number) + '_y_' + str(y_tile_number) + '_c_' + str(channel) + '.tif'
             tf.imwrite(filename, rebuilt_image)
+
+
+    def zc_save(self, zc_tif_stack, channels, x_tile, y_tile, cycle, experiment_directory, Stain_or_Bleach):
+
+        z_tile_count = np.shape(zc_tif_stack)[1]
+
+        for channel in channels:
+            if channel == 'DAPI':
+                zc_index = 0
+            if channel == 'A488':
+                zc_index = 1
+            if channel == 'A555':
+                zc_index = 2
+            if channel == 'A647':
+                zc_index = 3
+
+            save_directory = experiment_directory + '/' + str(channel) + '/' + Stain_or_Bleach + '/' + 'cy_' + str(cycle) + '/' + 'Tiles'
+            os.chdir(save_directory)
+
+            for z in range(0, z_tile_count):
+
+                        file_name = 'z_' + str(z) + '_x' + str(x_tile) + '_y_' + str(y_tile) + '_c_' + str(channel)+ '.tif'
+                        image = zc_tile_stack[zc_index][z]
+                        imwrite(file_name, image, photometric='minisblack')
+
+
 
     def save_files(self, z_tile_stack, channel, cycle, experiment_directory, Stain_or_Bleach = 'Stain'):
 
@@ -1802,27 +2013,27 @@ class fluidics:
 
         bleach_valve = 1
         pbs_valve = 3
-        bleach_time = 3 #minutes
-        stain_flow_time = 40 #seconds
+        bleach_time = 5 #minutes
+        stain_flow_time = 45 #seconds
         if heater_state == 0:
             stain_inc_time = 45 #minutes
         if heater_state == 1:
             stain_inc_time = 45  #minutes
-        nuc_valve = 7
-        nuc_flow_time = 70 #seconds
+        nuc_valve = 4
+        nuc_flow_time = 45 #seconds
         nuc_inc_time = 3 #minutes
 
         if action_type == 'Bleach':
 
             self.valve_select(bleach_valve)
-            time.sleep(5)
+            time.sleep(10)
             self.flow(500)
             time.sleep(70)
             self.flow(0)
             time.sleep(bleach_time*60)
 
             self.valve_select(pbs_valve)
-            time.sleep(5)
+            time.sleep(10)
             self.flow(500)
             time.sleep(70)
             self.flow(0)
@@ -1836,7 +2047,7 @@ class fluidics:
                 pass
 
             self.valve_select(stain_valve)
-            time.sleep(5)
+            time.sleep(10)
             self.flow(500)
             time.sleep(stain_flow_time)
             self.flow(0)
@@ -1857,6 +2068,7 @@ class fluidics:
         elif action_type == "Wash":
 
             self.valve_select(pbs_valve)
+            time.sleep(10)
             self.flow(500)
             time.sleep(70)
             self.flow(0)
@@ -1864,12 +2076,14 @@ class fluidics:
         elif action_type == 'Nuc_Touchup':
 
             self.valve_select(nuc_valve)
+            time.sleep(10)
             self.flow(500)
             time.sleep(nuc_flow_time)
             self.flow(0)
             time.sleep(nuc_inc_time*60)
 
             self.valve_select(pbs_valve)
+            time.sleep(10)
             self.flow(450)
             time.sleep(70)
             self.flow(0)
