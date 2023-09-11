@@ -7,12 +7,24 @@ microscope = cycif() # initialize cycif object
 
 
 
-experiment_directory = r'D:\Images\AutoCyPlex\parallel_test_with_thunder'
-exp_array = [20,35, 35, 35]
+experiment_directory = r'E:\test_folder'
+exp_array = np.array([100,35, 35, 35])
 offset_array = [0, -8, -8, -8]
 cycle_number = 0
 stain_valve = 4
 
+
+numpy_path = experiment_directory + '/' + 'np_arrays'
+os.chdir(numpy_path)
+np.save('exp_array.npy', exp_array)
+
+
+
+
+
+
+#microscope.image_cycle_acquire(0, experiment_directory, 6, 'Bleach',exp_array, offset_array, establish_fm_array=1)
+microscope.establish_fm_array(experiment_directory, 1, 6, offset_array, initialize=0, autofocus=1)
 
 #microscope.full_cycle(experiment_directory, cycle_number, exp_time_array, offset_array, stain_valve)
 
@@ -45,7 +57,7 @@ plt.show()
 
 
 
-microscope.post_acquisition_processor(experiment_directory)
+#microscope.post_acquisition_processor(experiment_directory)
 
 
 

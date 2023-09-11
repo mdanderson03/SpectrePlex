@@ -39,8 +39,8 @@ from array import array
 #client = mqtt.Client('autocyplex_server')
 #client.connect('10.3.141.1', 1883)
 
-#core = Core()
-#magellan = Magellan()
+core = Core()
+magellan = Magellan()
 
 global level
 level = []
@@ -266,7 +266,6 @@ class cycif:
 
                 a, b, c, predicted_focus = self.gauss_jordan_solver(three_point_array)
                 sp_array[3][y][x][0] = predicted_focus
-                print(predicted_focus)
 
             np.save(file_name, sp_array)
 
@@ -465,9 +464,7 @@ class cycif:
     def establish_fm_array(self, experiment_directory, desired_cycle_count, z_slices, off_array, initialize = 0, x_crop_percentage = 0, autofocus = 0):
         # non autofocus. Need to build in auto focus ability
         self.file_structure(experiment_directory, desired_cycle_count)
-        xy_points = self.tile_xy_pos('New Surface 1')
-        xyz_points = self.nonfocus_tile_DAPI(xy_points, experiment_directory)
-        self.tile_pattern(xyz_points, experiment_directory)
+
 
         if x_crop_percentage != 0:
             self.x_overlap_adjuster(x_crop_percentage, experiment_directory)
@@ -475,7 +472,11 @@ class cycif:
             pass
 
         if initialize == 1:
+            xy_points = self.tile_xy_pos('New Surface 1')
+            xyz_points = self.nonfocus_tile_DAPI(xy_points, experiment_directory)
+            self.tile_pattern(xyz_points, experiment_directory)
             self.fm_channel_initial(experiment_directory, off_array, z_slices)
+            self.establish_exp_arrays(experiment_directory)
         else:
             pass
 
@@ -484,17 +485,31 @@ class cycif:
         else:
             pass
 
+
+
     def fm_array_update_autofocus_autoexpose(self, experiment_directory):
 
         numpy_path = experiment_directory +'/' + 'np_arrays'
         os.chdir(numpy_path)
         file_name = 'fm_array.npy'
+        exp_filename = 'exp_array.npy'
         fm_array = np.load(file_name, allow_pickle=False)
+        exp_array = np.load(exp_filename, allow_pickle=False)
 
+        numpy_y = fm_array[1]
+        numpy_x = fm_array[0]
+        numpy_z = fm_array[2]
         y_tiles = np.shape(fm_array[0])[0]
         x_tiles = np.shape(fm_array[0])[1]
+        mid_x = int(x_tiles/2)
+        mid_y = int(y_tiles/2)
+        core.set_xy_position(numpy_x[mid_y][mid_x], numpy_y[mid_y][mid_x])
+
         scan_range = 20
+        sample_mid_z = numpy_z[mid_y][mid_x]
         sample_span = [sample_mid_z - scan_range / 2, sample_mid_z, sample_mid_z + scan_range / 2]
+
+        '''
 
         for x in range(0, x_tiles):
             for y in range(0, y_tiles):
@@ -504,12 +519,27 @@ class cycif:
                     # cycif.auto_exposure_calculation(im, 0.99, 'DAPI', points, z_slice, x, y)
                     div_im = self.image_sub_divider(im, 2, 2)
                     self.sub_divided_2_brenner_sp(experiment_directory, div_im, 'DAPI', points, z_slice, x, y)
+        '''
+
+
+
+
+
+        for points in range(0, 3):
+            exp_array = np.load(exp_filename, allow_pickle=False)
+            z_slice = int(sample_span[points])
+            im = self.image_capture(experiment_directory, 'DAPI', int(exp_array[0]), mid_x, mid_y, z_slice)
+            #im = self.exp_saturation_checker(experiment_directory, im, 'DAPI')
+            self.auto_exposure_calculation(experiment_directory, im, 0.99, 'DAPI', points, z_slice)
+        self.calc_array_solver(experiment_directory, 'DAPI')
+        self.calc_array_2_exp_array(experiment_directory, 'DAPI', 0.25)
+
 
         # self.calc_array_solver(experiment_directory, 'DAPI')
         # self.calc_array_2_exp_array(experiment_directory, 'DAPI', 0.5)
-        self.sp_array_focus_solver(experiment_directory, 'DAPI')
+        #self.sp_array_focus_solver(experiment_directory, 'DAPI')
         #self.sp_array_filter(experiment_directory, 'DAPI')
-        self.sp_array_surface_2_fm(experiment_directory, 'DAPI')
+        #self.sp_array_surface_2_fm(experiment_directory, 'DAPI')
 
         np.save('fm_array.npy', fm_array)
 
@@ -517,8 +547,80 @@ class cycif:
     #This section is the for the exposure functions.
     ###########################################################
 
-    def auto_exposure_calculation(self, experiment_directory,  image, cut_off_threshold, channel, point_number, z_position, x_tile_number,
-                                  y_tile_number):
+    def establish_exp_arrays(self, experiment_directory, channels = ['DAPI', 'A488', 'A555', 'A647']):
+        numpy_path = experiment_directory + '/' + 'np_arrays'
+        os.chdir(numpy_path)
+
+        exp_calc_array = np.random.rand(5, 2)
+        exp_array = np.array([5,100,100,100])
+
+        for channel in channels:
+            file_name = channel + '_sp_calc_array.npy'
+            np.save(file_name, exp_calc_array)
+
+        np.save('exp_array.npy', exp_array)
+
+
+    def exp_saturation_checker(self, experiment_directory, image, channel):
+
+        numpy_path = experiment_directory + '/' + 'np_arrays'
+        os.chdir(numpy_path)
+        exp_array = np.load('exp_array.npy', allow_pickle=False)
+
+        if channel == 'DAPI':
+            index = 0
+        if channel == 'A488':
+            index = 1
+        if channel == 'A555':
+            index = 2
+        if channel == 'A647':
+            index = 3
+
+        exp_time = exp_array[index]
+
+        intensity = self.image_percentile_level(image, 0.99)
+
+        while intensity > 65000:
+
+            exp_time = exp_time/10
+            core.snap_image()
+            tagged_image = core.get_tagged_image()
+            pixels = np.reshape(tagged_image.pix, newshape=[tagged_image.tags["Height"], tagged_image.tags["Width"]])
+
+            intensity = self.image_percentile_level(image, 0.99)
+
+        else:
+            pixels = image
+
+        exp_array[index] = exp_time
+        np.save('exp_array.npy', exp_array)
+
+        return pixels
+
+
+
+
+
+    def image_percentile_level(self, image, cut_off_threshold):
+        '''
+        Takes in image and cut off threshold and finds pixel value that exists at that threshold point.
+
+        :param numpy array image: numpy array image
+        :param float cut_off_threshold: percentile for cut off. For example a 0.99 would disregaurd the top 1% of pixels from calculations
+        :return: intensity og pixel that resides at the cut off fraction that was entered in the image
+        :rtype: int
+        '''
+        pixel_values = np.sort(image, axis=None)
+        pixel_count = int(np.size(pixel_values))
+        cut_off_index = int(pixel_count * cut_off_threshold)
+        tail_intensity = pixel_values[cut_off_index]
+
+
+        return tail_intensity
+
+
+
+    def auto_exposure_calculation(self, experiment_directory,  image, cut_off_threshold, channel, point_number, z_position):
         '''
         Takes in subdivided image and calculated brenner score at each subsection and properly places into sp_array
         :param experiment_directory:
@@ -536,9 +638,12 @@ class cycif:
         calc_array = np.load(file_name, allow_pickle=False)
         calc_array_slice = calc_array[point_number]
 
-        intensity = cycif.image_percentile_level(image, cut_off_threshold)
-        calc_array_slice[y_tile_number][x_tile_number][0] = intensity
-        calc_array_slice[y_tile_number][x_tile_number][1] = z_position
+
+        intensity = self.image_percentile_level(image, cut_off_threshold)
+        calc_array_slice[0] = intensity - 300
+        calc_array_slice[1] = z_position
+        #calc_array_slice[y_tile_number][x_tile_number][0] = intensity
+        #calc_array_slice[y_tile_number][x_tile_number][1] = z_position
 
         np.save(file_name, calc_array)
 
@@ -549,8 +654,10 @@ class cycif:
         file_name = channel + '_exp_calc_array.npy'
         calc_array = np.load(file_name, allow_pickle=False)
 
-        y_tiles = np.shape(calc_array)[1]
-        x_tiles = np.shape(calc_array)[2]
+        #y_tiles = np.shape(calc_array)[1]
+        #x_tiles = np.shape(calc_array)[2]
+
+        '''
 
         for x in range(0, x_tiles):
             for y in range(0, y_tiles):
@@ -565,6 +672,18 @@ class cycif:
                 calc_array[3][y][x][0] = peak_int
                 calc_array[3][y][x][1] = predicted_focus
         calc_array[3, :, :, 0] = calc_array[3, :, :, 0]
+        '''
+
+        scores = calc_array[0:3, 0]
+        positions = calc_array[0:3, 1]
+        three_point_array = np.stack((scores, positions), axis=1)
+
+        a, b, c, predicted_focus = self.gauss_jordan_solver(three_point_array)
+        peak_int = (-(b * b) / (4 * a) + c)
+        calc_array[3][0] = peak_int
+        calc_array[3][1] = predicted_focus
+        #calc_array[3, 0] = calc_array[3, 0]
+        print(peak_int)
 
         np.save(file_name, calc_array)
 
@@ -575,12 +694,15 @@ class cycif:
         calc_array = np.load(file_name, allow_pickle=False)
         exp_array = np.load('exp_array.npy', allow_pickle=False)
 
-        predicted_intensity_image = calc_array[3, :, :, 0]
-        threshold = filters.threshold_otsu(predicted_intensity_image)
-        thresholded_intensity_array = predicted_intensity_image[predicted_intensity_image > threshold]
-        in_focus_int_prediction = np.median(thresholded_intensity_array)
+        #predicted_intensity_image = calc_array[3, :, :, 0]
+        predicted_intensity_image = calc_array[3, 0]
+        #threshold = filters.threshold_otsu(predicted_intensity_image)
+        #thresholded_intensity_array = predicted_intensity_image[predicted_intensity_image > threshold]
+        #in_focus_int_prediction = np.median(thresholded_intensity_array)
         desired_top_intensity = fraction_dynamic_range * 65535
-        scale_up_factor = desired_top_intensity / in_focus_int_prediction
+        #scale_up_factor = desired_top_intensity / in_focus_int_prediction
+        scale_up_factor = desired_top_intensity / predicted_intensity_image
+        print(scale_up_factor)
 
         if channel == 'DAPI':
             index = 0
@@ -593,6 +715,7 @@ class cycif:
 
         predicted_exp_time = exp_array[index] * scale_up_factor
         exp_array[index] = int(predicted_exp_time)
+        print(exp_array)
 
         np.save('exp_array.npy', exp_array)
 
@@ -690,7 +813,6 @@ class cycif:
         fm_array[4] = fm_array[2] + a488_channel_offset #index for a488 = 3
         fm_array[6] = fm_array[2] + a555_channel_offset
         fm_array[8] = fm_array[2] + a647_channel_offset
-        print(np.shape(fm_array))
         y_tiles = int(np.shape(fm_array[0])[0])
         x_tiles = int(np.shape(fm_array[0])[1])
         z_slice_array = np.ones((y_tiles, x_tiles))
@@ -1165,12 +1287,13 @@ class cycif:
 
     def image_cycle_acquire(self, cycle_number, experiment_directory, z_slices, stain_bleach, exp_time_array, offset_array, establish_fm_array = 0, channels = ['DAPI', 'A488', 'A555', 'A647']):
 
+
         if establish_fm_array == 1:
             self.establish_fm_array(experiment_directory, cycle_number, z_slices, offset_array, initialize=1)
         else:
             self.establish_fm_array(experiment_directory, cycle_number, z_slices, offset_array)
 
-        start_image = self.image_capture(experiment_directory, 'DAPI', 50, 0, 0, 0) #wake up lumencor light engine
+        self.image_capture(experiment_directory, 'DAPI', 50, 0, 0, 0) #wake up lumencor light engine
 
         '''
         std_dev = np.std(start_image)
@@ -1180,14 +1303,16 @@ class cycif:
             time.sleep(10)
         '''
         time.sleep(10) #wait for it to wake up
-
+        ''''
         exp_time = exp_time_array
         np.save('exp_array.npy', exp_time)
 
         for channel in channels:
             z_tile_stack = self.core_tile_acquire(experiment_directory, channel)
             self.save_files(z_tile_stack, channel, cycle_number, experiment_directory, stain_bleach)
-        #self.multi_channel_z_stack_capture(experiment_directory, cycle_number, stain_bleach, slice_gap=2, channels = channels)
+            
+        '''
+        self.multi_channel_z_stack_capture(experiment_directory, cycle_number, stain_bleach, slice_gap=2, channels = channels)
         #self.marker_excel_file_generation(experiment_directory, cycle_number)
 
     def full_cycle(self, experiment_directory, cycle_number, exp_time_array, offset_array, stain_valve, channels = ['DAPI', 'A488', 'A555', 'A647']):
@@ -1529,7 +1654,7 @@ class cycif:
         super_y = int(1.02 * (y_tile_count * fov_y_pixels))
         super_x = int(1.02 * (x_tile_count * fov_x_pixels))
         placed_image = np.random.rand(super_y, super_x).astype('uint16')
-        print(np.shape(placed_image))
+
 
         # transform numpy x and y coords into new shifted space that starts at zero and is in units of pixels and not um
         numpy_x_pixels = numpy_x / um_pixel
@@ -1750,7 +1875,7 @@ class cycif:
             for z in range(0, z_tile_count):
 
                         file_name = 'z_' + str(z) + '_x' + str(x_tile) + '_y_' + str(y_tile) + '_c_' + str(channel)+ '.tif'
-                        image = zc_tile_stack[zc_index][z]
+                        image = zc_tif_stack[zc_index][z]
                         imwrite(file_name, image, photometric='minisblack')
 
 
