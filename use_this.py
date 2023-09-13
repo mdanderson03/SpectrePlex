@@ -19,7 +19,8 @@ os.chdir(numpy_path)
 np.save('exp_array.npy', exp_array)
 
 
-
+#pump.liquid_action('PBS_flow_on')
+#pump.liquid_action('PBS_flow_off')
 
 
 

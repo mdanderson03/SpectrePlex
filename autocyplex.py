@@ -488,51 +488,68 @@ class cycif:
 
 
     def fm_array_update_autofocus_autoexpose(self, experiment_directory):
+        '''
+        Executes auto focus and exposure algorithms.
 
+        :param experiment_directory:
+        :return:
+        '''
+
+        # load in data structures
         numpy_path = experiment_directory +'/' + 'np_arrays'
         os.chdir(numpy_path)
         file_name = 'fm_array.npy'
         exp_filename = 'exp_array.npy'
         fm_array = np.load(file_name, allow_pickle=False)
         exp_array = np.load(exp_filename, allow_pickle=False)
+        exp_calc_array = 'exp_calc_array.npy'
+        channels = ['DAPI', 'A488', 'A555', 'A647']
 
+        # break data structures into more usable components
         numpy_y = fm_array[1]
         numpy_x = fm_array[0]
         numpy_z = fm_array[2]
         y_tiles = np.shape(fm_array[0])[0]
         x_tiles = np.shape(fm_array[0])[1]
-        mid_x = int(x_tiles/2)
-        mid_y = int(y_tiles/2)
-        core.set_xy_position(numpy_x[mid_y][mid_x], numpy_y[mid_y][mid_x])
 
+        # Go to upper left corner to start
+        core.set_xy_position(numpy_x[0][0], numpy_y[0][0])
+
+        #define range to scan through. 3 equally distributed points
         scan_range = 20
-        sample_mid_z = numpy_z[mid_y][mid_x]
+        sample_mid_z = numpy_z[0][0]
         sample_span = [sample_mid_z - scan_range / 2, sample_mid_z, sample_mid_z + scan_range / 2]
-
-        '''
+        #order is x,y channel and z points
 
         for x in range(0, x_tiles):
             for y in range(0, y_tiles):
-                for points in range(0, 3):
-                    z_slice = int(sample_span[points])
-                    im = self.image_capture(experiment_directory, 'DAPI', 25, y, x, z_slice)
-                    # cycif.auto_exposure_calculation(im, 0.99, 'DAPI', points, z_slice, x, y)
-                    div_im = self.image_sub_divider(im, 2, 2)
-                    self.sub_divided_2_brenner_sp(experiment_directory, div_im, 'DAPI', points, z_slice, x, y)
-        '''
 
+                for channel_index in range(0, 4):
+                    exp_time = int(exp_array[channel_index])
+                    exp_calc_array_channel_xy = exp_calc_array[channel_index][y][x]
+                    point = 0
 
+                    while point <= 2:
+                        #take image at XYZ position and determine 99 percentile intensity
+                        z_slice = int(sample_span[point])
+                        im = self.image_capture(experiment_directory, channels[channel_index], exp_time, x, y, z_slice)
+                        # determine if intensity is too low or too high. Adjust exp time to compensate
+                        exp_time, trigger_state = self.exp_bound_solver(im, exp_time)
 
+                        exp_array[channel_index] = exp_time #allow 'memory' to happen. Effectively a markov model
 
+                        if trigger_state == 1: # restart z point aquistions
+                            point = 0
+                        if trigger_state == 0: # input points into data structure and move to next point
+                            intensity = self.image_percentile_level(im, 0.99)  # 99th percentile intensity
+                            exp_calc_array_channel_xy[point][0] = intensity - 300  # 300 is camera offset
+                            exp_calc_array_channel_xy[point][1] = z_slice
+                            exp_calc_array_channel_xy[point][2] = exp_time
+                            point += 1
 
-        for points in range(0, 3):
-            exp_array = np.load(exp_filename, allow_pickle=False)
-            z_slice = int(sample_span[points])
-            im = self.image_capture(experiment_directory, 'DAPI', int(exp_array[0]), mid_x, mid_y, z_slice)
-            #im = self.exp_saturation_checker(experiment_directory, im, 'DAPI')
-            self.auto_exposure_calculation(experiment_directory, im, 0.99, 'DAPI', points, z_slice)
-        self.calc_array_solver(experiment_directory, 'DAPI')
-        self.calc_array_2_exp_array(experiment_directory, 'DAPI', 0.25)
+        # solve and populate exp_array
+        self.calc_array_solver(experiment_directory)
+        self.calc_array_2_exp_array(experiment_directory, 0.25)
 
 
         # self.calc_array_solver(experiment_directory, 'DAPI')
@@ -547,58 +564,65 @@ class cycif:
     #This section is the for the exposure functions.
     ###########################################################
 
-    def establish_exp_arrays(self, experiment_directory, channels = ['DAPI', 'A488', 'A555', 'A647']):
+    def establish_exp_arrays(self, experiment_directory):
+        '''
+        Make exp_array with default exp times and exp_calc_array to use with auto exposure
+
+        :param experiment_directory:
+        :return:
+        '''
         numpy_path = experiment_directory + '/' + 'np_arrays'
         os.chdir(numpy_path)
+        fm_array = np.load('fm_array.npy', allow_pickle=False)
 
-        exp_calc_array = np.random.rand(5, 2)
-        exp_array = np.array([5,100,100,100])
+        y_tiles = np.shape(fm_array[0])[0]
+        x_tiles = np.shape(fm_array[0])[1]
 
-        for channel in channels:
-            file_name = channel + '_sp_calc_array.npy'
-            np.save(file_name, exp_calc_array)
+        exp_calc_array = np.random.rand(4, y_tiles, x_tiles, 4, 3)
+        exp_array = np.array([100,100,100,100])
 
+        file_name = 'exp_calc_array.npy'
+        np.save(file_name, exp_calc_array)
         np.save('exp_array.npy', exp_array)
 
 
-    def exp_saturation_checker(self, experiment_directory, image, channel):
+    def exp_bound_solver(self, image, exp_time):
+        '''
+        Takes in image and determines if its in bounds. If not, it adjusts exp time to compensate and gives indicator
+        if exp time alterations were used, ie was it triggered.
 
-        numpy_path = experiment_directory + '/' + 'np_arrays'
-        os.chdir(numpy_path)
-        exp_array = np.load('exp_array.npy', allow_pickle=False)
+        :param image:
+        :param exp_time:
+        :return:
+        '''
 
-        if channel == 'DAPI':
-            index = 0
-        if channel == 'A488':
-            index = 1
-        if channel == 'A555':
-            index = 2
-        if channel == 'A647':
-            index = 3
-
-        exp_time = exp_array[index]
+        target_intensity = 65535 * 0.1
+        max_time = 1000
+        trigger_state = 0
 
         intensity = self.image_percentile_level(image, 0.99)
 
         while intensity > 65000:
 
             exp_time = exp_time/10
+            core.set_exposure(exp_time)
             core.snap_image()
             tagged_image = core.get_tagged_image()
-            pixels = np.reshape(tagged_image.pix, newshape=[tagged_image.tags["Height"], tagged_image.tags["Width"]])
+            new_image = np.reshape(tagged_image.pix, newshape=[tagged_image.tags["Height"], tagged_image.tags["Width"]])
+            intensity = self.image_percentile_level(new_image, 0.99)
+            trigger_state = 1
 
-            intensity = self.image_percentile_level(image, 0.99)
+        if intensity < 6000:
+            trigger_state = 1
 
-        else:
-            pixels = image
+        if trigger_state == 1:
+            scale_factor = target_intensity/intensity
+            exp_time = int(exp_time * scale_factor)
 
-        exp_array[index] = exp_time
-        np.save('exp_array.npy', exp_array)
+        if exp_time > max_time:
+            exp_time = max_time
 
-        return pixels
-
-
-
+        return exp_time, trigger_state
 
 
     def image_percentile_level(self, image, cut_off_threshold):
@@ -619,106 +643,82 @@ class cycif:
         return tail_intensity
 
 
-
-    def auto_exposure_calculation(self, experiment_directory,  image, cut_off_threshold, channel, point_number, z_position):
+    def calc_array_solver(self, experiment_directory):
         '''
-        Takes in subdivided image and calculated brenner score at each subsection and properly places into sp_array
+        Uses calc array and 3 point gauss jordan reduction method to solve for projected intensity in focal plane
+
         :param experiment_directory:
-        :param sub_divided_image:
-        :param channel:
-        :param point_number:
-        :param x_tile_number:
-        :param y_tile_number:
         :return:
         '''
 
         numpy_path = experiment_directory + '/' + 'np_arrays'
         os.chdir(numpy_path)
-        file_name = channel + '_exp_calc_array.npy'
+        file_name = 'exp_calc_array.npy'
         calc_array = np.load(file_name, allow_pickle=False)
-        calc_array_slice = calc_array[point_number]
 
+        y_tiles = np.shape(calc_array)[1]
+        x_tiles = np.shape(calc_array)[2]
 
-        intensity = self.image_percentile_level(image, cut_off_threshold)
-        calc_array_slice[0] = intensity - 300
-        calc_array_slice[1] = z_position
-        #calc_array_slice[y_tile_number][x_tile_number][0] = intensity
-        #calc_array_slice[y_tile_number][x_tile_number][1] = z_position
+        for channel_index in range(0, 4):
+            for x in range(0, x_tiles):
+                for y in range(0, y_tiles):
+                    scores = calc_array[channel_index, y, x, 1:3, 0]
+                    positions = calc_array[channel_index, y, x, 1:3, 1]
+                    three_point_array = np.stack((scores, positions), axis=1)
+
+                    a, b, c, predicted_focus = cycif.gauss_jordan_solver(three_point_array)
+                    peak_int = (-(b * b) / (4 * a) + c)
+                    calc_array[channel_index][y][x][3][0] = peak_int
+                    calc_array[channel_index][y][x][3][1] = predicted_focus
 
         np.save(file_name, calc_array)
 
-    def calc_array_solver(self, experiment_directory, channel):
+    def calc_array_2_exp_array(self, experiment_directory, fraction_dynamic_range):
+        '''
+        Takes calc array and determines time to place into exp_array for use. In short, it scales intensities and
+        find highest scaled intensity and then scales it from there again to get to the desired dynamic range occupied.
+        Employs max time cut off as well
+
+        :param experiment_directory:
+        :param fraction_dynamic_range:
+        :return:
+        '''
 
         numpy_path = experiment_directory + '/' + 'np_arrays'
         os.chdir(numpy_path)
-        file_name = channel + '_exp_calc_array.npy'
-        calc_array = np.load(file_name, allow_pickle=False)
-
-        #y_tiles = np.shape(calc_array)[1]
-        #x_tiles = np.shape(calc_array)[2]
-
-        '''
-
-        for x in range(0, x_tiles):
-            for y in range(0, y_tiles):
-                scores = calc_array[0:3, y, x, 0]
-                # scores = 1/scores
-                # scores = scores/np.min(scores)
-                positions = calc_array[0:3, y, x, 1]
-                three_point_array = np.stack((scores, positions), axis=1)
-
-                a, b, c, predicted_focus = cycif.gauss_jordan_solver(three_point_array)
-                peak_int = (-(b * b) / (4 * a) + c)
-                calc_array[3][y][x][0] = peak_int
-                calc_array[3][y][x][1] = predicted_focus
-        calc_array[3, :, :, 0] = calc_array[3, :, :, 0]
-        '''
-
-        scores = calc_array[0:3, 0]
-        positions = calc_array[0:3, 1]
-        three_point_array = np.stack((scores, positions), axis=1)
-
-        a, b, c, predicted_focus = self.gauss_jordan_solver(three_point_array)
-        peak_int = (-(b * b) / (4 * a) + c)
-        calc_array[3][0] = peak_int
-        calc_array[3][1] = predicted_focus
-        #calc_array[3, 0] = calc_array[3, 0]
-        print(peak_int)
-
-        np.save(file_name, calc_array)
-
-    def calc_array_2_exp_array(self, experiment_directory, channel, fraction_dynamic_range):
-        numpy_path = experiment_directory + '/' + 'np_arrays'
-        os.chdir(numpy_path)
-        file_name = channel + '_exp_calc_array.npy'
-        calc_array = np.load(file_name, allow_pickle=False)
+        calc_array = np.load('exp_calc_array.npy', allow_pickle=False)
         exp_array = np.load('exp_array.npy', allow_pickle=False)
 
-        #predicted_intensity_image = calc_array[3, :, :, 0]
-        predicted_intensity_image = calc_array[3, 0]
-        #threshold = filters.threshold_otsu(predicted_intensity_image)
-        #thresholded_intensity_array = predicted_intensity_image[predicted_intensity_image > threshold]
-        #in_focus_int_prediction = np.median(thresholded_intensity_array)
+        y_tiles = np.shape(calc_array)[1]
+        x_tiles = np.shape(calc_array)[2]
+
+        max_time = 2000
+
         desired_top_intensity = fraction_dynamic_range * 65535
-        #scale_up_factor = desired_top_intensity / in_focus_int_prediction
-        scale_up_factor = desired_top_intensity / predicted_intensity_image
-        print(scale_up_factor)
 
-        if channel == 'DAPI':
-            index = 0
-        if channel == 'A488':
-            index = 1
-        if channel == 'A555':
-            index = 2
-        if channel == 'A647':
-            index = 3
+        for channel_index in range(0, 4):
+            predicted_int_list = np.ones([y, x])
+            exp_time_list = np.ones([y, x])
+            for x in range(0, x_tiles):
+                for y in range(0, y_tiles):
+                    exp_time_list[y][x] = calc_array[channel_index][y][x][3][2]
+                    predicted_int_list[y][x]= calc_array[channel_index][y][x][3][0]
 
-        predicted_exp_time = exp_array[index] * scale_up_factor
-        exp_array[index] = int(predicted_exp_time)
-        print(exp_array)
+            lowest_exp_time = np.min(exp_time_list)
+            scaled_exp_list = lowest_exp_time/exp_time_list
+            scaled_int_list = predicted_int_list * scaled_exp_list
+            highest_intensity = np.max(scaled_int_list)
+            scale_up_factor = desired_top_intensity / highest_intensity
+            new_exp_time = int(exp_array[channel_index] * scale_up_factor)
+
+            if new_exp_time > max_time:
+                new_exp_time = max_time
+            else:
+                pass
+
+            exp_array[channel_index] = new_exp_time
 
         np.save('exp_array.npy', exp_array)
-
 
 
     ##############################################
@@ -2211,6 +2211,18 @@ class fluidics:
             time.sleep(10)
             self.flow(450)
             time.sleep(70)
+            self.flow(0)
+
+        elif action_type == 'PBS_flow_on':
+
+            self.valve_select(pbs_valve)
+            time.sleep(10)
+            self.flow(500)
+
+        elif action_type == 'PBS_flow_off':
+
+            self.valve_select(pbs_valve)
+            time.sleep(10)
             self.flow(0)
 
 
