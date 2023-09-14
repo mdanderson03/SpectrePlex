@@ -26,13 +26,13 @@ from scipy import stats
 from copy import copy, deepcopy
 import sys
 from ctypes import *
-#sys.path.append(r'C:\Users\CyCIF PC\Documents\GitHub\AutoCIF\Python_64_elveflow\DLL64')#add the path of the library here
-#sys.path.append(r'C:\Users\CyCIF PC\Documents\GitHub\AutoCIF\Python_64_elveflow')#add the path of the LoadElveflow.py
-#sys.path.append(r'C:\Users\mike\Documents\GitHub\AutoCIF\Python_64_elveflow\DLL64')#add the path of the library here
-#sys.path.append(r'C:\Users\mike\Documents\GitHub\AutoCIF\Python_64_elveflow')#add the path of the LoadElveflow.py
+sys.path.append(r'C:\Users\CyCIF PC\Documents\GitHub\AutoCIF\Python_64_elveflow\DLL64')#add the path of the library here
+sys.path.append(r'C:\Users\CyCIF PC\Documents\GitHub\AutoCIF\Python_64_elveflow')#add the path of the LoadElveflow.py
+sys.path.append(r'C:\Users\mike\Documents\GitHub\AutoCIF\Python_64_elveflow\DLL64')#add the path of the library here
+sys.path.append(r'C:\Users\mike\Documents\GitHub\AutoCIF\Python_64_elveflow')#add the path of the LoadElveflow.py
 
 from array import array
-#from Elveflow64 import *
+from Elveflow64 import *
 
 
 
@@ -500,9 +500,10 @@ class cycif:
         os.chdir(numpy_path)
         file_name = 'fm_array.npy'
         exp_filename = 'exp_array.npy'
+        exp_calc_filename = 'exp_calc_array.npy'
         fm_array = np.load(file_name, allow_pickle=False)
         exp_array = np.load(exp_filename, allow_pickle=False)
-        exp_calc_array = 'exp_calc_array.npy'
+        exp_calc_array = np.load(exp_calc_filename, allow_pickle=False)
         channels = ['DAPI', 'A488', 'A555', 'A647']
 
         # break data structures into more usable components
@@ -529,7 +530,7 @@ class cycif:
                     exp_calc_array_channel_xy = exp_calc_array[channel_index][y][x]
                     point = 0
 
-                    while point <= 2:
+                    while point <= 0:
                         #take image at XYZ position and determine 99 percentile intensity
                         z_slice = int(sample_span[point])
                         im = self.image_capture(experiment_directory, channels[channel_index], exp_time, x, y, z_slice)
@@ -537,6 +538,12 @@ class cycif:
                         exp_time, trigger_state = self.exp_bound_solver(im, exp_time)
 
                         exp_array[channel_index] = exp_time #allow 'memory' to happen. Effectively a markov model
+                        time.sleep(0.5)
+
+                        #print(channels[channel_index], x, y, exp_time, intensity, trigger_state)
+
+
+
 
                         if trigger_state == 1: # restart z point aquistions
                             point = 0
@@ -544,10 +551,12 @@ class cycif:
                             intensity = self.image_percentile_level(im, 0.99)  # 99th percentile intensity
                             exp_calc_array_channel_xy[point][0] = intensity - 300  # 300 is camera offset
                             exp_calc_array_channel_xy[point][1] = z_slice
-                            exp_calc_array_channel_xy[point][2] = exp_time
+                            exp_calc_array_channel_xy[point][2] = core.get_exposure()
                             point += 1
 
         # solve and populate exp_array
+        np.save(exp_calc_filename, exp_calc_array)
+        #self.one_slice_calc_array_solver(experiment_directory)
         self.calc_array_solver(experiment_directory)
         self.calc_array_2_exp_array(experiment_directory, 0.25)
 
@@ -596,8 +605,8 @@ class cycif:
         :return:
         '''
 
-        target_intensity = 65535 * 0.1
-        max_time = 1000
+        target_intensity = 65535 * 0.05
+        max_time = 500
         trigger_state = 0
 
         intensity = self.image_percentile_level(image, 0.99)
@@ -612,15 +621,15 @@ class cycif:
             intensity = self.image_percentile_level(new_image, 0.99)
             trigger_state = 1
 
-        if intensity < 6000:
+        if intensity < 2000 and exp_time < max_time:
             trigger_state = 1
 
         if trigger_state == 1:
             scale_factor = target_intensity/intensity
-            exp_time = int(exp_time * scale_factor)
-
-        if exp_time > max_time:
-            exp_time = max_time
+            if scale_factor * exp_time > max_time:
+                exp_time = max_time
+            else:
+                exp_time = int(exp_time * scale_factor)
 
         return exp_time, trigger_state
 
@@ -642,6 +651,57 @@ class cycif:
 
         return tail_intensity
 
+    def one_slice_calc_array_solver(self, experiment_directory):
+
+        numpy_path = experiment_directory + '/' + 'np_arrays'
+        os.chdir(numpy_path)
+        file_name = 'exp_calc_array.npy'
+        calc_array = np.load(file_name, allow_pickle=False)
+        file_name = 'exp_array.npy'
+        exp_array = np.load(file_name, allow_pickle=False)
+
+        y_tiles = np.shape(calc_array)[1]
+        x_tiles = np.shape(calc_array)[2]
+
+        goal_int = 65500 * 0.2
+
+
+
+        for channel_index in range(0, 4):
+            exp_time_list = np.ones([y_tiles, x_tiles])
+            int_time_list = np.ones([y_tiles, x_tiles])
+            for x in range(0, x_tiles):
+                for y in range(0, y_tiles):
+                    intensity = calc_array[channel_index, y, x, 0, 0]
+                    exp_time_used = calc_array[channel_index, y, x, 0, 2]
+                    exp_time_list[y][x] = exp_time_used
+                    int_time_list[y][x] = intensity
+
+            scaled_int_time_list = np.max(int_time_list)/int_time_list
+            scaled_exp_time_list = exp_time_list * scaled_int_time_list
+            brightest = np.max(scaled_exp_time_list)
+            y_index = np.where(scaled_exp_time_list == brightest)[0][0]
+            x_index = np.where(scaled_exp_time_list == brightest)[1][0]
+            brightest_int = int_time_list[y_index][x_index]
+            brightest_exp = exp_time_list[y_index][x_index]
+
+            scale_factor = goal_int/brightest_int
+            new_exp = scale_factor * brightest_exp
+
+            print(channel_index, new_exp)
+
+            exp_array[channel_index] = new_exp
+
+        np.save('exp_array.npy', exp_array)
+
+
+
+
+
+
+
+
+
 
     def calc_array_solver(self, experiment_directory):
         '''
@@ -662,14 +722,15 @@ class cycif:
         for channel_index in range(0, 4):
             for x in range(0, x_tiles):
                 for y in range(0, y_tiles):
-                    scores = calc_array[channel_index, y, x, 1:3, 0]
-                    positions = calc_array[channel_index, y, x, 1:3, 1]
-                    three_point_array = np.stack((scores, positions), axis=1)
+                    scores = calc_array[channel_index, y, x, 0:3, 0]
+                    positions = calc_array[channel_index, y, x, 0:3, 1]
+                    #three_point_array = np.stack((scores, positions), axis=1)
 
-                    a, b, c, predicted_focus = cycif.gauss_jordan_solver(three_point_array)
-                    peak_int = (-(b * b) / (4 * a) + c)
-                    calc_array[channel_index][y][x][3][0] = peak_int
-                    calc_array[channel_index][y][x][3][1] = predicted_focus
+                    #a, b, c, predicted_focus = self.gauss_jordan_solver(three_point_array)
+                    #peak_int = (-(b * b) / (4 * a) + c)
+                    #calc_array[channel_index][y][x][3][0] = peak_int
+                    #calc_array[channel_index][y][x][3][1] = predicted_focus
+                    calc_array[channel_index][y][x][3][0] = calc_array[channel_index][y][x][0][0]
 
         np.save(file_name, calc_array)
 
@@ -697,19 +758,28 @@ class cycif:
         desired_top_intensity = fraction_dynamic_range * 65535
 
         for channel_index in range(0, 4):
-            predicted_int_list = np.ones([y, x])
-            exp_time_list = np.ones([y, x])
+            predicted_int_list = np.ones([y_tiles, x_tiles])
+            exp_time_list = np.ones([y_tiles, x_tiles])
             for x in range(0, x_tiles):
                 for y in range(0, y_tiles):
-                    exp_time_list[y][x] = calc_array[channel_index][y][x][3][2]
+                    exp_time_list[y][x] = calc_array[channel_index][y][x][0][2]
                     predicted_int_list[y][x]= calc_array[channel_index][y][x][3][0]
 
             lowest_exp_time = np.min(exp_time_list)
             scaled_exp_list = lowest_exp_time/exp_time_list
             scaled_int_list = predicted_int_list * scaled_exp_list
             highest_intensity = np.max(scaled_int_list)
+            index = np.where(scaled_int_list == highest_intensity)
+            dimensions = np.shape(index)[0]
+            if dimensions == 1:
+                highest_intensity = predicted_int_list[index[0][0]]
+                exp_time_for_highest_int = exp_time_list[index[0][0]]
+            if dimensions == 2:
+                highest_intensity = predicted_int_list[index[0][0]][index[1][0]]
+                exp_time_for_highest_int = exp_time_list[index[0][0]][index[1][0]]
+
             scale_up_factor = desired_top_intensity / highest_intensity
-            new_exp_time = int(exp_array[channel_index] * scale_up_factor)
+            new_exp_time = int(exp_time_for_highest_int * scale_up_factor)
 
             if new_exp_time > max_time:
                 new_exp_time = max_time
@@ -717,6 +787,7 @@ class cycif:
                 pass
 
             exp_array[channel_index] = new_exp_time
+            print(new_exp_time)
 
         np.save('exp_array.npy', exp_array)
 
@@ -1285,13 +1356,10 @@ class cycif:
         self.save_quick_tile(pna_stack, channel, cycle, experiment_directory, stain_bleach)
 
 
-    def image_cycle_acquire(self, cycle_number, experiment_directory, z_slices, stain_bleach, exp_time_array, offset_array, establish_fm_array = 0, channels = ['DAPI', 'A488', 'A555', 'A647']):
+    def image_cycle_acquire(self, cycle_number, experiment_directory, z_slices, stain_bleach, offset_array, establish_fm_array = 0, auto_exp_run = 1, channels = ['DAPI', 'A488', 'A555', 'A647']):
 
 
-        if establish_fm_array == 1:
-            self.establish_fm_array(experiment_directory, cycle_number, z_slices, offset_array, initialize=1)
-        else:
-            self.establish_fm_array(experiment_directory, cycle_number, z_slices, offset_array)
+        self.establish_fm_array(experiment_directory, cycle_number, z_slices, offset_array, initialize= establish_fm_array, autofocus=auto_exp_run)
 
         self.image_capture(experiment_directory, 'DAPI', 50, 0, 0, 0) #wake up lumencor light engine
 
@@ -2218,12 +2286,14 @@ class fluidics:
             self.valve_select(pbs_valve)
             time.sleep(10)
             self.flow(500)
+            time.sleep(10)
 
         elif action_type == 'PBS_flow_off':
 
             self.valve_select(pbs_valve)
             time.sleep(10)
             self.flow(0)
+            time.sleep(10)
 
 
 
