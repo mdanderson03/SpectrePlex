@@ -558,7 +558,7 @@ class cycif:
         np.save(exp_calc_filename, exp_calc_array)
         #self.one_slice_calc_array_solver(experiment_directory)
         self.calc_array_solver(experiment_directory)
-        self.calc_array_2_exp_array(experiment_directory, 0.25)
+        self.calc_array_2_exp_array(experiment_directory, 0.2)
 
 
         # self.calc_array_solver(experiment_directory, 'DAPI')
@@ -787,7 +787,7 @@ class cycif:
                 pass
 
             exp_array[channel_index] = new_exp_time
-            print(new_exp_time)
+            print(channel_index, new_exp_time)
 
         np.save('exp_array.npy', exp_array)
 
@@ -867,9 +867,9 @@ class cycif:
         file_name = 'fm_array.npy'
         fm_array = np.load(file_name, allow_pickle=False)
 
-        a488_channel_offset = off_array[0] #determine if each of these are good and repeatable offsets
-        a555_channel_offset = off_array[1]
-        a647_channel_offset = off_array[2]
+        a488_channel_offset = off_array[1] #determine if each of these are good and repeatable offsets
+        a555_channel_offset = off_array[2]
+        a647_channel_offset = off_array[3]
 
         slice_gap = 2 # space between z slices in microns
 
@@ -2239,13 +2239,17 @@ class fluidics:
             else:
                 pass
 
+            time.sleep(4)
             self.valve_select(stain_valve)
             time.sleep(10)
             self.flow(500)
             time.sleep(stain_flow_time)
             self.flow(0)
             self.valve_select(pbs_valve)
-            time.sleep(stain_inc_time*60)
+
+            for x in range(0, stain_inc_time):
+                time.sleep(60)
+                print('Staining Time Elapsed ', x)
 
             if heater_state == 1:
                 arduino.heater_state(0)

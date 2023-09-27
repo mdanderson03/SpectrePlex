@@ -7,10 +7,10 @@ pump = fluidics(6, 3)
 
 
 
-experiment_directory = r'E:\test_folder'
+experiment_directory = r'E:\auto_focus testing'
 #exp_array = np.array([100,35, 35, 35])
 offset_array = [0, -8, -8, -8]
-cycle_number = 0
+cycle_number = 1
 stain_valve = 4
 
 
@@ -21,12 +21,14 @@ stain_valve = 4
 
 
 #pump.liquid_action('PBS_flow_off')
-#pump.liquid_action('PBS_flow_off')
+#pump.liquid_action('Stain', stain_valve = 7)
 
 
 
-microscope.image_cycle_acquire(0, experiment_directory, 6, 'Bleach', offset_array, establish_fm_array=1, auto_exp_run=1)
-#microscope.establish_fm_array(experiment_directory, 1, 6, offset_array, initialize=1, autofocus=1)
+
+#microscope.image_cycle_acquire(cycle_number, experiment_directory, 5, 'Stain', offset_array, establish_fm_array=1, auto_exp_run=1)
+
+#microscope.establish_fm_array(experiment_directory, 1, 5, offset_array, initialize=1, autofocus=0)
 
 #microscope.full_cycle(experiment_directory, cycle_number, exp_time_array, offset_array, stain_valve)
 
