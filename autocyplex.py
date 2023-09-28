@@ -135,7 +135,7 @@ class cycif:
 
         return  f_score_shadow
 
-    def sp_array(self, experiment_directory, channel):
+    def sp_array(self, experiment_directory):
         '''
         Generate super pixel array as defined in powerpoint autofocus network
         :param string experiment_directory:
@@ -150,15 +150,17 @@ class cycif:
 
         fm_array = np.load('fm_array.npy', allow_pickle=False)
 
+        channels = ['DAPI', 'A488', 'A555', 'A647']
+
         y_tiles = np.shape(fm_array[0])[0]
         x_tiles = np.shape(fm_array[0])[1]
 
-        x_pixel_count = int((x_tiles + 0.1) * 32)
-        y_pixel_count = int((y_tiles + 0.1) * 24)
+        x_pixel_count = int((x_tiles) * 32)
+        y_pixel_count = int((y_tiles) * 24)
         sp_array = np.random.rand(5, y_pixel_count, x_pixel_count, 2).astype('float64')
-
-        filename = channel + '_sp_array.npy'
-        np.save(filename, sp_array)
+        for channel in channels:
+            filename = channel + '_sp_array.npy'
+            np.save(filename, sp_array)
 
     def tile_subsampler(self, experiment_directory):
         '''
@@ -494,6 +496,8 @@ class cycif:
         :param experiment_directory:
         :return:
         '''
+        #make super pixel array
+        self.sp_array(experiment_directory)
 
         # load in data structures
         numpy_path = experiment_directory +'/' + 'np_arrays'
@@ -530,7 +534,7 @@ class cycif:
                     exp_calc_array_channel_xy = exp_calc_array[channel_index][y][x]
                     point = 0
 
-                    while point <= 0:
+                    while point <= 2:
                         #take image at XYZ position and determine 99 percentile intensity
                         z_slice = int(sample_span[point])
                         im = self.image_capture(experiment_directory, channels[channel_index], exp_time, x, y, z_slice)
@@ -540,10 +544,6 @@ class cycif:
                         exp_array[channel_index] = exp_time #allow 'memory' to happen. Effectively a markov model
                         time.sleep(0.5)
 
-                        #print(channels[channel_index], x, y, exp_time, intensity, trigger_state)
-
-
-
 
                         if trigger_state == 1: # restart z point aquistions
                             point = 0
@@ -552,20 +552,26 @@ class cycif:
                             exp_calc_array_channel_xy[point][0] = intensity - 300  # 300 is camera offset
                             exp_calc_array_channel_xy[point][1] = z_slice
                             exp_calc_array_channel_xy[point][2] = core.get_exposure()
+
+                            #auto focus
+                            sub_im = self.image_sub_divider(im, 24, 32)
+                            self.sub_divided_2_brenner_sp(experiment_directory, sub_im, channels[channel_index], point, z_slice, numpy_x[y][x], numpy_y[y][x])
+
+
+
+
                             point += 1
 
         # solve and populate exp_array
         np.save(exp_calc_filename, exp_calc_array)
         #self.one_slice_calc_array_solver(experiment_directory)
         self.calc_array_solver(experiment_directory)
-        self.calc_array_2_exp_array(experiment_directory, 0.25)
+        self.calc_array_2_exp_array(experiment_directory, 0.2)
 
-
-        # self.calc_array_solver(experiment_directory, 'DAPI')
-        # self.calc_array_2_exp_array(experiment_directory, 'DAPI', 0.5)
-        #self.sp_array_focus_solver(experiment_directory, 'DAPI')
-        #self.sp_array_filter(experiment_directory, 'DAPI')
-        #self.sp_array_surface_2_fm(experiment_directory, 'DAPI')
+        # solve sp array and populate fm array
+        self.sp_array_focus_solver(experiment_directory, 'DAPI')
+        self.sp_array_filter(experiment_directory, 'DAPI')
+        self.sp_array_surface_2_fm(experiment_directory, 'DAPI')
 
         np.save('fm_array.npy', fm_array)
 
@@ -696,13 +702,6 @@ class cycif:
 
 
 
-
-
-
-
-
-
-
     def calc_array_solver(self, experiment_directory):
         '''
         Uses calc array and 3 point gauss jordan reduction method to solve for projected intensity in focal plane
@@ -787,7 +786,7 @@ class cycif:
                 pass
 
             exp_array[channel_index] = new_exp_time
-            print(new_exp_time)
+            print(channel_index, new_exp_time)
 
         np.save('exp_array.npy', exp_array)
 
@@ -867,9 +866,9 @@ class cycif:
         file_name = 'fm_array.npy'
         fm_array = np.load(file_name, allow_pickle=False)
 
-        a488_channel_offset = off_array[0] #determine if each of these are good and repeatable offsets
-        a555_channel_offset = off_array[1]
-        a647_channel_offset = off_array[2]
+        a488_channel_offset = off_array[1] #determine if each of these are good and repeatable offsets
+        a555_channel_offset = off_array[2]
+        a647_channel_offset = off_array[3]
 
         slice_gap = 2 # space between z slices in microns
 
@@ -2239,13 +2238,17 @@ class fluidics:
             else:
                 pass
 
+            time.sleep(4)
             self.valve_select(stain_valve)
             time.sleep(10)
             self.flow(500)
             time.sleep(stain_flow_time)
             self.flow(0)
             self.valve_select(pbs_valve)
-            time.sleep(stain_inc_time*60)
+
+            for x in range(0, stain_inc_time):
+                time.sleep(60)
+                print('Staining Time Elapsed ', x)
 
             if heater_state == 1:
                 arduino.heater_state(0)
