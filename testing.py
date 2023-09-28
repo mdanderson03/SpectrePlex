@@ -8,7 +8,7 @@ import os
 from autocyplex import *
 from pycromanager import Core, Studio, Magellan
 microscope = cycif() # initialize cycif object
-pump = fluidics(6, 3)
+#pump = fluidics(6, 3)
 
 
 
@@ -28,14 +28,26 @@ dapi_sp_array = np.load('dapi_sp_array.npy', allow_pickle=False)
 #print(scores)
 
 
-#focus_map = dapi_sp_array[3, ::, ::, 0] * dapi_sp_array[4, ::, ::, 0]
+focus_map = dapi_sp_array[3, ::, ::, 0] * dapi_sp_array[4, ::, ::, 0]
 #print(np.shape(dapi_sp_array))
 
-y = dapi_sp_array[0:3, 1, 5, 0]
-x = dapi_sp_array[0:3, 1, 5, 1]
-print(fm_array[2][1][1])
-#io.imshow(focus_map)
-#io.show()
+y = dapi_sp_array[0:3, 1, 0, 0]
+x = dapi_sp_array[0:3, 1, 0, 1]
+
+
+microscope.sp_array_surface_2_fm(experiment_directory, 'DAPI')
+fm_array = np.load('fm_array.npy', allow_pickle=False)
+
+x = 0
+y = 1
+
+im = microscope.image_capture(experiment_directory, 'DAPI', 50, x, y, fm_array[2][y][x] - 2)
+
+
+
+io.imshow(im)
+io.show()
+
 
 #plt.scatter(x,y)
 #plt.show()

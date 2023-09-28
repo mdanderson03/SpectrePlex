@@ -1,5 +1,5 @@
 import ome_types
-#from pycromanager import Core, Acquisition, multi_d_acquisition_events, Dataset, MagellanAcquisition, Magellan, start_headless, XYTiledAcquisition
+from pycromanager import Core, Acquisition, multi_d_acquisition_events, Dataset, MagellanAcquisition, Magellan, start_headless, XYTiledAcquisition
 import numpy as np
 import time
 from scipy.optimize import curve_fit
@@ -32,15 +32,15 @@ sys.path.append(r'C:\Users\mike\Documents\GitHub\AutoCIF\Python_64_elveflow\DLL6
 sys.path.append(r'C:\Users\mike\Documents\GitHub\AutoCIF\Python_64_elveflow')#add the path of the LoadElveflow.py
 
 from array import array
-#from Elveflow64 import *
+from Elveflow64 import *
 
 
 
 #client = mqtt.Client('autocyplex_server')
 #client.connect('10.3.141.1', 1883)
 
-#core = Core()
-#magellan = Magellan()
+core = Core()
+magellan = Magellan()
 
 global level
 level = []
@@ -355,6 +355,7 @@ class cycif:
         c = model.predict([[2000, 2000]]) - a * 2000 - b * 2000
 
         coefficents = [a, b, c]
+        print('coefficents', coefficents)
 
         if channel == 'DAPI':
             channel_index = 2
@@ -380,6 +381,7 @@ class cycif:
                 y_point = 2060 * y + 1480
                 focus_z = self.plane_2_z(coefficents, [x_point, y_point])
                 fm_array[channel_index][y][x] = focus_z + (number_planes - 1)/2 * depth_of_focus
+                fm_array[channel_index][y][x] = focus_z
                 fm_array[channel_index + 1][y][x] = number_planes
 
         np.save('fm_array.npy', fm_array)
@@ -391,9 +393,18 @@ class cycif:
         os.chdir(numpy_path)
         file_name = channel + '_sp_array.npy'
         sp_array = np.load(file_name, allow_pickle=False)
+        fm_array = np.load('fm_array.npy', allow_pickle=False)
 
         y_fm_section = np.shape(sp_array)[1]
         x_fm_section = np.shape(sp_array)[2]
+
+        y_tiles = np.shape(fm_array[0])[0]
+        x_tiles = np.shape(fm_array[0])[1]
+
+
+
+        y_pixels_per_section = int((y_tiles * 2960)/y_fm_section)
+        x_pixels_per_section = int((x_tiles * 2960)/x_fm_section)
 
         point_list = np.array([])
         point_list = np.expand_dims(point_list, axis=0)
@@ -405,8 +416,8 @@ class cycif:
         for y in range(0, y_fm_section):
             for x in range(0, x_fm_section):
 
-                x_coord = x * 2528
-                y_coord = y * 1480
+                x_coord = x * x_pixels_per_section
+                y_coord = y * y_pixels_per_section
                 z_coord = z_array[y][x]
                 single_point = np.array([x_coord, y_coord, z_coord])
                 single_point = np.expand_dims(single_point, axis=0)
@@ -523,7 +534,7 @@ class cycif:
         core.set_xy_position(numpy_x[0][0], numpy_y[0][0])
 
         #define range to scan through. 3 equally distributed points
-        scan_range = 35
+        scan_range = 25
         sample_mid_z = numpy_z[0][0]
         sample_span = [sample_mid_z - scan_range / 2, sample_mid_z, sample_mid_z + scan_range / 2]
         print(sample_span)
@@ -563,10 +574,6 @@ class cycif:
                             images[point] = im
 
 
-
-
-
-
                             point += 1
 
 
@@ -581,7 +588,7 @@ class cycif:
         self.sp_array_filter(experiment_directory, 'DAPI')
         self.sp_array_surface_2_fm(experiment_directory, 'DAPI')
 
-        np.save('fm_array.npy', fm_array)
+        #np.save('fm_array.npy', fm_array)
         np.save('images.npy', images)
 
     ###########################################################
