@@ -1,5 +1,5 @@
 import ome_types
-from pycromanager import Core, Acquisition, multi_d_acquisition_events, Dataset, MagellanAcquisition, Magellan, start_headless, XYTiledAcquisition
+#from pycromanager import Core, Acquisition, multi_d_acquisition_events, Dataset, MagellanAcquisition, Magellan, start_headless, XYTiledAcquisition
 import numpy as np
 import time
 from scipy.optimize import curve_fit
@@ -32,15 +32,15 @@ sys.path.append(r'C:\Users\mike\Documents\GitHub\AutoCIF\Python_64_elveflow\DLL6
 sys.path.append(r'C:\Users\mike\Documents\GitHub\AutoCIF\Python_64_elveflow')#add the path of the LoadElveflow.py
 
 from array import array
-from Elveflow64 import *
+#from Elveflow64 import *
 
 
 
 #client = mqtt.Client('autocyplex_server')
 #client.connect('10.3.141.1', 1883)
 
-core = Core()
-magellan = Magellan()
+#core = Core()
+#magellan = Magellan()
 
 global level
 level = []
@@ -1745,7 +1745,7 @@ class cycif:
 
         for channel in channels:
 
-            im_path = experiment_directory + '/' + channel + '\Stain\cy_' + str(cycle_number) + '\Tiles' + '/focused'
+            im_path = experiment_directory + '/' + channel + '\Stain\cy_' + str(cycle_number) + '\Tiles' + '/focused_basic_corrected'
             os.chdir(im_path)
 
             # place images into large array

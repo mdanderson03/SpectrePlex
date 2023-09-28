@@ -1,0 +1,2 @@
+1. sudo /etc/init.d/docker start
+2. nextflow run labsyspharm/mcmicro --in parallel_test
