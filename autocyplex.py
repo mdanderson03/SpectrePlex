@@ -130,10 +130,10 @@ class cycif:
         b = image[:-derivative_jump, :]
         b = b.astype('float64')
         c = (a - b)
-        c = c/100 * c/100
+        c = c/10000 * c/10000
         f_score_shadow = c.sum(dtype=np.float64) + 0.00001
 
-        return  f_score_shadow
+        return  1/f_score_shadow
 
     def sp_array(self, experiment_directory):
         '''
@@ -155,9 +155,10 @@ class cycif:
         y_tiles = np.shape(fm_array[0])[0]
         x_tiles = np.shape(fm_array[0])[1]
 
-        x_pixel_count = int((x_tiles) * 32)
-        y_pixel_count = int((y_tiles) * 24)
+        x_pixel_count = int((x_tiles) * 32) #32
+        y_pixel_count = int((y_tiles) * 24) #24
         sp_array = np.random.rand(5, y_pixel_count, x_pixel_count, 2).astype('float64')
+        print(np.shape(sp_array))
         for channel in channels:
             filename = channel + '_sp_array.npy'
             np.save(filename, sp_array)
@@ -225,14 +226,15 @@ class cycif:
 
         derivative_jump = 15
 
-        y_subdivisions = 2
-        x_subdivisions = 2
+        y_subdivisions = 24
+        x_subdivisions = 32
 
         y_offset = int(y_subdivisions * y_tile_number)
         x_offset = int(x_subdivisions * x_tile_number)
 
         for y in range(y_offset, y_subdivisions + y_offset):
             for x in range(x_offset, x_subdivisions + x_offset):
+
 
                 score = self.focus_score(sub_divided_image[y - y_offset][x - x_offset], derivative_jump)
                 sp_array_slice[y][x][0] = score
@@ -521,15 +523,17 @@ class cycif:
         core.set_xy_position(numpy_x[0][0], numpy_y[0][0])
 
         #define range to scan through. 3 equally distributed points
-        scan_range = 20
+        scan_range = 35
         sample_mid_z = numpy_z[0][0]
         sample_span = [sample_mid_z - scan_range / 2, sample_mid_z, sample_mid_z + scan_range / 2]
+        print(sample_span)
+        images = np.random.rand(3, 2960, 5056).astype('uint16')
         #order is x,y channel and z points
 
         for x in range(0, x_tiles):
             for y in range(0, y_tiles):
 
-                for channel_index in range(0, 4):
+                for channel_index in range(0, 1):
                     exp_time = int(exp_array[channel_index])
                     exp_calc_array_channel_xy = exp_calc_array[channel_index][y][x]
                     point = 0
@@ -555,12 +559,16 @@ class cycif:
 
                             #auto focus
                             sub_im = self.image_sub_divider(im, 24, 32)
-                            self.sub_divided_2_brenner_sp(experiment_directory, sub_im, channels[channel_index], point, z_slice, numpy_x[y][x], numpy_y[y][x])
+                            self.sub_divided_2_brenner_sp(experiment_directory, sub_im, channels[channel_index], point, z_slice, x, y)
+                            images[point] = im
+
+
 
 
 
 
                             point += 1
+
 
         # solve and populate exp_array
         np.save(exp_calc_filename, exp_calc_array)
@@ -574,6 +582,7 @@ class cycif:
         self.sp_array_surface_2_fm(experiment_directory, 'DAPI')
 
         np.save('fm_array.npy', fm_array)
+        np.save('images.npy', images)
 
     ###########################################################
     #This section is the for the exposure functions.
@@ -986,6 +995,16 @@ class cycif:
 #Using core snap and not pycromanager acquire
 ############################################
 
+    def position_verify(self, z_position):
+
+        difference_range = 1
+        current_z = core.get_position()
+        difference = abs(z_position - current_z)
+        while difference > difference_range:
+            core.set_position(z_position)
+            current_z = core.get_position()
+            difference = abs(z_position - current_z)
+            time.sleep(0.5)
 
     def image_capture(self, experiment_directory, channel, exp_time, x,y,z):
 
@@ -1002,7 +1021,8 @@ class cycif:
 
         core.set_xy_position(numpy_x[y][x], numpy_y[y][x])
         time.sleep(.5)
-        core.set_position(numpy_z[y][x])
+        core.set_position(z)
+        time.sleep(1)
 
         core.snap_image()
         tagged_image = core.get_tagged_image()

@@ -28,7 +28,7 @@ stain_valve = 4
 
 #microscope.image_cycle_acquire(cycle_number, experiment_directory, 5, 'Stain', offset_array, establish_fm_array=1, auto_exp_run=1)
 
-#microscope.establish_fm_array(experiment_directory, 1, 5, offset_array, initialize=1, autofocus=0)
+microscope.establish_fm_array(experiment_directory, 1, 5, offset_array, initialize=1, autofocus=1)
 
 #microscope.full_cycle(experiment_directory, cycle_number, exp_time_array, offset_array, stain_valve)
 
