@@ -13,12 +13,12 @@ microscope = cycif() # initialize cycif object
 
 
 
-experiment_directory = r'E:\auto_focus testing'
+experiment_directory = r'E:\11_10_23 test run'
 numpy_path = experiment_directory + '/' + 'np_arrays'
 os.chdir(numpy_path)
 
-fm_array = np.load('fm_array.npy', allow_pickle=False)
-dapi_sp_array = np.load('dapi_sp_array.npy', allow_pickle=False)
+#fm_array = np.load('fm_array.npy', allow_pickle=False)
+#dapi_sp_array = np.load('dapi_sp_array.npy', allow_pickle=False)
 #images = np.load('images.npy', allow_pickle=False)
 
 #io.imshow(images[2])
@@ -28,25 +28,33 @@ dapi_sp_array = np.load('dapi_sp_array.npy', allow_pickle=False)
 #print(scores)
 
 
-focus_map = dapi_sp_array[3, ::, ::, 0] * dapi_sp_array[4, ::, ::, 0]
+#focus_map = dapi_sp_array[3, ::, ::, 0] * dapi_sp_array[4, ::, ::, 0]
 #print(np.shape(dapi_sp_array))
 
-y = dapi_sp_array[0:3, 1, 0, 0]
-x = dapi_sp_array[0:3, 1, 0, 1]
+#y = dapi_sp_array[0:3, 1, 0, 0]
+#x = dapi_sp_array[0:3, 1, 0, 1]
+
+#print(x)
+#io.imshow(focus_map)
+#io.show()
 
 
-microscope.sp_array_surface_2_fm(experiment_directory, 'DAPI')
-fm_array = np.load('fm_array.npy', allow_pickle=False)
+#microscope.sp_array_surface_2_fm(experiment_directory, 'DAPI')
+exp_array = np.load('exp_array.npy', allow_pickle=False)
+
 
 x = 0
 y = 1
 
-im = microscope.image_capture(experiment_directory, 'DAPI', 50, x, y, fm_array[2][y][x] - 2)
+#im = microscope.image_capture(experiment_directory, 'DAPI', 50, x, y, fm_array[2][y][x] - 2)
+
+print(exp_array)
+exp_array = np.array([20,20,20,20])
+np.save('exp_array.npy', exp_array)
 
 
-
-io.imshow(im)
-io.show()
+#io.imshow(im)
+#io.show()
 
 
 #plt.scatter(x,y)
