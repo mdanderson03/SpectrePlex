@@ -2,8 +2,8 @@
 #add python_xx and python_xx/DLL to the project path
 
 import sys
-sys.path.append(r'C:\Users\CyCIF PC\Documents\GitHub\AutoCIF\Python_64_elveflow\DLL64')#add the path of the library here
-sys.path.append(r'C:\Users\CyCIF PC\Documents\GitHub\AutoCIF\Python_64_elveflow')#add the path of the LoadElveflow.py
+sys.path.append('D:/dev/SDK/DLL64/DLL64')#add the path of the library here
+sys.path.append('D:/dev/SDK/Python_64')#add the path of the LoadElveflow.py
 
 from ctypes import *
 
@@ -18,7 +18,7 @@ from Elveflow64 import *
 Instr_ID=c_int32()
 print("Instrument name is hardcoded in the Python script")
 #see User Guide and NIMAX to determine the instrument name 
-error=MUX_DRI_Initialization("ASRL6::INSTR".encode('ascii'),byref(Instr_ID))#choose the COM port, it can be ASRLXXX::INSTR (where XXX=port number)
+error=MUX_DRI_Initialization("ASRL4::INSTR".encode('ascii'),byref(Instr_ID))#choose the COM port, it can be ASRLXXX::INSTR (where XXX=port number)
 #all functions will return error codes to help you to debug your code, for further information see User Guide
 print('error:%d' % error)
 print("MUX DRI ID: %d" % Instr_ID.value)

@@ -9,6 +9,10 @@ typedef uint16_t  Z_regulator_type;
 #define Z_regulator_type__0_8000_mbar 3
 #define Z_regulator_type_m1000_1000_mbar 4
 #define Z_regulator_type_m1000_6000_mbar 5
+typedef uint16_t  Z_MUX_DRI_Rotation;
+#define Z_MUX_DRI_Rotation_Shortest 0
+#define Z_MUX_DRI_Rotation_Clockwise 1
+#define Z_MUX_DRI_Rotation_CounterClockwise 2
 typedef uint16_t  Z_sensor_type;
 #define Z_sensor_type_none 0
 #define Z_sensor_type_Flow_1_5_muL_min 1
@@ -25,10 +29,6 @@ typedef uint16_t  Z_sensor_type;
 #define Z_sensor_type_Press_16_bar 12
 #define Z_sensor_type_Level 13
 #define Z_sensor_type_Custom 14
-typedef uint16_t  Z_MUX_DRI_Rotation;
-#define Z_MUX_DRI_Rotation_Shortest 0
-#define Z_MUX_DRI_Rotation_Clockwise 1
-#define Z_MUX_DRI_Rotation_CounterClockwise 2
 typedef uint16_t  Z_Sensor_digit_analog;
 #define Z_Sensor_digit_analog_Analog 0
 #define Z_Sensor_digit_analog_Digital 1
@@ -59,32 +59,6 @@ typedef uint16_t  Enum;
 #define Enum__22NormallyOpenedCustom 5
 #define Enum__32UniversalCustom 6
 
-/*!
- * Elveflow Library
- * AF1 Device
- * 
- * IInitiate the AF1 device using device name (could be obtained in NI MAX), 
- * and regulator, and sensor. It return the AF1 ID (number >=0) to be used 
- * with other function 
- */
-int32_t __cdecl AF1_Initialization(char Device_Name[], 
-	Z_regulator_type Pressure_Regulator, Z_sensor_type Sensor, 
-	int32_t *AF1_ID_out);
-/*!
- * Elveflow Library
- * Sensor Reader or Flow Reader Device
- * 
- * Initiate the F_S_R device using device name (could be obtained in NI MAX) 
- * and sensors. It return the F_S_R ID (number >=0) to be used with other 
- * function. 
- * NB: Flow reader can only accept Flow sensor
- * NB 2: Sensor connected to channel 1-2 and 3-4 should be the same type 
- * otherwise they will not be taken into account and the user will be informed 
- * by a prompt message.
- */
-int32_t __cdecl F_S_R_Initialization(char Device_Name[], 
-	Z_sensor_type Sens_Ch_1, Z_sensor_type Sens_Ch_2, Z_sensor_type Sens_Ch_3, 
-	Z_sensor_type Sens_Ch_4, int32_t *F_S_Reader_ID_out);
 /*!
  * Elveflow Library
  * Mux Device
@@ -205,35 +179,6 @@ int32_t __cdecl OB1_Set_Press(int32_t OB1_ID, int32_t Channel_1_to_4,
 	double Pressure, double Calib_array_in[], int32_t Calib_Array_len);
 /*!
  * Elveflow Library
- * AF1 Device
- * 
- * Launch AF1 calibration and return the calibration array. Len correspond to 
- * the Calib_array_out length.
- */
-int32_t __cdecl AF1_Calib(int32_t AF1_ID_in, double Calib_array_out[], 
-	int32_t len);
-/*!
- * Elveflow Library
- * AF1 Device
- * 
- * Get the pressure of the AF1 device, Calibration array is required (use 
- * Set_Default_Calib if required). Len correspond to the Calib_array_in 
- * length.
- */
-int32_t __cdecl AF1_Get_Press(int32_t AF1_ID_in, int32_t Integration_time, 
-	double Calib_array_in[], double *Pressure, int32_t len);
-/*!
- * Elveflow Library
- * AF1 Device
- * 
- * Set the pressure of the AF1 device, Calibration array is required (use 
- * Set_Default_Calib if required).Len correspond to the Calib_array_in length.
- * 
- */
-int32_t __cdecl AF1_Set_Press(int32_t AF1_ID_in, double Pressure, 
-	double Calib_array_in[], int32_t len);
-/*!
- * Elveflow Library
  * OB1 Device
  * 
  * Close communication with OB1
@@ -275,50 +220,6 @@ int32_t __cdecl OB1_Get_Trig(int32_t OB1_ID, int32_t *Trigger);
  * Set the trigger of the OB1 (0 = 0V, 1 =3,3V)
  */
 int32_t __cdecl OB1_Set_Trig(int32_t OB1_ID, int32_t trigger);
-/*!
- * Elveflow Library
- * AF1 Device
- * 
- * Close Communication with AF1
- */
-int32_t __cdecl AF1_Destructor(int32_t AF1_ID_in);
-/*!
- * Elveflow Library
- * AF1 Device
- * 
- * Get the Flow rate from the flow sensor connected on the AF1
- */
-int32_t __cdecl AF1_Get_Flow_rate(int32_t AF1_ID_in, double *Flow);
-/*!
- * Elveflow Library
- * AF1 Device
- * 
- * Get the trigger of the AF1 device (0=0V, 1=5V).
- * 
- */
-int32_t __cdecl AF1_Get_Trig(int32_t AF1_ID_in, int32_t *trigger);
-/*!
- * Elveflow Library
- * AF1 Device
- * 
- * Set the Trigger of the AF1 device (0=0V, 1=5V).
- */
-int32_t __cdecl AF1_Set_Trig(int32_t AF1_ID_in, int32_t trigger);
-/*!
- * Elveflow Library
- * Sensor Reader or Flow Reader Device
- * 
- * Close Communication with F_S_R.
- */
-int32_t __cdecl F_S_R_Destructor(int32_t F_S_Reader_ID_in);
-/*!
- * Elveflow Library
- * Sensor Reader or Flow Reader Device
- * 
- * Get the data from the selected channel.
- */
-int32_t __cdecl F_S_R_Get_Sensor_data(int32_t F_S_Reader_ID_in, 
-	int32_t Channel_1_to_4, double *output);
 /*!
  * Elveflow Library
  * Mux Device
@@ -460,7 +361,7 @@ int32_t __cdecl BFS_Get_Temperature(int32_t BFS_ID_in, double *Temperature);
 int32_t __cdecl BFS_Set_Filter(int32_t BFS_ID_in, double Filter_value);
 /*!
  * Elveflow Library - ONLY FOR ILLUSTRATION - 
- * OB1 and AF1 Devices
+ * OB1 Devices
  * 
  * This function is only provided for illustration purpose, to explain how to 
  * do your own feedback loop. Elveflow does not guarante neither efficient nor 
@@ -691,53 +592,6 @@ int32_t __cdecl PID_Add_Remote(int32_t Regulator_ID,
 	int32_t Sensor_Channel_1_to_4, double P, double I, int32_t Running);
 /*!
  * Elveflow Library
- * AF1 Device
- * 
- * Start a loop running in the background, and automatically reads all sensors 
- * and regulators. No direct call to the AF1 can be made until the Stop 
- * measuring function is called. Until then only functions accessing this loop 
- * (get_remote_data, set_remote_target, remote_triggers) are recommended.
- */
-int32_t __cdecl AF1_Start_Remote_Measurement(int32_t AF1_ID, 
-	double Calib_array_in[], int32_t len);
-/*!
- * Elveflow Library
- * AF1 Device
- * 
- * Stop the background measure & control loop
- */
-int32_t __cdecl AF1_Stop_Remote_Measurement(int32_t AF1_ID);
-/*!
- * Elveflow Library
- * AF1 Device
- * 
- * Set the Target of the AF1 device. Modify the pressure if the PID is off, or 
- * the sensor is a pressure sensor. Modify a flow if the sensor is a flow 
- * sensor and the PID is on.
- */
-int32_t __cdecl AF1_Set_Remote_Target(int32_t AF1_ID, double Target);
-/*!
- * Elveflow Library
- * AF1 Device
- * 
- * Read the sensor and regulator values of the device.
- * Warning: This Function only extracts data obtained in the remote 
- * measurement loop
- * Sensor unit : mbar if pressure sensor, µl/min if flow sensor
- * Regulator unit : mbars
- */
-int32_t __cdecl AF1_Get_Remote_Data(int32_t AF1_ID, double *Reg_Data, 
-	double *Sens_Data);
-/*!
- * Elveflow Library
- * AF1 Device
- * 
- * Set the Trigger input and get the Trigger output of the AF1 device.
- */
-int32_t __cdecl AF1_Remote_Triggers(int32_t AF1_ID, int32_t TriggerIn, 
-	int32_t *TriggerOut);
-/*!
- * Elveflow Library
  * BFS Device
  * 
  * Start the monitoring loop for the BFS device.
@@ -860,6 +714,16 @@ int32_t __cdecl M_S_R_D_Set_Trig(int32_t M_S_R_D_ID,
  * Elveflow Library
  * Mux Device
  * 
+ * Get valve type plugged into your MUX Wire
+ * 
+ * 
+ */
+int32_t __cdecl MUX_Get_valves_Type(int32_t MUX_ID_in, int32_t Types_array[], 
+	int32_t len);
+/*!
+ * Elveflow Library
+ * Mux Device
+ * 
  * Set the vavle type.
  * This function is available for MUX Wire V3 using custom Valves or Valve V2.
  * Valve V3 type are automatically recognized by the MUX
@@ -870,16 +734,6 @@ int32_t __cdecl M_S_R_D_Set_Trig(int32_t M_S_R_D_ID,
  */
 int32_t __cdecl MUX_Set_valves_Type(int32_t MUX_ID_in, int32_t ValveNb, 
 	Enum Type);
-/*!
- * Elveflow Library
- * Mux Device
- * 
- * Get valve type plugged into your MUX Wire
- * 
- * 
- */
-int32_t __cdecl MUX_Get_valves_Type(int32_t MUX_ID_in, int32_t Types_array[], 
-	int32_t len);
 
 MgErr __cdecl LVDLLStatus(char *errStr, int errStrLen, void *module);
 

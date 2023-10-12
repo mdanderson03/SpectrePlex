@@ -28,10 +28,10 @@ stain_valve = 1
 z_slices = 5
 
 
-MUX_DRI_Get_Valve(pump.mux_ID,0)
 
-#for cycle in range(2,9):
-#    microscope.full_cycle(experiment_directory, cycle, offset_array, cycle, pump)
+
+for cycle in range(3,9):
+    microscope.full_cycle(experiment_directory, cycle, offset_array, cycle, pump)
 
 
 
