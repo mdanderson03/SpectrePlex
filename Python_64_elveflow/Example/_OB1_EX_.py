@@ -1,13 +1,11 @@
-
-
-#tested with Python 3.5.1 (IDE Eclipse V4.5.2 + Pydev V5.0.0)
+#tested with Python 3.6.10 (IDE Notepad++ v8.5.4)
 #add python_xx and python_xx/DLL to the project path
 #coding: utf8
 
 import sys
 from email.header import UTF8
-sys.path.append(r'C:\Users\CyCIF PC\Documents\GitHub\AutoCIF\Python_64_elveflow\DLL64')#add the path of the library here
-sys.path.append(r'C:\Users\CyCIF PC\Documents\GitHub\AutoCIF\Python_64_elveflow')#add the path of the LoadElveflow.py
+sys.path.append('D:/dev/SDK/DLL64/DLL64')#add the path of the library here
+sys.path.append('D:/dev/SDK/Python_64')#add the path of the LoadElveflow.py
 
 from ctypes import *
 
@@ -22,14 +20,13 @@ from Elveflow64 import *
 Instr_ID=c_int32()
 print("Instrument name and regulator types are hardcoded in the Python script")
 #see User Guide to determine regulator types and NIMAX to determine the instrument name 
-error=OB1_Initialization('ASRL3::INSTR'.encode('ascii'),1,2,4,3,byref(Instr_ID))
+error=OB1_Initialization('COM4'.encode('ascii'),0,0,0,0,byref(Instr_ID)) 
 #all functions will return error codes to help you to debug your code, for further information refer to User Guide
 print('error:%d' % error)
 print("OB1 ID: %d" % Instr_ID.value)
 
-#add one digital flow sensor with water calibration (OB1 MK3+ only), all information to declare sensors are described in the User Guide
-error=OB1_Add_Sens(Instr_ID.value, 1, 5, 1, 0, 7, 0)
-
+#add one digital flow sensor with water calibration, all information to declare sensors are described in the User Guide
+error=OB1_Add_Sens(Instr_ID, 1, 4, 1, 0, 7, 0)
 #(CustomSens_Voltage_5_to_25 only works with CustomSensors and OB1 from 2020 and after)
 print('error add digit flow sensor:%d' % error)
 
@@ -95,7 +92,7 @@ while repeat:
         get_pressure=c_double()
         error=OB1_Get_Press(Instr_ID.value, set_channel, 1, byref(Calib),byref(get_pressure), 1000)#Acquire_data=1 -> read all the analog values
         print('error: ', error)
-        print('ch',set_channel,': ',get_pressure.value)
+        print('ch',set_channel.value,': ',get_pressure.value)
         #print('ch1: ', get_pressure()[0] , ' mbar\nch2: ', get_pressure()[1] ,' mbar\nch3: ', get_pressure()[2] , ' mbar\nch4: ', get_pressure()[3] ,' mbar')
         
     if answer=="get_all":
@@ -144,7 +141,7 @@ while repeat:
         set_channel_sensor=input("select channel sensor (1-4) : ")
         set_channel_sensor=int(set_channel_sensor)#convert to int
         set_channel_sensor=c_int32(set_channel_sensor)#convert to c_int32
-        error=PID_Add_Remote(Instr_ID.value, set_channel_regulator, Instr_ID.value, set_channel_sensor,1.2,0.0000,1)
+        error=PID_Add_Remote(Instr_ID.value, set_channel_regulator, Instr_ID.value, set_channel_sensor,10,0.1,1) 
 
     if answer=="start":
         error=OB1_Start_Remote_Measurement(Instr_ID.value, byref(Calib), 1000)

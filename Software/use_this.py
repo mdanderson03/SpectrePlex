@@ -1,36 +1,43 @@
 import os
 
 from autocyplex import *
+from optparse import OptionParser
 from pycromanager import Core, Studio, Magellan
 microscope = cycif() # initialize cycif object
 pump = fluidics(6, 3)
 
 
 
-experiment_directory = r'E:\auto_focus testing'
-#exp_array = np.array([100,35, 35, 35])
-offset_array = [0, -8, -8, -8]
-cycle_number = 1
-stain_valve = 4
+
 
 
 #numpy_path = experiment_directory + '/' + 'np_arrays'
 #os.chdir(numpy_path)
 #np.save('exp_array.npy', exp_array)
-
-
-
-#pump.liquid_action('PBS_flow_off')
+#pump.liquid_action('Bleach')
+#pump.liquid_action('PBS flow off')
+#pump.liquid_action('Wash')
+#pump.liquid_action('Stain', 1)
 #pump.liquid_action('Stain', stain_valve = 7)
 
+experiment_directory = r'E:\11_10_23 test run'
+#exp_array = np.array([100,35, 35, 35])
+offset_array = [0, -7, -8, -9.5]
+cycle_number = 3
+stain_valve = 1
+z_slices = 5
 
 
 
-#microscope.image_cycle_acquire(cycle_number, experiment_directory, 5, 'Stain', offset_array, establish_fm_array=1, auto_exp_run=1)
 
-microscope.establish_fm_array(experiment_directory, 1, 5, offset_array, initialize=1, autofocus=1)
+for cycle in range(3,9):
+    microscope.full_cycle(experiment_directory, cycle, offset_array, cycle, pump)
 
-#microscope.full_cycle(experiment_directory, cycle_number, exp_time_array, offset_array, stain_valve)
+
+
+
+
+
 
 
 '''

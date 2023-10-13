@@ -2,46 +2,14 @@
 # It defines all function prototype for use with python lib
 
 from ctypes import *
-ElveflowDLL = CDLL(r'C:\Users\CyCIF PC\Documents\GitHub\AutoCIF\Python_64_elveflow\DLL64\Elveflow64.dll')
-
-
- # Elveflow Library
- # AF1 Device
- # 
- # IInitiate the AF1 device using device name (could be obtained in NI MAX), 
- # and regulator, and sensor. It return the AF1 ID (number >=0) to be used 
- # with other function 
- #
-def AF1_Initialization (Device_Name, Pressure_Regulator, Sensor, AF1_ID_out):
-	X_AF1_Initialization=ElveflowDLL.AF1_Initialization
-	X_AF1_Initialization.argtypes=[c_char_p, c_uint16, c_uint16, POINTER(c_int32)]
-	return X_AF1_Initialization (Device_Name, Pressure_Regulator, Sensor, AF1_ID_out)
-
-
-
- # Elveflow Library
- # Sensor Reader or Flow Reader Device
- # 
- # Initiate the F_S_R device using device name (could be obtained in NI MAX) 
- # and sensors. It return the F_S_R ID (number >=0) to be used with other 
- # function. 
- # NB: Flow reader can only accept Flow sensor
- # NB 2: Sensor connected to channel 1-2 and 3-4 should be the same type 
- # otherwise they will not be taken into account and the user will be informed 
- # by a prompt message.
- #
-def F_S_R_Initialization (Device_Name, Sens_Ch_1, Sens_Ch_2, Sens_Ch_3, Sens_Ch_4, F_S_Reader_ID_out):
-	X_F_S_R_Initialization=ElveflowDLL.F_S_R_Initialization
-	X_F_S_R_Initialization.argtypes=[c_char_p, c_uint16, c_uint16, c_uint16, c_uint16, POINTER(c_int32)]
-	return X_F_S_R_Initialization (Device_Name, Sens_Ch_1, Sens_Ch_2, Sens_Ch_3, Sens_Ch_4, F_S_Reader_ID_out)
-
+ElveflowDLL=CDLL(r'C:\Users\CyCIF PC\Documents\GitHub\AutoCIF\Python_64_elveflow\DLL64\Elveflow64.dll')# change this path 
 
 
  # Elveflow Library
  # Mux Device
  # 
  # Initiate the MUX device using device name (could be obtained in NI MAX). It 
- # return the F_S_R ID (number >=0) to be used with other function
+ # return the MUX ID (number >=0) to be used with other function
  #
 def MUX_Initialization (Device_Name, MUX_ID_out):
 	X_MUX_Initialization=ElveflowDLL.MUX_Initialization
@@ -305,80 +273,6 @@ def OB1_Set_Trig (OB1_ID, trigger):
 	X_OB1_Set_Trig=ElveflowDLL.OB1_Set_Trig
 	X_OB1_Set_Trig.argtypes=[c_int32, c_int32]
 	return X_OB1_Set_Trig (OB1_ID, trigger)
-
-
-
- # Elveflow Library
- # AF1 Device
- # 
- # Close Communication with AF1
- #
-def AF1_Destructor (AF1_ID_in):
-	X_AF1_Destructor=ElveflowDLL.AF1_Destructor
-	X_AF1_Destructor.argtypes=[c_int32]
-	return X_AF1_Destructor (AF1_ID_in)
-
-
-
- # Elveflow Library
- # AF1 Device
- # 
- # Get the Flow rate from the flow sensor connected on the AF1
- #
-def AF1_Get_Flow_rate (AF1_ID_in, Flow):
-	X_AF1_Get_Flow_rate=ElveflowDLL.AF1_Get_Flow_rate
-	X_AF1_Get_Flow_rate.argtypes=[c_int32, POINTER(c_double)]
-	return X_AF1_Get_Flow_rate (AF1_ID_in, Flow)
-
-
-
- # Elveflow Library
- # AF1 Device
- # 
- # Get the trigger of the AF1 device (0=0V, 1=5V).
- # 
- #
-def AF1_Get_Trig (AF1_ID_in, trigger):
-	X_AF1_Get_Trig=ElveflowDLL.AF1_Get_Trig
-	X_AF1_Get_Trig.argtypes=[c_int32, POINTER(c_int32)]
-	return X_AF1_Get_Trig (AF1_ID_in, trigger)
-
-
-
- # Elveflow Library
- # AF1 Device
- # 
- # Set the Trigger of the AF1 device (0=0V, 1=5V).
- #
-def AF1_Set_Trig (AF1_ID_in, trigger):
-	X_AF1_Set_Trig=ElveflowDLL.AF1_Set_Trig
-	X_AF1_Set_Trig.argtypes=[c_int32, c_int32]
-	return X_AF1_Set_Trig (AF1_ID_in, trigger)
-
-
-
- # Elveflow Library
- # Sensor Reader or Flow Reader Device
- # 
- # Close Communication with F_S_R.
- #
-def F_S_R_Destructor (F_S_Reader_ID_in):
-	X_F_S_R_Destructor=ElveflowDLL.F_S_R_Destructor
-	X_F_S_R_Destructor.argtypes=[c_int32]
-	return X_F_S_R_Destructor (F_S_Reader_ID_in)
-
-
-
- # Elveflow Library
- # Sensor Reader or Flow Reader Device
- # 
- # Get the data from the selected channel.
- #
-def F_S_R_Get_Sensor_data (F_S_Reader_ID_in, Channel_1_to_4, output):
-	X_F_S_R_Get_Sensor_data=ElveflowDLL.F_S_R_Get_Sensor_data
-	X_F_S_R_Get_Sensor_data.argtypes=[c_int32, c_int32, POINTER(c_double)]
-	return X_F_S_R_Get_Sensor_data (F_S_Reader_ID_in, Channel_1_to_4, output)
-
 
 
  # Elveflow Library
@@ -888,77 +782,6 @@ def PID_Add_Remote (Regulator_ID, Regulator_Channel_1_to_4, ID_Sensor, Sensor_Ch
 	X_PID_Add_Remote=ElveflowDLL.PID_Add_Remote
 	X_PID_Add_Remote.argtypes=[c_int32, c_int32, c_int32, c_int32, c_double, c_double, c_int32]
 	return X_PID_Add_Remote (Regulator_ID, Regulator_Channel_1_to_4, ID_Sensor, Sensor_Channel_1_to_4, P, I, Running)
-
-
-
- # Elveflow Library
- # AF1 Device
- # 
- # Start a loop running in the background, and automatically reads all sensors 
- # and regulators. No direct call to the AF1 can be made until the Stop 
- # measuring function is called. Until then only functions accessing this loop 
- # (get_remote_data, set_remote_target, remote_triggers) are recommended.
- #
-def AF1_Start_Remote_Measurement (AF1_ID, Calib_array_in, len):
-	X_AF1_Start_Remote_Measurement=ElveflowDLL.AF1_Start_Remote_Measurement
-	X_AF1_Start_Remote_Measurement.argtypes=[c_int32, POINTER(c_double*1000), c_int32]
-	return X_AF1_Start_Remote_Measurement (AF1_ID, Calib_array_in, len)
-
-
-
- # Elveflow Library
- # AF1 Device
- # 
- # Stop the background measure & control loop
- #
-def AF1_Stop_Remote_Measurement (AF1_ID):
-	X_AF1_Stop_Remote_Measurement=ElveflowDLL.AF1_Stop_Remote_Measurement
-	X_AF1_Stop_Remote_Measurement.argtypes=[c_int32]
-	return X_AF1_Stop_Remote_Measurement (AF1_ID)
-
-
-
- # Elveflow Library
- # AF1 Device
- # 
- # Set the Target of the AF1 device. Modify the pressure if the PID is off, or 
- # the sensor is a pressure sensor. Modify a flow if the sensor is a flow 
- # sensor and the PID is on.
- #
-def AF1_Set_Remote_Target (AF1_ID, Target):
-	X_AF1_Set_Remote_Target=ElveflowDLL.AF1_Set_Remote_Target
-	X_AF1_Set_Remote_Target.argtypes=[c_int32, c_double]
-	return X_AF1_Set_Remote_Target (AF1_ID, Target)
-
-
-
- # Elveflow Library
- # AF1 Device
- # 
- # Read the sensor and regulator values of the device.
- # Warning: This Function only extracts data obtained in the remote 
- # measurement loop
- # Sensor unit : mbar if pressure sensor, �l/min if flow sensor
- # Regulator unit : mbars
- #
-def AF1_Get_Remote_Data (AF1_ID, Reg_Data, Sens_Data):
-	X_AF1_Get_Remote_Data=ElveflowDLL.AF1_Get_Remote_Data
-	X_AF1_Get_Remote_Data.argtypes=[c_int32, POINTER(c_double), POINTER(c_double)]
-	return X_AF1_Get_Remote_Data (AF1_ID, Reg_Data, Sens_Data)
-
-
-
- # Elveflow Library
- # AF1 Device
- # 
- # Set the Trigger input and get the Trigger output of the AF1 device.
- #
-def AF1_Remote_Triggers (AF1_ID, TriggerIn, TriggerOut):
-	X_AF1_Remote_Triggers=ElveflowDLL.AF1_Remote_Triggers
-	X_AF1_Remote_Triggers.argtypes=[c_int32, c_int32, POINTER(c_int32)]
-	return X_AF1_Remote_Triggers (AF1_ID, TriggerIn, TriggerOut)
-
-
 
  # Elveflow Library
  # BFS Device

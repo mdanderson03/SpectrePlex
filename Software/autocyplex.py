@@ -1,5 +1,5 @@
 import ome_types
-from pycromanager import Core, Acquisition, multi_d_acquisition_events, Dataset, MagellanAcquisition, Magellan, start_headless, XYTiledAcquisition
+from pycromanager import Core, Acquisition, multi_d_acquisition_events, Dataset, MagellanAcquisition, Magellan, start_headless, XYTiledAcquisition, Studio
 import numpy as np
 import time
 from scipy.optimize import curve_fit
@@ -35,12 +35,15 @@ from array import array
 from Elveflow64 import *
 
 
+#mm_app_path = 'C:\Program Files\Micro-Manager-2.0'
+#config_file = r'C:\Users\CyCIF PC\Desktop\lumencor_auto_cycif.cfg'
 
+#start_headless(mm_app_path, config_file, buffer_size_mb=50000)
 #client = mqtt.Client('autocyplex_server')
 #client.connect('10.3.141.1', 1883)
 
 core = Core()
-magellan = Magellan()
+#magellan = Magellan()
 
 global level
 level = []
@@ -224,7 +227,7 @@ class cycif:
         sp_array = np.load(file_name, allow_pickle=False)
         sp_array_slice = sp_array[point_number]
 
-        derivative_jump = 15
+        derivative_jump = 10
 
         y_subdivisions = 24
         x_subdivisions = 32
@@ -476,7 +479,7 @@ class cycif:
     # Setup fm_array and sp_array alongside auto focus updates and flat values
     #########################################################
 
-    def establish_fm_array(self, experiment_directory, desired_cycle_count, z_slices, off_array, initialize = 0, x_crop_percentage = 0, autofocus = 0):
+    def establish_fm_array(self, experiment_directory, desired_cycle_count, z_slices, off_array, initialize = 0, x_crop_percentage = 0, autofocus = 0, auto_expose = 0):
         # non autofocus. Need to build in auto focus ability
         self.file_structure(experiment_directory, desired_cycle_count)
 
@@ -495,14 +498,20 @@ class cycif:
         else:
             pass
 
-        if autofocus == 1:
-            self.fm_array_update_autofocus_autoexpose(experiment_directory)
+        if autofocus == 1 and auto_expose == 1:
+            self.fm_array_update_autofocus_autoexpose(experiment_directory, exp = 1, focus = 1)
+            self.fm_channel_initial(experiment_directory, off_array, z_slices)
+        if autofocus == 1 and auto_expose == 0:
+            self.fm_array_update_autofocus_autoexpose(experiment_directory, exp = 0, focus = 1)
+            self.fm_channel_initial(experiment_directory, off_array, z_slices)
+        if autofocus == 0 and auto_expose == 1:
+            self.fm_array_update_autofocus_autoexpose(experiment_directory, exp = 1, focus = 0)
         else:
             pass
 
 
 
-    def fm_array_update_autofocus_autoexpose(self, experiment_directory):
+    def fm_array_update_autofocus_autoexpose(self, experiment_directory, exp = 0, focus = 0):
         '''
         Executes auto focus and exposure algorithms.
 
@@ -541,15 +550,23 @@ class cycif:
         images = np.random.rand(3, 2960, 5056).astype('uint16')
         #order is x,y channel and z points
 
+        self.image_capture(experiment_directory, 'DAPI', 50, 0, 0, 0) #wake up lumencor light engine
+        time.sleep(10) #wait for it to wake up
+
+        if exp == 1 and focus == 0:
+            end_point_number = 0
+        if exp == 1 and focus == 1:
+            end_point_number = 2
+
         for x in range(0, x_tiles):
             for y in range(0, y_tiles):
 
-                for channel_index in range(0, 1):
+                for channel_index in range(0, 4):
                     exp_time = int(exp_array[channel_index])
                     exp_calc_array_channel_xy = exp_calc_array[channel_index][y][x]
                     point = 0
 
-                    while point <= 2:
+                    while point <= end_point_number:
                         #take image at XYZ position and determine 99 percentile intensity
                         z_slice = int(sample_span[point])
                         im = self.image_capture(experiment_directory, channels[channel_index], exp_time, x, y, z_slice)
@@ -563,33 +580,45 @@ class cycif:
                         if trigger_state == 1: # restart z point aquistions
                             point = 0
                         if trigger_state == 0: # input points into data structure and move to next point
-                            intensity = self.image_percentile_level(im, 0.99)  # 99th percentile intensity
-                            exp_calc_array_channel_xy[point][0] = intensity - 300  # 300 is camera offset
-                            exp_calc_array_channel_xy[point][1] = z_slice
-                            exp_calc_array_channel_xy[point][2] = core.get_exposure()
+                            if exp == 1:
+                                intensity = self.image_percentile_level(im, 0.99)  # 99th percentile intensity
+                                exp_calc_array_channel_xy[point][0] = intensity - 300  # 300 is camera offset
+                                exp_calc_array_channel_xy[point][1] = z_slice
+                                exp_calc_array_channel_xy[point][2] = core.get_exposure()
+                            else:
+                                pass
 
                             #auto focus
-                            sub_im = self.image_sub_divider(im, 24, 32)
-                            self.sub_divided_2_brenner_sp(experiment_directory, sub_im, channels[channel_index], point, z_slice, x, y)
-                            images[point] = im
+                            if focus == 1 and channel_index == 0:
+                                sub_im = self.image_sub_divider(im, 24, 32)
+                                self.sub_divided_2_brenner_sp(experiment_directory, sub_im, channels[channel_index], point, z_slice, x, y)
+                                images[point] = im
+                            else:
+                                pass
 
 
                             point += 1
 
 
         # solve and populate exp_array
-        np.save(exp_calc_filename, exp_calc_array)
-        #self.one_slice_calc_array_solver(experiment_directory)
-        self.calc_array_solver(experiment_directory)
-        self.calc_array_2_exp_array(experiment_directory, 0.2)
+        if exp == 1:
+            np.save(exp_calc_filename, exp_calc_array)
+            #self.one_slice_calc_array_solver(experiment_directory)
+            self.calc_array_solver(experiment_directory)
+            self.calc_array_2_exp_array(experiment_directory, 0.07)  # 0.2 =20% dynamic range used
+        else:
+            pass
 
         # solve sp array and populate fm array
-        self.sp_array_focus_solver(experiment_directory, 'DAPI')
-        self.sp_array_filter(experiment_directory, 'DAPI')
-        self.sp_array_surface_2_fm(experiment_directory, 'DAPI')
+        if focus == 1:
+            self.sp_array_focus_solver(experiment_directory, 'DAPI')
+            self.sp_array_filter(experiment_directory, 'DAPI')
+            self.sp_array_surface_2_fm(experiment_directory, 'DAPI')
+        else:
+            pass
 
         #np.save('fm_array.npy', fm_array)
-        np.save('images.npy', images)
+        #np.save('images.npy', images)
 
     ###########################################################
     #This section is the for the exposure functions.
@@ -628,7 +657,7 @@ class cycif:
         '''
 
         target_intensity = 65535 * 0.05
-        max_time = 500
+        max_time = 100
         trigger_state = 0
 
         intensity = self.image_percentile_level(image, 0.99)
@@ -643,7 +672,7 @@ class cycif:
             intensity = self.image_percentile_level(new_image, 0.99)
             trigger_state = 1
 
-        if intensity < 2000 and exp_time < max_time:
+        if intensity < 1000 and exp_time < max_time:
             trigger_state = 1
 
         if trigger_state == 1:
@@ -801,6 +830,11 @@ class cycif:
             else:
                 pass
 
+            if new_exp_time < 50:
+                new_exp_time = 50
+            else:
+                pass
+
             exp_array[channel_index] = new_exp_time
             print(channel_index, new_exp_time)
 
@@ -886,6 +920,9 @@ class cycif:
         a555_channel_offset = off_array[2]
         a647_channel_offset = off_array[3]
 
+        y_tiles = np.shape(fm_array[0])[0]
+        x_tiles = np.shape(fm_array[0])[1]
+
         slice_gap = 2 # space between z slices in microns
 
         dummy_channel = np.empty_like(fm_array[0])
@@ -901,8 +938,7 @@ class cycif:
         fm_array[8] = fm_array[2] + a647_channel_offset
         y_tiles = int(np.shape(fm_array[0])[0])
         x_tiles = int(np.shape(fm_array[0])[1])
-        z_slice_array = np.ones((y_tiles, x_tiles))
-        z_slice_array = z_slice_array * z_slices
+        z_slice_array = np.full((y_tiles, x_tiles), z_slices)
 
         fm_array[3] = z_slice_array
         fm_array[5] = z_slice_array
@@ -1108,6 +1144,7 @@ class cycif:
                         tagged_image = core.get_tagged_image()
                         pixels = np.reshape(tagged_image.pix,newshape=[tagged_image.tags["Height"], tagged_image.tags["Width"]])
                         tif_stack[z_counter][tile_counter] = pixels
+                        print(core.getRemainingImageCount())
 
                         z_counter += 1
 
@@ -1157,6 +1194,8 @@ class cycif:
         :return:
         '''
 
+        core = Core()
+
 
         #load in focus map and exp array
         numpy_path = experiment_directory +'/' + 'np_arrays'
@@ -1171,19 +1210,22 @@ class cycif:
         numpy_y = full_array[1]
         x_tile_count = np.unique(numpy_x).size
         y_tile_count = np.unique(numpy_y).size
-        z_slices = full_array[3][0][0]
+        z_slices = full_array[5][0][0]
+        #z_slices = 11
         #go to upper left corner to start pattern
         core.set_xy_position(numpy_x[0][0], numpy_y[0][0])
         time.sleep(1)
         #generate numpy data structure
         zc_tif_stack = np.random.rand(4, int(z_slices), height_pixels, width_pixels).astype('float16')
 
+        image_number_counter = 0
+
         for y in range(0, y_tile_count):
             if y % 2 != 0:
                 for x in range(x_tile_count - 1, -1, -1):
 
                     core.set_xy_position(numpy_x[y][x], numpy_y[y][x])
-                    time.sleep(0.5)
+                    time.sleep(1)
 
                     for channel in channels:
 
@@ -1212,27 +1254,32 @@ class cycif:
 
                         z_end = int(numpy_z[y][x])
                         z_start = int(z_end - z_slices * slice_gap)
+
                         z_counter = 0
 
                         for z in range(z_start, z_end, slice_gap):
                             core.set_position(z)
-                            time.sleep(0.1)
+                            time.sleep(0.3)
                             core.snap_image()
                             tagged_image = core.get_tagged_image()
                             pixels = np.reshape(tagged_image.pix,newshape=[tagged_image.tags["Height"], tagged_image.tags["Width"]])
                             zc_tif_stack[zc_index][z_counter] = pixels
 
+                            #core.pop_next_tagged_image()
+                            image_number_counter += 1
                             z_counter += 1
 
                     #save zc stack
+                    print(x, y, 'start saving z stack')
                     self.zc_save(zc_tif_stack, channels, x, y, cycle_number, experiment_directory, Stain_or_Bleach)
+                    print(x, y, 'finished saving z stack')
 
 
             elif y % 2 == 0:
                 for x in range(0, x_tile_count):
 
                     core.set_xy_position(numpy_x[y][x], numpy_y[y][x])
-                    time.sleep(0.5)
+                    time.sleep(1)
 
                     for channel in channels:
 
@@ -1265,17 +1312,22 @@ class cycif:
 
                         for z in range(z_start, z_end, slice_gap):
                             core.set_position(z)
-                            time.sleep(0.1)
+                            time.sleep(0.3)
                             core.snap_image()
                             tagged_image = core.get_tagged_image()
                             pixels = np.reshape(tagged_image.pix,
                                                 newshape=[tagged_image.tags["Height"], tagged_image.tags["Width"]])
                             zc_tif_stack[zc_index][z_counter] = pixels
 
+                            #core.pop_next_tagged_image()
+                            image_number_counter += 1
                             z_counter += 1
 
+                    print(x, y, 'start saving z stack')
                     self.zc_save(zc_tif_stack, channels, x, y, cycle_number, experiment_directory, Stain_or_Bleach)
+                    print(x, y, 'finished saving z stack')
 
+        print('all finished acquire events for this cycle')
         return
     
     def quick_tile_placement(self, z_tile_stack, overlap = 10):
@@ -1382,12 +1434,13 @@ class cycif:
         self.save_quick_tile(pna_stack, channel, cycle, experiment_directory, stain_bleach)
 
 
-    def image_cycle_acquire(self, cycle_number, experiment_directory, z_slices, stain_bleach, offset_array, establish_fm_array = 0, auto_exp_run = 1, channels = ['DAPI', 'A488', 'A555', 'A647']):
+    def image_cycle_acquire(self, cycle_number, experiment_directory, z_slices, stain_bleach, offset_array, establish_fm_array = 0, auto_focus_run = 0, auto_expose_run = 0, channels = ['DAPI', 'A488', 'A555', 'A647']):
 
-
-        self.establish_fm_array(experiment_directory, cycle_number, z_slices, offset_array, initialize= establish_fm_array, autofocus=auto_exp_run)
-
+        print('est fm array')
+        self.establish_fm_array(experiment_directory, cycle_number, z_slices, offset_array, initialize= establish_fm_array, autofocus=auto_focus_run, auto_expose=auto_expose_run)
+        print('image capture to wake up engine')
         self.image_capture(experiment_directory, 'DAPI', 50, 0, 0, 0) #wake up lumencor light engine
+        print('wait 10 seconds')
 
         '''
         std_dev = np.std(start_image)
@@ -1406,31 +1459,39 @@ class cycif:
             self.save_files(z_tile_stack, channel, cycle_number, experiment_directory, stain_bleach)
             
         '''
+        print('acquire all images')
         self.multi_channel_z_stack_capture(experiment_directory, cycle_number, stain_bleach, slice_gap=2, channels = channels)
         #self.marker_excel_file_generation(experiment_directory, cycle_number)
 
-    def full_cycle(self, experiment_directory, cycle_number, exp_time_array, offset_array, stain_valve, channels = ['DAPI', 'A488', 'A555', 'A647']):
 
-        z_slices = 6
+    def full_cycle(self, experiment_directory, cycle_number, offset_array, stain_valve, fluidics_object):
+        pump = fluidics_object
+
+        z_slices = 5
 
         if cycle_number == 0:
             print('baseline bleach image acquiring')
-            microscope.image_cycle_acquire(cycle_number, experiment_directory, z_slices, 'Bleach', exp_time_array, offset_array, establish_fm_array = 1)
+            self.image_cycle_acquire(cycle_number, experiment_directory, z_slices, 'Bleach', offset_array, establish_fm_array = 1)
         else:
             print('Stain in progress')
             pump.liquid_action('Stain', stain_valve)  # nuc is valve=7, pbs valve=8, bleach valve=1 (action, stain_valve, heater state (off = 0, on = 1))
-            print('touching up Hoescht')
-            pump.liquid_action('Nuc_Touchup')  # nuc is valve=7, pbs valve=8, bleach valve=1 (action, stain_valve, heater state (off = 0, on = 1))
             print('washing')
             pump.liquid_action('Wash')  # nuc is valve=7, pbs valve=8, bleach valve=1 (action, stain_valve, heater state (off = 0, on = 1))
+            time.sleep(70)
+            pump.liquid_action('PBS flow off')  # nuc is valve=7, pbs valve=8, bleach valve=1 (action, stain_valve, heater state (off = 0, on = 1))
+            time.sleep(5)
             print('stain image acquistion in progress')
-            self.image_cycle_acquire(cycle_number, experiment_directory, z_slices, 'Stain', exp_time_array, offset_array)
+            self.image_cycle_acquire(cycle_number, experiment_directory, z_slices, 'Stain', offset_array, establish_fm_array=0, auto_focus_run=0, auto_expose_run = 1)
             print('bleaching in progress')
             pump.liquid_action('Bleach')  # nuc is valve=7, pbs valve=8, bleach valve=1 (action, stain_valve, heater state (off = 0, on = 1))
             print('washing')
             pump.liquid_action('Wash')  # nuc is valve=7, pbs valve=8, bleach valve=1 (action, stain_valve, heater state (off = 0, on = 1))
+            time.sleep(70)
+            pump.liquid_action('PBS flow off')  # nuc is valve=7, pbs valve=8, bleach valve=1 (action, stain_valve, heater state (off = 0, on = 1))
+            time.sleep(5)
             print('bleach images acquiring')
-            self.image_cycle_acquire(cycle_number, experiment_directory, z_slices, 'Bleach', exp_time_array, offset_array)
+            self.image_cycle_acquire(cycle_number, experiment_directory, z_slices, 'Bleach', offset_array, establish_fm_array=0, auto_focus_run=0, auto_expose_run = 0)
+            time.sleep(10)
 
 ######Folder System Generation########################################################
 
@@ -2230,9 +2291,9 @@ class fluidics:
 
     def liquid_action(self, action_type, stain_valve = 0, heater_state = 0):
 
-        bleach_valve = 1
-        pbs_valve = 3
-        bleach_time = 5 #minutes
+        bleach_valve = 11
+        pbs_valve = 12
+        bleach_time = 3 #minutes
         stain_flow_time = 45 #seconds
         if heater_state == 0:
             stain_inc_time = 45 #minutes
@@ -2250,12 +2311,6 @@ class fluidics:
             time.sleep(70)
             self.flow(0)
             time.sleep(bleach_time*60)
-
-            self.valve_select(pbs_valve)
-            time.sleep(10)
-            self.flow(500)
-            time.sleep(70)
-            self.flow(0)
 
         elif action_type == 'Stain':
 
@@ -2283,10 +2338,6 @@ class fluidics:
             else:
                 pass
 
-
-            self.flow(500)
-            time.sleep(70)
-            self.flow(0)
 
         elif action_type == "Wash":
 

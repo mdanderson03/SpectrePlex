@@ -19,14 +19,14 @@ from Elveflow64 import *
 Instr_ID=c_int32()
 print("Instrument name and sensor types are hardcoded in the Python script")
 #see User Guide to determine sensor types and NIMAX software to determine the instrument name (installed with ESI)
-error=M_S_R_D_Initialization('01EE3A1A'.encode('ascii'),5,0,0,0,0,0,byref(Instr_ID)) 
+error=M_S_R_D_Initialization('COM4'.encode('ascii'),0,0,0,0,0,0,byref(Instr_ID)) 
 #(CustomSens_Voltage_Ch12 and Ch34 is used for CustomSensors only, voltage is between 5 and 25V)
 #all functions will return error code to help you to debug your code, for further information see User Guide
 print('error:%d' % error)
 print("MSRD ID: %d" % Instr_ID.value)
 
 #add sensor
-error=M_S_R_D_Add_Sens(Instr_ID, 1, 5, 0, 0, 7)#add digital flow sensor, if not found throw error 8000. remember that channel 1-2 or 3-4 should be of the same kind. sensor type should be the same as in the initialization step
+error=M_S_R_D_Add_Sens(Instr_ID, 1, 5, 1, 0, 7)#add digital flow sensor, if not found throw error 8000. remember that channel 1-2 or 3-4 should be of the same kind. sensor type should be the same as in the initialization step
 print('error add digital flow sensor:%d' % error)
 
 #set analog filter if needed
