@@ -553,18 +553,30 @@ class cycif:
         self.image_capture(experiment_directory, 'DAPI', 50, 0, 0, 0) #wake up lumencor light engine
         time.sleep(10) #wait for it to wake up
 
-        if exp == 1 and focus == 0:
-            end_point_number = 0
-        if exp == 1 and focus == 1:
-            end_point_number = 2
 
         for x in range(0, x_tiles):
             for y in range(0, y_tiles):
 
                 for channel_index in range(0, 4):
+
+                    if exp == 1 and focus == 0:
+                        point = 1
+                        end_point_number = 1
+                    if exp == 1 and focus == 1 and channel_index == 0:
+                        point = 0
+                        end_point_number = 2
+                    if exp == 1 and focus == 1 and channel_index != 0:
+                        point = 1
+                        end_point_number = 1
+                    if exp == 0 and focus == 1 and channel_index == 0:
+                        point = 0
+                        end_point_number = 2
+                    if exp == 0 and focus == 1 and channel_index != 0:
+                        point = 2
+                        end_point_number = 1
+
                     exp_time = int(exp_array[channel_index])
                     exp_calc_array_channel_xy = exp_calc_array[channel_index][y][x]
-                    point = 0
 
                     while point <= end_point_number:
                         #take image at XYZ position and determine 99 percentile intensity
