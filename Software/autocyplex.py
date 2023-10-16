@@ -1476,8 +1476,8 @@ class cycif:
             print('Stain in progress')
             pump.liquid_action('Stain', stain_valve)  # nuc is valve=7, pbs valve=8, bleach valve=1 (action, stain_valve, heater state (off = 0, on = 1))
             print('washing')
+            time.sleep(5)
             pump.liquid_action('Wash')  # nuc is valve=7, pbs valve=8, bleach valve=1 (action, stain_valve, heater state (off = 0, on = 1))
-            time.sleep(70)
             pump.liquid_action('PBS flow off')  # nuc is valve=7, pbs valve=8, bleach valve=1 (action, stain_valve, heater state (off = 0, on = 1))
             time.sleep(5)
             print('stain image acquistion in progress')
@@ -1485,8 +1485,8 @@ class cycif:
             print('bleaching in progress')
             pump.liquid_action('Bleach')  # nuc is valve=7, pbs valve=8, bleach valve=1 (action, stain_valve, heater state (off = 0, on = 1))
             print('washing')
+            time.sleep(5)
             pump.liquid_action('Wash')  # nuc is valve=7, pbs valve=8, bleach valve=1 (action, stain_valve, heater state (off = 0, on = 1))
-            time.sleep(70)
             pump.liquid_action('PBS flow off')  # nuc is valve=7, pbs valve=8, bleach valve=1 (action, stain_valve, heater state (off = 0, on = 1))
             time.sleep(5)
             print('bleach images acquiring')
@@ -2346,6 +2346,7 @@ class fluidics:
             self.flow(500)
             time.sleep(70)
             self.flow(0)
+            time.sleep(5)
 
         elif action_type == 'Nuc_Touchup':
 
