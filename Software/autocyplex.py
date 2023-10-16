@@ -2236,7 +2236,31 @@ class fluidics:
         set_target=c_double(set_target)#convert to c_double
 
         OB1_Set_Remote_Target(self.pump_ID, set_channel, set_target)
-        #OB1_Stop_Remote_Measurement(self.pump_ID)
+
+        OB1_Start_Remote_Measurement(Instr_ID.value, byref(Calib), 1000)
+
+
+        data_sens=c_double()
+        data_reg=c_double()
+        set_channel=int(1)#convert to int
+        set_channel=c_int32(set_channel)#convert to c_int32
+        OB1_Get_Remote_Data(Instr_ID.value,set_channel, byref(data_reg),byref(data_sens))
+        current_flow_rate = data_sens.value
+        time.sleep(1)
+
+        while current_flow_rate < flow_rate * 0.9 or current_flow_rate > flow_rate * 1.1:
+
+            data_sens = c_double()
+            data_reg = c_double()
+            set_channel = int(1)  # convert to int
+            set_channel = c_int32(set_channel)  # convert to c_int32
+            OB1_Get_Remote_Data(Instr_ID.value, set_channel, byref(data_reg), byref(data_sens))
+            current_flow_rate = data_sens.value
+            print('current flow rate', current_flow_rate)
+            time.sleep(1)
+
+
+        OB1_Stop_Remote_Measurement(self.pump_ID)
 
     def ob1_end(self):
 
