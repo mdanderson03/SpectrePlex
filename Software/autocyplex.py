@@ -2215,7 +2215,17 @@ class fluidics:
 
         valve_number = c_int32(valve_number)
         MUX_DRI_Set_Valve(self.mux_ID, valve_number, 0) #0 is shortest path. clockwise and cc are also options
-        time.sleep(1)
+
+        valve = c_int32(-1)
+        MUX_DRI_Get_Valve(self.mux_ID, byref(valve))
+        current_valve = valve.value
+
+        while current_valve != valve_number:
+            MUX_DRI_Get_Valve(self.mux_ID, byref(valve))
+            current_valve = valve.value
+            print('valve', current_valve)
+            time.sleep(1)
+
 
     def flow(self, flow_rate):
 
