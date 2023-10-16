@@ -42,7 +42,7 @@ from Elveflow64 import *
 #client = mqtt.Client('autocyplex_server')
 #client.connect('10.3.141.1', 1883)
 
-core = Core()
+#core = Core()
 #magellan = Magellan()
 
 global level
@@ -2213,16 +2213,17 @@ class fluidics:
         :return: Nothing
         '''
 
+        desired_valve =  valve_number
         valve_number = c_int32(valve_number)
         MUX_DRI_Set_Valve(self.mux_ID, valve_number, 0) #0 is shortest path. clockwise and cc are also options
 
         valve = c_int32(-1)
         MUX_DRI_Get_Valve(self.mux_ID, byref(valve))
-        current_valve = valve.value
+        current_valve = int(valve.value)
 
-        while current_valve != valve_number:
+        while current_valve != desired_valve:
             MUX_DRI_Get_Valve(self.mux_ID, byref(valve))
-            current_valve = valve.value
+            current_valve = int(valve.value)
             print('valve', current_valve)
             time.sleep(1)
 
@@ -2352,7 +2353,6 @@ class fluidics:
         if action_type == 'Bleach':
 
             self.valve_select(bleach_valve)
-            time.sleep(10)
             self.flow(500)
             time.sleep(70)
             self.flow(0)
@@ -2368,7 +2368,6 @@ class fluidics:
 
             time.sleep(4)
             self.valve_select(stain_valve)
-            time.sleep(10)
             self.flow(500)
             time.sleep(stain_flow_time)
             self.flow(0)
@@ -2388,7 +2387,6 @@ class fluidics:
         elif action_type == "Wash":
 
             self.valve_select(pbs_valve)
-            time.sleep(10)
             self.flow(500)
             time.sleep(70)
             self.flow(0)
@@ -2397,14 +2395,12 @@ class fluidics:
         elif action_type == 'Nuc_Touchup':
 
             self.valve_select(nuc_valve)
-            time.sleep(10)
             self.flow(500)
             time.sleep(nuc_flow_time)
             self.flow(0)
             time.sleep(nuc_inc_time*60)
 
             self.valve_select(pbs_valve)
-            time.sleep(10)
             self.flow(450)
             time.sleep(70)
             self.flow(0)
@@ -2412,14 +2408,12 @@ class fluidics:
         elif action_type == 'PBS_flow_on':
 
             self.valve_select(pbs_valve)
-            time.sleep(10)
             self.flow(500)
             time.sleep(10)
 
         elif action_type == 'PBS_flow_off':
 
             self.valve_select(pbs_valve)
-            time.sleep(10)
             self.flow(0)
             time.sleep(10)
 

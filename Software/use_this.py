@@ -28,10 +28,11 @@ stain_valve = 1
 z_slices = 5
 
 
+#pump.valve_select(10)
 
 
-for cycle in range(3,9):
-    microscope.full_cycle(experiment_directory, cycle, offset_array, cycle, pump)
+#for cycle in range(3,9):
+#    microscope.full_cycle(experiment_directory, cycle, offset_array, cycle, pump)
 
 
 
