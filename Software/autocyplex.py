@@ -1628,6 +1628,11 @@ class cycif:
             os.chdir(a647_path)
             io.imsave('a647_stain_stack', data_points_bleach[::, 3, ::, ::])
 
+            fluidic_object.valve_select(12)
+            fluidic_object.flow(500)
+            time.sleep(70)
+            fluidic_object.flow(0)
+
 
 
     ######Folder System Generation########################################################
