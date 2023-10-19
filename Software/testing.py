@@ -13,7 +13,7 @@ microscope = cycif() # initialize cycif object
 
 
 
-experiment_directory = r'E:\11_10_23 test run'
+experiment_directory = r'E:\new_garbage'
 numpy_path = experiment_directory + '/' + 'np_arrays'
 os.chdir(numpy_path)
 
@@ -40,7 +40,8 @@ os.chdir(numpy_path)
 
 
 #microscope.sp_array_surface_2_fm(experiment_directory, 'DAPI')
-exp_array = np.load('exp_array.npy', allow_pickle=False)
+fm_array = np.load('fm_array.npy', allow_pickle=False)
+sp_array = np.load('exp_calc_array.npy', allow_pickle=False)
 
 
 x = 0
@@ -48,9 +49,12 @@ y = 1
 
 #im = microscope.image_capture(experiment_directory, 'DAPI', 50, x, y, fm_array[2][y][x] - 2)
 
-print(exp_array)
-exp_array = np.array([20,20,20,20])
-np.save('exp_array.npy', exp_array)
+
+#io.imshow(sp_array[3,:,:,0])
+#io.show()
+
+print(fm_array[3][0][0])
+
 
 
 #io.imshow(im)

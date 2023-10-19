@@ -42,8 +42,8 @@ from Elveflow64 import *
 #client = mqtt.Client('autocyplex_server')
 #client.connect('10.3.141.1', 1883)
 
-#core = Core()
-#magellan = Magellan()
+core = Core()
+magellan = Magellan()
 
 global level
 level = []
@@ -374,7 +374,8 @@ class cycif:
         high_z = self.plane_2_z(coefficents, [0, 0])
         low_z = self.plane_2_z(coefficents, [5056, 2960])
         corner_corner_difference = math.fabs(high_z - low_z)
-        number_planes = int(corner_corner_difference/depth_of_focus) + 1
+        #number_planes = int(corner_corner_difference/depth_of_focus) + 1
+        number_planes = 5
 
         for y in range(0, y_tiles):
             for x in range(0, x_tiles):
@@ -536,6 +537,7 @@ class cycif:
         numpy_y = fm_array[1]
         numpy_x = fm_array[0]
         numpy_z = fm_array[2]
+        number_slices = fm_array[3][0][0]
         y_tiles = np.shape(fm_array[0])[0]
         x_tiles = np.shape(fm_array[0])[1]
 
@@ -543,10 +545,6 @@ class cycif:
         core.set_xy_position(numpy_x[0][0], numpy_y[0][0])
 
         #define range to scan through. 3 equally distributed points
-        scan_range = 25
-        sample_mid_z = numpy_z[0][0]
-        sample_span = [sample_mid_z - scan_range / 2, sample_mid_z, sample_mid_z + scan_range / 2]
-        print(sample_span)
         images = np.random.rand(3, 2960, 5056).astype('uint16')
         #order is x,y channel and z points
 
@@ -556,6 +554,11 @@ class cycif:
 
         for x in range(0, x_tiles):
             for y in range(0, y_tiles):
+
+                scan_range = 25
+                sample_mid_z = numpy_z[0][0] - 2 * number_slices/2
+                sample_span = [sample_mid_z - scan_range / 2, sample_mid_z, sample_mid_z + scan_range / 2]
+                print(sample_span)
 
                 for channel_index in range(0, 4):
 
@@ -594,9 +597,15 @@ class cycif:
                         if trigger_state == 0: # input points into data structure and move to next point
                             if exp == 1:
                                 intensity = self.image_percentile_level(im, 0.99)  # 99th percentile intensity
-                                exp_calc_array_channel_xy[point][0] = intensity - 300  # 300 is camera offset
-                                exp_calc_array_channel_xy[point][1] = z_slice
-                                exp_calc_array_channel_xy[point][2] = core.get_exposure()
+                                exp_calc_array_channel_xy[0][0] = intensity - 300  # 300 is camera offset
+                                exp_calc_array_channel_xy[0][1] = z_slice
+                                exp_calc_array_channel_xy[0][2] = core.get_exposure()
+                                exp_calc_array_channel_xy[1][0] = intensity - 300  # 300 is camera offset
+                                exp_calc_array_channel_xy[1][1] = z_slice
+                                exp_calc_array_channel_xy[1][2] = core.get_exposure()
+                                exp_calc_array_channel_xy[2][0] = intensity - 300  # 300 is camera offset
+                                exp_calc_array_channel_xy[2][1] = z_slice
+                                exp_calc_array_channel_xy[2][2] = core.get_exposure()
                             else:
                                 pass
 
@@ -617,7 +626,7 @@ class cycif:
             np.save(exp_calc_filename, exp_calc_array)
             #self.one_slice_calc_array_solver(experiment_directory)
             self.calc_array_solver(experiment_directory)
-            self.calc_array_2_exp_array(experiment_directory, 0.07)  # 0.2 =20% dynamic range used
+            self.calc_array_2_exp_array(experiment_directory, 0.1)  # 0.2 =20% dynamic range used
         else:
             pass
 
@@ -1075,13 +1084,14 @@ class cycif:
         core.set_exposure(exp_time)
 
         core.set_xy_position(numpy_x[y][x], numpy_y[y][x])
-        time.sleep(.5)
-        core.set_position(z)
         time.sleep(1)
+        core.set_position(z)
+        time.sleep(0.5)
 
         core.snap_image()
         tagged_image = core.get_tagged_image()
         pixels = np.reshape(tagged_image.pix, newshape=[tagged_image.tags["Height"], tagged_image.tags["Width"]])
+        time.sleep(1)
 
         return pixels
 
@@ -1220,6 +1230,7 @@ class cycif:
         #determine attributes like tile counts,z slices and channel counts
         numpy_x = full_array[0]
         numpy_y = full_array[1]
+
         x_tile_count = np.unique(numpy_x).size
         y_tile_count = np.unique(numpy_y).size
         z_slices = full_array[5][0][0]
@@ -1477,29 +1488,30 @@ class cycif:
 
 
     def full_cycle(self, experiment_directory, cycle_number, offset_array, stain_valve, fluidics_object):
-        pump = fluidics_object
 
-        z_slices = 5
+        pump = fluidics_object
+        z_slices = 9
 
         if cycle_number == 0:
             print('baseline bleach image acquiring')
-            self.image_cycle_acquire(cycle_number, experiment_directory, z_slices, 'Bleach', offset_array, establish_fm_array = 1)
+            self.image_cycle_acquire(cycle_number, experiment_directory, z_slices, 'Bleach', offset_array, establish_fm_array = 1, auto_focus_run=0, auto_expose_run=1)
         else:
             print('Stain in progress')
             pump.liquid_action('Stain', stain_valve)  # nuc is valve=7, pbs valve=8, bleach valve=1 (action, stain_valve, heater state (off = 0, on = 1))
-            print('washing')
+            #print('washing')
             time.sleep(5)
             pump.liquid_action('Wash')  # nuc is valve=7, pbs valve=8, bleach valve=1 (action, stain_valve, heater state (off = 0, on = 1))
-            pump.liquid_action('PBS flow off')  # nuc is valve=7, pbs valve=8, bleach valve=1 (action, stain_valve, heater state (off = 0, on = 1))
-            time.sleep(5)
+            #pump.liquid_action('PBS flow off')  # nuc is valve=7, pbs valve=8, bleach valve=1 (action, stain_valve, heater state (off = 0, on = 1))
+            #time.sleep(5)
             print('stain image acquistion in progress')
             self.image_cycle_acquire(cycle_number, experiment_directory, z_slices, 'Stain', offset_array, establish_fm_array=0, auto_focus_run=0, auto_expose_run = 1)
+            time.sleep(5)
             print('bleaching in progress')
             pump.liquid_action('Bleach')  # nuc is valve=7, pbs valve=8, bleach valve=1 (action, stain_valve, heater state (off = 0, on = 1))
-            print('washing')
-            time.sleep(5)
+            #print('washing')
+            #time.sleep(5)
             pump.liquid_action('Wash')  # nuc is valve=7, pbs valve=8, bleach valve=1 (action, stain_valve, heater state (off = 0, on = 1))
-            pump.liquid_action('PBS flow off')  # nuc is valve=7, pbs valve=8, bleach valve=1 (action, stain_valve, heater state (off = 0, on = 1))
+            #pump.liquid_action('PBS flow off')  # nuc is valve=7, pbs valve=8, bleach valve=1 (action, stain_valve, heater state (off = 0, on = 1))
             time.sleep(5)
             print('bleach images acquiring')
             self.image_cycle_acquire(cycle_number, experiment_directory, z_slices, 'Bleach', offset_array, establish_fm_array=0, auto_focus_run=0, auto_expose_run = 0)
@@ -2184,7 +2196,7 @@ class fluidics:
         set_channel_regulator = c_int32(set_channel_regulator)  # convert to c_int32
         set_channel_sensor = int(1)
         set_channel_sensor = c_int32(set_channel_sensor)  # convert to c_int32
-        PID_Add_Remote(Instr_ID.value, set_channel_regulator, Instr_ID.value, set_channel_sensor, .9, 0.002, 1)
+        PID_Add_Remote(Instr_ID.value, set_channel_regulator, Instr_ID.value, set_channel_sensor, 0.9, 0.004, 1)
 
 
         # MUX intiialize
@@ -2224,7 +2236,7 @@ class fluidics:
         while current_valve != desired_valve:
             MUX_DRI_Get_Valve(self.mux_ID, byref(valve))
             current_valve = int(valve.value)
-            print('valve', current_valve)
+            #print('valve', current_valve, 'deired valve', desired_valve)
             time.sleep(1)
 
 
@@ -2236,32 +2248,44 @@ class fluidics:
         set_target=float(flow_rate) # in uL/min for flow
         set_target=c_double(set_target)#convert to c_double
 
+        #OB1_Start_Remote_Measurement(self.pump_ID, self.calibration_array, 1000)
         OB1_Set_Remote_Target(self.pump_ID, set_channel, set_target)
-
-        OB1_Start_Remote_Measurement(Instr_ID.value, byref(Calib), 1000)
 
 
         data_sens=c_double()
         data_reg=c_double()
         set_channel=int(1)#convert to int
         set_channel=c_int32(set_channel)#convert to c_int32
-        OB1_Get_Remote_Data(Instr_ID.value,set_channel, byref(data_reg),byref(data_sens))
+        OB1_Get_Remote_Data(self.pump_ID,set_channel, byref(data_reg),byref(data_sens))
         current_flow_rate = data_sens.value
-        time.sleep(1)
+        current_pressure = int(data_reg.value)
+        #print('current flow rate', int(current_flow_rate))
+        time.sleep(3)
 
-        while current_flow_rate < flow_rate * 0.9 or current_flow_rate > flow_rate * 1.1:
+        time_log = 0
+        '''
+
+        while current_flow_rate < flow_rate * 0.95 or current_flow_rate > flow_rate * 1.05 and current_pressure > 0:
 
             data_sens = c_double()
             data_reg = c_double()
             set_channel = int(1)  # convert to int
             set_channel = c_int32(set_channel)  # convert to c_int32
-            OB1_Get_Remote_Data(Instr_ID.value, set_channel, byref(data_reg), byref(data_sens))
-            current_flow_rate = data_sens.value
-            print('current flow rate', current_flow_rate)
+            OB1_Get_Remote_Data(self.pump_ID, set_channel, byref(data_reg), byref(data_sens))
+            current_flow_rate = int(data_sens.value)
+            current_pressure = data_reg.value
+            #print('current flow rate', current_flow_rate)
             time.sleep(1)
+            time_log += 1
+            if time_log > 10:
+                OB1_Set_Remote_Target(self.pump_ID, set_channel, set_target)
+                time_log = 0
+            else:
+                pass
+        
+        '''
 
-
-        OB1_Stop_Remote_Measurement(self.pump_ID)
+        #OB1_Stop_Remote_Measurement(self.pump_ID)
 
     def ob1_end(self):
 
@@ -2358,6 +2382,12 @@ class fluidics:
             self.flow(0)
             time.sleep(bleach_time*60)
 
+            self.valve_select(pbs_valve)
+            self.flow(500)
+            time.sleep(70)
+            self.flow(0)
+            time.sleep(5)
+
         elif action_type == 'Stain':
 
             if heater_state == 1:
@@ -2377,11 +2407,15 @@ class fluidics:
                 time.sleep(60)
                 print('Staining Time Elapsed ', x)
 
-            if heater_state == 1:
-                arduino.heater_state(0)
-                arduino.chamber('fill')
-            else:
-                pass
+            #if heater_state == 1:
+            #    arduino.heater_state(0)
+            #    arduino.chamber('fill')
+            #else:
+            #    pass
+
+            self.flow(500)
+            time.sleep(70)
+            self.flow(0)
 
 
         elif action_type == "Wash":
@@ -2390,7 +2424,7 @@ class fluidics:
             self.flow(500)
             time.sleep(70)
             self.flow(0)
-            time.sleep(5)
+
 
         elif action_type == 'Nuc_Touchup':
 

@@ -20,24 +20,28 @@ pump = fluidics(6, 3)
 #pump.liquid_action('Stain', 1)
 #pump.liquid_action('Stain', stain_valve = 7)
 
-experiment_directory = r'E:\11_10_23 test run'
+experiment_directory = r'E:\17-10-23 testing'
 #exp_array = np.array([100,35, 35, 35])
-offset_array = [0, -7, -8, -9.5]
-cycle_number = 3
+offset_array = [0, -7, -7, -8.5]
+cycle_number = 0
 stain_valve = 1
-z_slices = 5
+z_slices = 9
 
 
-#pump.valve_select(10)
-
-
-#for cycle in range(3,9):
-#    microscope.full_cycle(experiment_directory, cycle, offset_array, cycle, pump)
+#pump.liquid_action('Wash')
+#microscope.full_cycle(experiment_directory, 0, offset_array, 0)
 
 
 
 
 
+#microscope.establish_fm_array(experiment_directory, 1, z_slices, offset_array, initialize=1, autofocus=0, auto_expose=0)
+#pump.liquid_action('Bleach')
+#pump.liquid_action('Wash')
+#microscope.image_cycle_acquire(cycle_number, experiment_directory, z_slices, 'Bleach', offset_array, establish_fm_array=1, auto_focus_run=0, auto_expose_run = 1)
+
+for cycle in range(1,9):
+    microscope.full_cycle(experiment_directory, cycle, offset_array, cycle, pump)
 
 
 

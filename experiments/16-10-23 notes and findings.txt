@@ -1,0 +1,4 @@
+Placed slide on stage and no tilt adjustmens needed. Sub 3 micron tilt everywhere
+
+Focus was way off after cycle 1. Best explaination is ccle 1 dapi did not seem to turn light source on (NO IDEA WHY). This would have given awful results in the autofocus and if the result was way off, then it would roll into the next next cycle and the point choices would be way off and again give awful results. Cycle 3 also compounded this problem. 
+
