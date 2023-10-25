@@ -436,7 +436,6 @@ class cycif:
         return point_list
 
 
-
     def gauss_jordan_solver(self, three_point_array):
         '''
         Takes 3 points and solves quadratic equation in a generic fashion and returns constants and
@@ -500,16 +499,33 @@ class cycif:
             pass
 
         if autofocus == 1 and auto_expose == 1:
-            self.fm_array_update_autofocus_autoexpose(experiment_directory, exp = 1, focus = 1)
-            self.fm_channel_initial(experiment_directory, off_array, z_slices)
+            self.DAPI_surface_autofocus(experiment_directory, 30, 2)
+            self.fm_channel_initial(experiment_directory, off_array, z_slices, 2)
+            self.fm_array_update_autofocus_autoexpose(experiment_directory, exp=1)
         if autofocus == 1 and auto_expose == 0:
-            self.fm_array_update_autofocus_autoexpose(experiment_directory, exp = 0, focus = 1)
-            self.fm_channel_initial(experiment_directory, off_array, z_slices)
+            self.DAPI_surface_autofocus(experiment_directory, 30, 2)
+            self.fm_channel_initial(experiment_directory, off_array, z_slices, 2)
         if autofocus == 0 and auto_expose == 1:
-            self.fm_array_update_autofocus_autoexpose(experiment_directory, exp = 1, focus = 0)
+            self.fm_array_update_autofocus_autoexpose(experiment_directory, exp = 1)
         else:
             pass
 
+
+    def highest_brenner_index_solver(self, image_stack):
+
+        slice_count = np.shape(image_stack)[0]
+        scores = np.random.rand(slice_count)
+
+        for x in range(0, scores):
+
+            image = image_stack[x]
+            score = self.focus_score(image, 17)
+            scores[x] = score
+
+        highest_score = np.max(scores)
+        index = np.where(scores == highest_score)[0][0]
+
+        return index
 
 
     def DAPI_surface_autofocus(self, experiment_directory, z_slices, z_slice_gap):
@@ -520,18 +536,19 @@ class cycif:
 
         numpy_x = fm_array[0]
         numpy_y = fm_array[1]
-        numpy_z = fm_array[2]
 
         y_tile_count = numpy_y[0]
         x_tile_count = numpy_y[1]
-        fm_array_z_count = numpy_z[0][0]
 
         center_z = magellan.get_surface('New Surface 1').get_points().get(0).z
         bottom_z = int(center_z - z_slices/2 * z_slice_gap)
         top_z = int(center_z + z_slices/2 * z_slice_gap)
 
         core.set_config("Color", 'DAPI')
-        core.set_exposure(25)
+        core.set_exposure(50)
+
+        self.image_capture(experiment_directory, 'DAPI', 50, 0, 0, 0) #wake up lumencor light engine
+        print('wait 10 seconds')
 
         core.set_xy_position(numpy_x[0][0], numpy_y[0][0])
         time.sleep(1)
@@ -553,11 +570,13 @@ class cycif:
                     pixels = np.reshape(tagged_image.pix, newshape=[tagged_image.tags["Height"], tagged_image.tags["Width"]])
                     z_stack[stack_index] = pixels
 
-                    stack_index =+ 1
+                    stack_index += 1
 
+                z_index = self.highest_brenner_index_solver(z_stack)
+                focus_z_position = bottom_z + z_index * z_slice_gap
+                fm_array[2][y][x] = focus_z_position
 
-
-
+        np.save('fm_array.npy', fm_array)
 
 
     def fm_array_update_autofocus_autoexpose(self, experiment_directory, exp = 0, focus = 0):
@@ -1530,7 +1549,7 @@ class cycif:
             
         '''
         print('acquire all images')
-        self.multi_channel_z_stack_capture(experiment_directory, cycle_number, stain_bleach, slice_gap=3, channels = channels)
+        self.multi_channel_z_stack_capture(experiment_directory, cycle_number, stain_bleach, slice_gap=2, channels = channels)
         #self.marker_excel_file_generation(experiment_directory, cycle_number)
 
 
@@ -1779,6 +1798,9 @@ class cycif:
         self.folder_addon(experiment_directory, channels)
 
         #folder layer two
+
+        mc_micro_directory = experiment_directory + '/mcmicro'
+        self.folder_addon(mc_micro_directory, ['raw'])
 
         for channel in channels:
 
