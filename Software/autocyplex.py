@@ -512,6 +512,54 @@ class cycif:
 
 
 
+    def DAPI_surface_autofocus(self, experiment_directory, z_slices, z_slice_gap):
+        numpy_path = experiment_directory +'/' + 'np_arrays'
+        os.chdir(numpy_path)
+        file_name = 'fm_array.npy'
+        fm_array = np.load(file_name, allow_pickle=False)
+
+        numpy_x = fm_array[0]
+        numpy_y = fm_array[1]
+        numpy_z = fm_array[2]
+
+        y_tile_count = numpy_y[0]
+        x_tile_count = numpy_y[1]
+        fm_array_z_count = numpy_z[0][0]
+
+        center_z = magellan.get_surface('New Surface 1').get_points().get(0).z
+        bottom_z = int(center_z - z_slices/2 * z_slice_gap)
+        top_z = int(center_z + z_slices/2 * z_slice_gap)
+
+        core.set_config("Color", 'DAPI')
+        core.set_exposure(25)
+
+        core.set_xy_position(numpy_x[0][0], numpy_y[0][0])
+        time.sleep(1)
+
+        for x in range(0, x_tile_count):
+            for y in range(0, y_tile_count):
+                core.set_xy_position(numpy_x[y][x], numpy_y[y][x])
+                z_stack = np.random.rand(z_slices, 2960, 5056)
+                time.sleep(1)
+                stack_index = 0
+
+                for z in range(bottom_z, top_z, z_slice_gap):
+
+                    core.set_position(z)
+                    time.sleep(0.5)
+
+                    core.snap_image()
+                    tagged_image = core.get_tagged_image()
+                    pixels = np.reshape(tagged_image.pix, newshape=[tagged_image.tags["Height"], tagged_image.tags["Width"]])
+                    z_stack[stack_index] = pixels
+
+                    stack_index =+ 1
+
+
+
+
+
+
     def fm_array_update_autofocus_autoexpose(self, experiment_directory, exp = 0, focus = 0):
         '''
         Executes auto focus and exposure algorithms.
@@ -929,7 +977,7 @@ class cycif:
 
         return new_numpy
 
-    def fm_channel_initial(self, experiment_directory, off_array, z_slices):
+    def fm_channel_initial(self, experiment_directory, off_array, z_slices, slice_gap = 2):
 
 
         numpy_path = experiment_directory + '/' + 'np_arrays'
@@ -944,7 +992,7 @@ class cycif:
         y_tiles = np.shape(fm_array[0])[0]
         x_tiles = np.shape(fm_array[0])[1]
 
-        slice_gap = 2 # space between z slices in microns
+        #slice_gap = 2 # space between z slices in microns
 
         dummy_channel = np.empty_like(fm_array[0])
         dummy_channel = np.expand_dims(dummy_channel, axis=0)
@@ -1082,16 +1130,15 @@ class cycif:
 
         core.set_config("Color", channel)
         core.set_exposure(exp_time)
-
         core.set_xy_position(numpy_x[y][x], numpy_y[y][x])
-        time.sleep(1)
+        #time.sleep(1)
         core.set_position(z)
         time.sleep(0.5)
 
         core.snap_image()
         tagged_image = core.get_tagged_image()
         pixels = np.reshape(tagged_image.pix, newshape=[tagged_image.tags["Height"], tagged_image.tags["Width"]])
-        time.sleep(1)
+        #time.sleep(1)
 
         return pixels
 
