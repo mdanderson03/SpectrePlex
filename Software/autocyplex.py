@@ -136,7 +136,7 @@ class cycif:
         c = c/10000 * c/10000
         f_score_shadow = c.sum(dtype=np.float64) + 0.00001
 
-        return  1/f_score_shadow
+        return  f_score_shadow
 
     def sp_array(self, experiment_directory):
         '''
@@ -344,7 +344,7 @@ class cycif:
         y_tiles = np.shape(fm_array[0])[0]
         x_tiles = np.shape(fm_array[0])[1]
 
-        depth_of_focus = 2 #in microns
+        depth_of_focus = 3 #in microns
 
         point_list = self.map_2_points(experiment_directory, channel)
         X = point_list[:, 0:2]
@@ -375,7 +375,7 @@ class cycif:
         low_z = self.plane_2_z(coefficents, [5056, 2960])
         corner_corner_difference = math.fabs(high_z - low_z)
         #number_planes = int(corner_corner_difference/depth_of_focus) + 1
-        number_planes = 5
+        number_planes = 9
 
         for y in range(0, y_tiles):
             for x in range(0, x_tiles):
@@ -1483,7 +1483,7 @@ class cycif:
             
         '''
         print('acquire all images')
-        self.multi_channel_z_stack_capture(experiment_directory, cycle_number, stain_bleach, slice_gap=2, channels = channels)
+        self.multi_channel_z_stack_capture(experiment_directory, cycle_number, stain_bleach, slice_gap=3, channels = channels)
         #self.marker_excel_file_generation(experiment_directory, cycle_number)
 
 
@@ -1494,7 +1494,7 @@ class cycif:
 
         if cycle_number == 0:
             print('baseline bleach image acquiring')
-            self.image_cycle_acquire(cycle_number, experiment_directory, z_slices, 'Bleach', offset_array, establish_fm_array = 1, auto_focus_run=0, auto_expose_run=1)
+            self.image_cycle_acquire(cycle_number, experiment_directory, z_slices, 'Bleach', offset_array, establish_fm_array = 1, auto_focus_run=0, auto_expose_run=0)
         else:
             print('Stain in progress')
             pump.liquid_action('Stain', stain_valve)  # nuc is valve=7, pbs valve=8, bleach valve=1 (action, stain_valve, heater state (off = 0, on = 1))
@@ -1820,7 +1820,7 @@ class cycif:
                 cycle_start_search = 1
 
         #cycle_end = len(os.listdir(dapi_im_path)) + 1
-        cycle_end = 6
+        cycle_end = 9
         cycle_start = 1
 
         for cycle_number in range(cycle_start, cycle_end):
@@ -1886,8 +1886,8 @@ class cycif:
     def metadata_generator(self, experiment_directory):
 
         new_ome = OME()
-        ome = from_xml(r'C:\Users\mike\Documents\GitHub\AutoCIF/image.xml')
-        #ome = from_xml(r'C:\Users\CyCIF PC\Documents\GitHub\AutoCIF/image.xml')
+        #ome = from_xml(r'C:\Users\mike\Documents\GitHub\AutoCIF/image.xml', parser='lxml')
+        ome = from_xml(r'C:\Users\CyCIF PC\Documents\GitHub\AutoCIF/image.xml', parser='lxml')
         ome = ome.images[0]
 
         numpy_path = experiment_directory + '/' + 'np_arrays'
@@ -1986,7 +1986,7 @@ class cycif:
 
         for channel in channels:
 
-            im_path = experiment_directory + '/' + channel + '\Stain\cy_' + str(cycle_number) + '\Tiles' + '/focused_basic_corrected'
+            im_path = experiment_directory + '/' + channel + '\Stain\cy_' + str(cycle_number) + '\Tiles' + '/focused'
             os.chdir(im_path)
 
             # place images into large array

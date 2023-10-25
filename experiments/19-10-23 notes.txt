@@ -1,0 +1,7 @@
+1:16 pm staining starts
+
+antibodies are chromogranin A-488, ecad-555, and muc2-647. All at 1:1000 [C]
+
+didnt get to use script as messed up start. To pivot,I used a MDA in Mm to acquire the images. It was started about 5 minutes after the stain was placed onto the slide. 
+
+Bleach solution was used at 2mM instead of the normal 10mM concentration. This was done to slow down the reaction and get better effective resolution on the k value. 
