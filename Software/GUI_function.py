@@ -65,9 +65,9 @@ while True:
                             i = 0
                             for cycle in range(start_cycle,end_cycle+1):
                                 if incub_val != 0:
-                                    microscope.full_cycle(experiment_directory, cycle, offset_array, cycle, window, list_status, incub_val)
+                                    microscope.full_cycle(experiment_directory, cycle, offset_array, cycle, pump, z_slices, window, list_status, incub_val)
                                 else:
-                                    microscope.full_cycle(experiment_directory, cycle, offset_array, cycle, window, list_status)
+                                    microscope.full_cycle(experiment_directory, cycle, offset_array, cycle, pump, z_slices, window, list_status)
                                     
                                 
                                 i = i + bar_value
@@ -92,9 +92,9 @@ while True:
                         window.refresh()
                         for cycle in range(start_cycle,start_cycle+1):   
                             if incub_val != 0:
-                                microscope.full_cycle(experiment_directory, cycle, offset_array, cycle, window, list_status, incub_val)
+                                microscope.full_cycle(experiment_directory, cycle, offset_array, cycle, pump, z_slices, window, list_status, incub_val)
                             else:
-                                microscope.full_cycle(experiment_directory, cycle, offset_array, cycle, window, list_status)
+                                microscope.full_cycle(experiment_directory, cycle, offset_array, cycle, pump, z_slices, window, list_status)
                         
                         window["-frame_list-"].update(value="Status: idle")
                         status_update("Done!", list_status, window)
