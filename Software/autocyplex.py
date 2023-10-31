@@ -2614,8 +2614,10 @@ class fluidics:
             self.valve_select(pbs_valve)
 
             for x in range(0, stain_inc_time):
+                status_str = f'Cycle {stain_valve}: staining time elapsed {x}'
+                status_update(status_str, list_status, window)
                 time.sleep(60)
-                print('Staining Time Elapsed ', x)
+                # print('Staining Time Elapsed ', x)
 
             #if heater_state == 1:
             #    arduino.heater_state(0)
