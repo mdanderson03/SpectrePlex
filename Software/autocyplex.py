@@ -1560,27 +1560,37 @@ class cycif:
         # z_slices = 9
 
         if cycle_number == 0:
-            print('baseline bleach image acquiring')
+            status_str = f'Cycle {cycle_number}: baseline bleach image acquiring'
+            status_update(status_str, list_status, window)
+            # print(status_str)
             self.image_cycle_acquire(cycle_number, experiment_directory, z_slices, 'Bleach', offset_array, establish_fm_array = 1, auto_focus_run=0, auto_expose_run=0)
         else:
-            print('Stain in progress')
-            pump.liquid_action('Stain', stain_valve)  # nuc is valve=7, pbs valve=8, bleach valve=1 (action, stain_valve, heater state (off = 0, on = 1))
+            status_str = f'Cycle {cycle_number}: Stain in progress'
+            status_update(status_update, list_status, window)
+            # print(status_str)
+            pump.liquid_action('Stain', stain_valve, window, list_status, incub_val)  # nuc is valve=7, pbs valve=8, bleach valve=1 (action, stain_valve, heater state (off = 0, on = 1))
             #print('washing')
             time.sleep(5)
             pump.liquid_action('Wash')  # nuc is valve=7, pbs valve=8, bleach valve=1 (action, stain_valve, heater state (off = 0, on = 1))
             #pump.liquid_action('PBS flow off')  # nuc is valve=7, pbs valve=8, bleach valve=1 (action, stain_valve, heater state (off = 0, on = 1))
             #time.sleep(5)
-            print('stain image acquistion in progress')
+            status_str = f'Cycle {cycle_number}: stain image acquistion in progress'
+            status_update(status_str, list_status, window)
+            # print(status_str)
             self.image_cycle_acquire(cycle_number, experiment_directory, z_slices, 'Stain', offset_array, establish_fm_array=0, auto_focus_run=0, auto_expose_run = 1)
             time.sleep(5)
-            print('bleaching in progress')
+            status_str = f'Cycle {cycle_number}: bleaching in progress'
+            status_update(status_str, list_status, window)
+            # print(status_str)
             pump.liquid_action('Bleach')  # nuc is valve=7, pbs valve=8, bleach valve=1 (action, stain_valve, heater state (off = 0, on = 1))
             #print('washing')
             #time.sleep(5)
             pump.liquid_action('Wash')  # nuc is valve=7, pbs valve=8, bleach valve=1 (action, stain_valve, heater state (off = 0, on = 1))
             #pump.liquid_action('PBS flow off')  # nuc is valve=7, pbs valve=8, bleach valve=1 (action, stain_valve, heater state (off = 0, on = 1))
             time.sleep(5)
-            print('bleach images acquiring')
+            status_str = 'bleach images acquiring'
+            status_update(status_str, list_status, window)
+            # print(status_str)
             self.image_cycle_acquire(cycle_number, experiment_directory, z_slices, 'Bleach', offset_array, establish_fm_array=0, auto_focus_run=0, auto_expose_run = 0)
             time.sleep(10)
 
