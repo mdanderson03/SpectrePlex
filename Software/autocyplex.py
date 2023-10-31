@@ -1554,10 +1554,10 @@ class cycif:
         #self.marker_excel_file_generation(experiment_directory, cycle_number)
 
 
-    def full_cycle(self, experiment_directory, cycle_number, offset_array, stain_valve, fluidics_object):
+    def full_cycle(self, experiment_directory, cycle_number, offset_array, stain_valve, fluidics_object, z_slices, window, list_status, incub_val=45):
 
         pump = fluidics_object
-        z_slices = 9
+        # z_slices = 9
 
         if cycle_number == 0:
             print('baseline bleach image acquiring')
