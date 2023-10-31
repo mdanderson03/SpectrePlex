@@ -2570,14 +2570,14 @@ class fluidics:
             plt.show()
 
 
-    def liquid_action(self, action_type, stain_valve = 0, heater_state = 0):
+    def liquid_action(self, action_type, stain_valve = 0, heater_state = 0, window = 0, list_status =0, incub_val = 0,):
 
         bleach_valve = 11
         pbs_valve = 12
         bleach_time = 3 #minutes
         stain_flow_time = 45 #seconds
         if heater_state == 0:
-            stain_inc_time = 45 #minutes
+            stain_inc_time = incub_val #minutes
         if heater_state == 1:
             stain_inc_time = 45  #minutes
         nuc_valve = 4
