@@ -26,6 +26,7 @@ from scipy import stats
 from copy import copy, deepcopy
 import sys
 from ctypes import *
+from GUI_layout import *
 sys.path.append(r'C:\Users\CyCIF PC\Documents\GitHub\AutoCIF\Python_64_elveflow\DLL64')#add the path of the library here
 sys.path.append(r'C:\Users\CyCIF PC\Documents\GitHub\AutoCIF\Python_64_elveflow')#add the path of the LoadElveflow.py
 sys.path.append(r'C:\Users\mike\Documents\GitHub\AutoCIF\Python_64_elveflow\DLL64')#add the path of the library here
