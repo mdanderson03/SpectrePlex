@@ -110,7 +110,6 @@ while True:
         window["-frame_list-"].update(value="Status: currently running")
         status_update(mess_str, list_status, window)
         window.refresh()
-        excel_save(message=mess_str)
 
 
     # ----------- PBS off button function ----------- #
