@@ -774,7 +774,7 @@ class cycif:
         return exp_time, trigger_state
 
 
-    def image_percentile_level(self, image, cut_off_threshold):
+    def image_percentile_level(self, image, cut_off_threshold = 0.9):
         '''
         Takes in image and cut off threshold and finds pixel value that exists at that threshold point.
 
@@ -783,7 +783,7 @@ class cycif:
         :return: intensity og pixel that resides at the cut off fraction that was entered in the image
         :rtype: int
         '''
-        cut_off_threshold = 0.9
+        #cut_off_threshold = 0.9
         threshy_image = image / 10
         thresh = filters.threshold_otsu(threshy_image)
         index = np.where(threshy_image > thresh)
