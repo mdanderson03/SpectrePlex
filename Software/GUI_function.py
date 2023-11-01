@@ -157,11 +157,11 @@ while True:
             window["-txt_end-"].update(visible=True)
             window["-cycle_end-"].update(visible=True)
             cycle_options = ["1","2","3","4","5","6","7","8","9","10"]
-            num_list = ["1","2","3","4","5","6","7","8","9"]
+            num_list = ["0","1","2","3","4","5","6","7","8","9"]
             window["-cycle_end-"].update(value="8", values=cycle_options)
             window["-cycle-"].update(value="0", values=num_list)
         else:
-            cycle_options = ["1","2","3","4","5","6","7","8","9","10"]
+            cycle_options = ["0","1","2","3","4","5","6","7","8","9","10"]
             window["-cycle-"].update(value="0",values=cycle_options)
             window["-txt_end-"].update(visible=False)
             window["-cycle_end-"].update(visible=False)
