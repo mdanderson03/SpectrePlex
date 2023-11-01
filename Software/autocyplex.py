@@ -783,7 +783,11 @@ class cycif:
         :return: intensity og pixel that resides at the cut off fraction that was entered in the image
         :rtype: int
         '''
-        pixel_values = np.sort(image, axis=None)
+        cut_off_threshold = 0.9
+        threshy_image = image / 10
+        thresh = filters.threshold_otsu(threshy_image)
+        index = np.where(threshy_image > thresh)
+        pixel_values = np.sort(image[index], axis=None)
         pixel_count = int(np.size(pixel_values))
         cut_off_index = int(pixel_count * cut_off_threshold)
         tail_intensity = pixel_values[cut_off_index]
