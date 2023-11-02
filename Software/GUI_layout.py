@@ -28,9 +28,17 @@ sg.Button("PBS Off", button_color=("white","red"),key="-pbs_off-")],
 
 
 # ----------- functions for updating and saving status messages ----------- #
-filename = 'history.xlsx'
-workbook = openpyxl.load_workbook(filename)
-sheet = workbook.active
+try: 
+    filename = 'multiplex_gui_log.xlsx'
+    workbook = openpyxl.load_workbook(filename)
+    sheet = workbook.active
+except:
+    filename = 'multiplex_gui_log.xlsx'
+    workbook = openpyxl.Workbook()
+    workbook.save(filename)
+    workbook = openpyxl.load_workbook(filename)
+    sheet = workbook.active
+    sheet.append(("Date","Time","Status Message"))
 
 def excel_save(message):
     current_time = (datetime.now()).strftime("%H:%M:%S")
