@@ -1570,9 +1570,9 @@ class cycif:
             self.image_cycle_acquire(cycle_number, experiment_directory, z_slices, 'Bleach', offset_array, establish_fm_array = 1, auto_focus_run=0, auto_expose_run=0)
         else:
             status_str = f'Cycle {cycle_number}: Stain in progress'
-            status_update(status_update, list_status, window)
+            status_update(status_str, list_status, window)
             # print(status_str)
-            pump.liquid_action('Stain', stain_valve, window, list_status, incub_val)  # nuc is valve=7, pbs valve=8, bleach valve=1 (action, stain_valve, heater state (off = 0, on = 1))
+            pump.liquid_action('Stain', incub_val, stain_valve, window, list_status)  # nuc is valve=7, pbs valve=8, bleach valve=1 (action, stain_valve, heater state (off = 0, on = 1))
             #print('washing')
             time.sleep(5)
             pump.liquid_action('Wash')  # nuc is valve=7, pbs valve=8, bleach valve=1 (action, stain_valve, heater state (off = 0, on = 1))
@@ -2574,7 +2574,7 @@ class fluidics:
             plt.show()
 
 
-    def liquid_action(self, action_type, stain_valve = 0, heater_state = 0, window = 0, list_status =0, incub_val = 0,):
+    def liquid_action(self, action_type, incub_val=0, stain_valve = 0, window = 0, list_status =0, heater_state = 0):
 
         bleach_valve = 11
         pbs_valve = 12

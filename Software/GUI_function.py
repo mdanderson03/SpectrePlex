@@ -28,7 +28,10 @@ while True:
         message = "-message-"
         experiment_directory = values["-path-"]
         start_cycle = int(values["-cycle-"])
-        end_cycle = int(values["-cycle_end-"])
+        if start_cycle == 10:
+            end_cycle = 10
+        else:
+            end_cycle = int(values["-cycle_end-"])
         incub_val = 0
 
         if layout == 1:
