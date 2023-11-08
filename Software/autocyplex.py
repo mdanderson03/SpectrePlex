@@ -1528,13 +1528,19 @@ class cycif:
         self.save_quick_tile(pna_stack, channel, cycle, experiment_directory, stain_bleach)
 
 
-    def image_cycle_acquire(self, cycle_number, experiment_directory, z_slices, stain_bleach, offset_array, establish_fm_array = 0, auto_focus_run = 0, auto_expose_run = 0, channels = ['DAPI', 'A488', 'A555', 'A647']):
+    def image_cycle_acquire(self, cycle_number, experiment_directory, z_slices, stain_bleach, offset_array, list_status, window, establish_fm_array = 0, auto_focus_run = 0, auto_expose_run = 0, channels = ['DAPI', 'A488', 'A555', 'A647']):
 
-        print('est fm array')
+        status_str = "establish fm array"
+        print(status_str)
+        status_update(status_str, list_status, window)
         self.establish_fm_array(experiment_directory, cycle_number, z_slices, offset_array, initialize= establish_fm_array, autofocus=auto_focus_run, auto_expose=auto_expose_run)
-        print('image capture to wake up engine')
+        status_str = 'image capture to wake up engine'
+        print(status_str)
+        status_update(status_str, list_status, window)
         self.image_capture(experiment_directory, 'DAPI', 50, 0, 0, 0) #wake up lumencor light engine
-        print('wait 10 seconds')
+        status_str = 'wait 10 seconds'
+        print(status_str)
+        status_update(status_str, list_status, window)
 
         '''
         std_dev = np.std(start_image)
@@ -1553,7 +1559,9 @@ class cycif:
             self.save_files(z_tile_stack, channel, cycle_number, experiment_directory, stain_bleach)
             
         '''
-        print('acquire all images')
+        status_str = 'acquire all images'
+        print(status_str)
+        status_update(status_str, list_status, window)
         self.multi_channel_z_stack_capture(experiment_directory, cycle_number, stain_bleach, slice_gap=2, channels = channels)
         #self.marker_excel_file_generation(experiment_directory, cycle_number)
 
@@ -1567,7 +1575,7 @@ class cycif:
             status_str = f'Cycle {cycle_number}: baseline bleach image acquiring'
             status_update(status_str, list_status, window)
             # print(status_str)
-            self.image_cycle_acquire(cycle_number, experiment_directory, z_slices, 'Bleach', offset_array, establish_fm_array = 1, auto_focus_run=0, auto_expose_run=0)
+            self.image_cycle_acquire(cycle_number, experiment_directory, z_slices, 'Bleach', offset_array, list_status, window, establish_fm_array = 1, auto_focus_run=0, auto_expose_run=0)
         else:
             status_str = f'Cycle {cycle_number}: Stain in progress'
             status_update(status_str, list_status, window)
@@ -1575,27 +1583,31 @@ class cycif:
             pump.liquid_action('Stain', incub_val, stain_valve, window, list_status)  # nuc is valve=7, pbs valve=8, bleach valve=1 (action, stain_valve, heater state (off = 0, on = 1))
             #print('washing')
             time.sleep(5)
+            status_str = f'Cycle {cycle_number}: washing in progress'
+            status_update(status_str, list_status, window)
             pump.liquid_action('Wash')  # nuc is valve=7, pbs valve=8, bleach valve=1 (action, stain_valve, heater state (off = 0, on = 1))
             #pump.liquid_action('PBS flow off')  # nuc is valve=7, pbs valve=8, bleach valve=1 (action, stain_valve, heater state (off = 0, on = 1))
             #time.sleep(5)
             status_str = f'Cycle {cycle_number}: stain image acquistion in progress'
             status_update(status_str, list_status, window)
             # print(status_str)
-            self.image_cycle_acquire(cycle_number, experiment_directory, z_slices, 'Stain', offset_array, establish_fm_array=0, auto_focus_run=0, auto_expose_run = 1)
+            self.image_cycle_acquire(cycle_number, experiment_directory, z_slices, 'Stain', offset_array, list_status, window, establish_fm_array=0, auto_focus_run=0, auto_expose_run = 1)
             time.sleep(5)
             status_str = f'Cycle {cycle_number}: bleaching in progress'
             status_update(status_str, list_status, window)
             # print(status_str)
-            pump.liquid_action('Bleach')  # nuc is valve=7, pbs valve=8, bleach valve=1 (action, stain_valve, heater state (off = 0, on = 1))
+            pump.liquid_action('Bleach', stain_valve)  # nuc is valve=7, pbs valve=8, bleach valve=1 (action, stain_valve, heater state (off = 0, on = 1))
             #print('washing')
             #time.sleep(5)
+            status_str = f'Cycle {cycle_number}: washing in progress'
+            status_update(status_str, list_status, window)
             pump.liquid_action('Wash')  # nuc is valve=7, pbs valve=8, bleach valve=1 (action, stain_valve, heater state (off = 0, on = 1))
             #pump.liquid_action('PBS flow off')  # nuc is valve=7, pbs valve=8, bleach valve=1 (action, stain_valve, heater state (off = 0, on = 1))
             time.sleep(5)
             status_str = 'bleach images acquiring'
             status_update(status_str, list_status, window)
             # print(status_str)
-            self.image_cycle_acquire(cycle_number, experiment_directory, z_slices, 'Bleach', offset_array, establish_fm_array=0, auto_focus_run=0, auto_expose_run = 0)
+            self.image_cycle_acquire(cycle_number, experiment_directory, z_slices, 'Bleach', offset_array, list_status, window, establish_fm_array=0, auto_focus_run=0, auto_expose_run = 0)
             time.sleep(10)
 
 
@@ -2594,9 +2606,14 @@ class fluidics:
             self.flow(500)
             time.sleep(70)
             self.flow(0)
-            time.sleep(bleach_time*60)
-
+            # time.sleep(bleach_time*60)
             self.valve_select(pbs_valve)
+
+            for x in range(0, bleach_time):
+                status_str = f'Cycle {stain_valve}: bleaching time elapsed {x}'
+                status_update(status_str, list_status, window)
+                time.sleep(60)
+            
             self.flow(500)
             time.sleep(70)
             self.flow(0)
