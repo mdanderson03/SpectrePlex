@@ -77,10 +77,14 @@ while True:
                                 i = i + bar_value
                                 window["-PBAR-"].update(current_count=i)
                                 window.refresh()
-                            
-                            window["-PBAR-"].update(visible=False)
-                            window["-frame_list-"].update(value="Status: idle")
-                            status_update("Done!", list_status, window)
+
+                            if values["-post_acq-"] == True:
+                                microscope.post_acquisition_processor(experiment_directory)
+                                
+                            else:
+                                window["-PBAR-"].update(visible=False)
+                                window["-frame_list-"].update(value="Status: idle")
+                                status_update("Done!", list_status, window)
                             
                 except:
                     sg.PopupError("Missing Inputs")
@@ -99,9 +103,12 @@ while True:
                                 microscope.full_cycle(experiment_directory, cycle, offset_array, cycle, pump, z_slices, window, list_status, incub_val)
                             else:
                                 microscope.full_cycle(experiment_directory, cycle, offset_array, cycle, pump, z_slices, window, list_status)
-                        
-                        window["-frame_list-"].update(value="Status: idle")
-                        status_update("Done!", list_status, window)
+                                
+                        if values["-post_acq-"] == True:
+                                microscope.post_acquisition_processor(experiment_directory)
+                        else:
+                            window["-frame_list-"].update(value="Status: idle")
+                            status_update("Done!", list_status, window)
 
                 except:
                     sg.PopupError("Missing Inputs")
