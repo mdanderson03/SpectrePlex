@@ -1595,7 +1595,7 @@ class cycif:
             time.sleep(5)
             status_str = f'Cycle {cycle_number}: washing in progress'
             status_update(status_str, list_status, window)
-            pump.liquid_action('Wash')  # nuc is valve=7, pbs valve=8, bleach valve=1 (action, stain_valve, heater state (off = 0, on = 1))
+            pump.liquid_action('Wash', stain_valve, window, list_status)  # nuc is valve=7, pbs valve=8, bleach valve=1 (action, stain_valve, heater state (off = 0, on = 1))
             #pump.liquid_action('PBS flow off')  # nuc is valve=7, pbs valve=8, bleach valve=1 (action, stain_valve, heater state (off = 0, on = 1))
             #time.sleep(5)
             status_str = f'Cycle {cycle_number}: stain image acquistion in progress'
@@ -1606,12 +1606,12 @@ class cycif:
             status_str = f'Cycle {cycle_number}: bleaching in progress'
             status_update(status_str, list_status, window)
             # print(status_str)
-            pump.liquid_action('Bleach', stain_valve)  # nuc is valve=7, pbs valve=8, bleach valve=1 (action, stain_valve, heater state (off = 0, on = 1))
+            pump.liquid_action('Bleach', stain_valve, list_status, window)  # nuc is valve=7, pbs valve=8, bleach valve=1 (action, stain_valve, heater state (off = 0, on = 1))
             #print('washing')
             #time.sleep(5)
             status_str = f'Cycle {cycle_number}: washing in progress'
             status_update(status_str, list_status, window)
-            pump.liquid_action('Wash')  # nuc is valve=7, pbs valve=8, bleach valve=1 (action, stain_valve, heater state (off = 0, on = 1))
+            pump.liquid_action('Wash', stain_valve, window, list_status)  # nuc is valve=7, pbs valve=8, bleach valve=1 (action, stain_valve, heater state (off = 0, on = 1))
             #pump.liquid_action('PBS flow off')  # nuc is valve=7, pbs valve=8, bleach valve=1 (action, stain_valve, heater state (off = 0, on = 1))
             time.sleep(5)
             status_str = 'bleach images acquiring'
@@ -2663,10 +2663,14 @@ class fluidics:
 
         elif action_type == "Wash":
 
+            status_str = f'Cycle {stain_valve}: start PBS wash'
+            status_update(status_str, list_status, window)
             self.valve_select(pbs_valve)
             self.flow(500)
             time.sleep(70)
             self.flow(0)
+            status_str = f'Cycle {stain_valve}: PBS wash finished'
+            status_update(status_str, list_status, window)
 
 
         elif action_type == 'Nuc_Touchup':
