@@ -1272,7 +1272,7 @@ class cycif:
         return tif_stack
 
 
-    def multi_channel_z_stack_capture(self, experiment_directory, cycle_number, Stain_or_Bleach, slice_gap = 2, channels = ['DAPI', 'A488', 'A555', 'A647']):
+    def multi_channel_z_stack_capture(self, experiment_directory, cycle_number, Stain_or_Bleach, list_status, window, slice_gap = 2, channels = ['DAPI', 'A488', 'A555', 'A647']):
         '''
         Captures and saves all images in XY and Z dimensions. Order of operation is ZC XY(snake). Entire z stack with all
         channels is made into a numpy data structure and saved before going to next tile and being reused. This is done
@@ -1364,9 +1364,13 @@ class cycif:
                             z_counter += 1
 
                     #save zc stack
-                    print(x, y, 'start saving z stack')
+                    status_str = f'Cycle {cycle_number}: {x} {y} start saving z stack'
+                    print(status_str)
+                    status_update(status_str, list_status, window)
                     self.zc_save(zc_tif_stack, channels, x, y, cycle_number, experiment_directory, Stain_or_Bleach)
-                    print(x, y, 'finished saving z stack')
+                    status_str = f'Cycle {cycle_number}: {x} {y} finished saving z stack'
+                    print(status_str)
+                    status_update(status_str, list_status, window)
 
 
             elif y % 2 == 0:
@@ -1417,11 +1421,17 @@ class cycif:
                             image_number_counter += 1
                             z_counter += 1
 
-                    print(x, y, 'start saving z stack')
+                    status_str = f'Cycle {cycle_number}: {x} {y} start saving z stack'
+                    print(status_str)
+                    status_update(status_str, list_status, window)
                     self.zc_save(zc_tif_stack, channels, x, y, cycle_number, experiment_directory, Stain_or_Bleach)
-                    print(x, y, 'finished saving z stack')
+                    status_str = f'Cycle {cycle_number}: {x} {y} finished saving z stack'
+                    print(status_str)
+                    status_update(status_str, list_status, window)
 
         print('all finished acquire events for this cycle')
+        status_str = f'Cycle {cycle_number}: finished acquiring'
+        status_update(status_str, list_status, window)
         return
     
     def quick_tile_placement(self, z_tile_stack, overlap = 10):
@@ -1530,15 +1540,15 @@ class cycif:
 
     def image_cycle_acquire(self, cycle_number, experiment_directory, z_slices, stain_bleach, offset_array, list_status, window, establish_fm_array = 0, auto_focus_run = 0, auto_expose_run = 0, channels = ['DAPI', 'A488', 'A555', 'A647']):
 
-        status_str = "establish fm array"
+        status_str = f'Cycle {cycle_number}: establish fm array'
         print(status_str)
         status_update(status_str, list_status, window)
         self.establish_fm_array(experiment_directory, cycle_number, z_slices, offset_array, initialize= establish_fm_array, autofocus=auto_focus_run, auto_expose=auto_expose_run)
-        status_str = 'image capture to wake up engine'
+        status_str = f'Cycle {cycle_number}: image capture to wake up engine'
         print(status_str)
         status_update(status_str, list_status, window)
         self.image_capture(experiment_directory, 'DAPI', 50, 0, 0, 0) #wake up lumencor light engine
-        status_str = 'wait 10 seconds'
+        status_str = f'Cycle {cycle_number}: wait 10 seconds'
         print(status_str)
         status_update(status_str, list_status, window)
 
@@ -1559,10 +1569,10 @@ class cycif:
             self.save_files(z_tile_stack, channel, cycle_number, experiment_directory, stain_bleach)
             
         '''
-        status_str = 'acquire all images'
+        status_str = f'Cycle {cycle_number}:acquire all images'
         print(status_str)
         status_update(status_str, list_status, window)
-        self.multi_channel_z_stack_capture(experiment_directory, cycle_number, stain_bleach, slice_gap=2, channels = channels)
+        self.multi_channel_z_stack_capture(experiment_directory, cycle_number, stain_bleach, list_status, window, slice_gap=2, channels = channels)
         #self.marker_excel_file_generation(experiment_directory, cycle_number)
 
 
