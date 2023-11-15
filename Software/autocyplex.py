@@ -25,8 +25,11 @@ from ome_types import from_xml, OME, from_tiff, to_xml
 from scipy import stats
 from copy import copy, deepcopy
 import sys
+from pybasic import shading_correction
+from path import Path
+import cv2
 from ctypes import *
-from GUI_layout import *
+#from GUI_layout import *
 sys.path.append(r'C:\Users\CyCIF PC\Documents\GitHub\AutoCIF\Python_64_elveflow\DLL64')#add the path of the library here
 sys.path.append(r'C:\Users\CyCIF PC\Documents\GitHub\AutoCIF\Python_64_elveflow')#add the path of the LoadElveflow.py
 sys.path.append(r'C:\Users\mike\Documents\GitHub\AutoCIF\Python_64_elveflow\DLL64')#add the path of the library here
@@ -1930,7 +1933,8 @@ class cycif:
         cycle_start = 1
 
         for cycle_number in range(cycle_start, cycle_end):
-            self.infocus(experiment_directory, cycle_number, 10 ,10)
+            self.infocus(experiment_directory, cycle_number, 3 ,4)
+            self.illumination_flattening(experiment_directory, cycle_number)
             self.mcmicro_image_stack_generator(cycle_number, experiment_directory)
             self.stage_placement(experiment_directory, cycle_number)
 
@@ -2092,7 +2096,7 @@ class cycif:
 
         for channel in channels:
 
-            im_path = experiment_directory + '/' + channel + '\Stain\cy_' + str(cycle_number) + '\Tiles' + '/focused'
+            im_path = experiment_directory + '/' + channel + '\Stain\cy_' + str(cycle_number) + '\Tiles' + '/focused_basic_corrected'
             os.chdir(im_path)
 
             # place images into large array
@@ -2130,6 +2134,40 @@ class cycif:
             tf.imwrite(channel + '_cy' + str(cycle_number) + '_placed.tif', placed_image)
 
 
+    def illumination_flattening(self, experiment_directory, cycle_number):
+
+        directory_start = experiment_directory + '//'
+
+        for channel in range(0, 4):
+
+            if channel == 0:
+                channel_name = 'DAPI'
+            if channel == 1:
+                channel_name = 'A488'
+            if channel == 2:
+                channel_name = 'A555'
+            if channel == 3:
+                channel_name = 'A647'
+
+            directory = directory_start + channel_name + '\Stain\cy_' + str(cycle_number) + r'\Tiles\focused'
+            output_directory = directory_start + channel_name + '\Stain\cy_' + str(cycle_number) + r'\Tiles\focused_basic_corrected'
+
+            try:
+                os.mkdir(output_directory)
+            except:
+                pass
+
+            epsilon = 1e-06
+            optimizer = shading_correction.BaSiC(directory)
+            optimizer.prepare()
+            optimizer.run()
+            # Save the estimated fields (only if the profiles were estimated)
+            directory = Path(output_directory)
+            flatfield_name = directory / "flatfield.tif"
+            darkfield_name = directory / "darkfield.tif"
+            cv2.imwrite(str(flatfield_name), optimizer.flatfield_fullsize.astype(np.float32))
+            cv2.imwrite(str(darkfield_name), optimizer.darkfield_fullsize.astype(np.float32))
+            optimizer.write_images(output_directory, epsilon=epsilon)
 
     def infocus(self, experiment_directory, cycle_number, x_sub_section_count, y_sub_section_count):
 
