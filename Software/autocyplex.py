@@ -534,7 +534,7 @@ class cycif:
         return index
 
 
-    def DAPI_surface_autofocus(self, experiment_directory, z_slices, z_slice_gap):
+    def DAPI_surface_autofocus(self, experiment_directory, z_slices, z_slice_gap, x_frame_size):
         numpy_path = experiment_directory +'/' + 'np_arrays'
         os.chdir(numpy_path)
         file_name = 'fm_array.npy'
@@ -550,6 +550,11 @@ class cycif:
         bottom_z = int(center_z - z_slices/2 * z_slice_gap)
         top_z = int(center_z + z_slices/2 * z_slice_gap)
 
+        #find crop range for x dimension
+
+        side_pixels = int(5056 - x_frame_size)
+
+
         core.set_config("Color", 'DAPI')
         core.set_exposure(50)
 
@@ -562,7 +567,7 @@ class cycif:
         for x in range(0, x_tile_count):
             for y in range(0, y_tile_count):
                 core.set_xy_position(numpy_x[y][x], numpy_y[y][x])
-                z_stack = np.random.rand(z_slices, 2960, 5056)
+                z_stack = np.random.rand(z_slices, 2960, x_frame_size)
                 time.sleep(1)
                 stack_index = 0
 
@@ -574,7 +579,7 @@ class cycif:
                     core.snap_image()
                     tagged_image = core.get_tagged_image()
                     pixels = np.reshape(tagged_image.pix, newshape=[tagged_image.tags["Height"], tagged_image.tags["Width"]])
-                    z_stack[stack_index] = pixels
+                    z_stack[stack_index] = pixels[::, side_pixels:x_frame_size + side_pixels]
 
                     stack_index += 1
 
