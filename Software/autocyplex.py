@@ -483,15 +483,10 @@ class cycif:
     # Setup fm_array and sp_array alongside auto focus updates and flat values
     #########################################################
 
-    def establish_fm_array(self, experiment_directory, desired_cycle_count, z_slices, off_array, initialize = 0, x_crop_percentage = 0, autofocus = 0, auto_expose = 0):
+    def establish_fm_array(self, experiment_directory, desired_cycle_count, z_slices, off_array, initialize = 0, x_frame_size = 5056, autofocus = 0, auto_expose = 0):
         # non autofocus. Need to build in auto focus ability
         self.file_structure(experiment_directory, desired_cycle_count)
 
-
-        if x_crop_percentage != 0:
-            self.x_overlap_adjuster(x_crop_percentage, experiment_directory)
-        else:
-            pass
 
         if initialize == 1:
             xy_points = self.tile_xy_pos('New Surface 1')
@@ -499,8 +494,15 @@ class cycif:
             self.tile_pattern(xyz_points, experiment_directory)
             self.fm_channel_initial(experiment_directory, off_array, z_slices)
             self.establish_exp_arrays(experiment_directory)
+
+            if x_crop_percentage != 5056:
+                self.x_overlap_adjuster(x_crop_percentage, experiment_directory)
+            else:
+                pass
+
         else:
             pass
+
 
         if autofocus == 1 and auto_expose == 1:
             self.DAPI_surface_autofocus(experiment_directory, 30, 2)
@@ -1051,7 +1053,14 @@ class cycif:
 
         return fm_array
 
-    def x_overlap_adjuster(self, crop_each_side_percentage, experiment_directory):
+    def x_overlap_adjuster(self, new_x_pixel_count, experiment_directory):
+        '''
+        Increases overlap in focus map while cropping in the x dimension to preserve effective 10% overlap of cropped images
+        :param new_x_pixel_count:
+        :param experiment_directory:
+        :return:
+        '''
+
 
         # load in fm array
         numpy_path = experiment_directory + '/' + 'np_arrays'
@@ -1063,13 +1072,23 @@ class cycif:
         x_tiles = np.shape(fm_array[0])[1]
         y_tiles = np.shape(fm_array[0])[0]
 
-        x_pixels = ((x_tiles - 1) * (0.9) + 1) * 5056
+        # find um/pixel in focus map
+
+        try:
+            x1 = fm_array[0][0][0]
+            x2 = fm_array[0][0][1]
+            diff = x2 - x1
+        except:
+            y1 = fm_array[0][0][0]
+            y2 = fm_array[0][1][0]
+            diff = y2 - y1
+
+        um_per_pixel = diff/4550 # 4550 = 0.9 * 5056
 
         # Find number tiles in adjusted grid
-
-        new_frame_x = int(1 - 2 * crop_each_side_percentage * 5056)
-        new_x_tiles = (x_pixels / new_frame_x - 1) / 0.9 + 1
-        new_x_tiles = math.ceil(new_x_tiles)
+        x_range_pixels = (x_tiles - 0.2) * 5056
+        number_new_x_dim_tiles = x_range_pixels/new_x_pixel_count
+        new_x_tiles = math.ceil(number_new_x_dim_tiles)
 
         # generate new blank fm_array numpy array
 
@@ -1078,13 +1097,13 @@ class cycif:
         # Find border where x starts on the left (not center point, but x value for left most edge of left most tile
 
         left_x_center = fm_array[0][0][0]
-        left_most_x = left_x_center - 2528 * 0.197
+        left_most_x = left_x_center - 2528 * um_per_pixel
 
         # Find center point in new image that makes edge of image align with left_most_x
         # Also find x to x + i spacing and populate rest of x values in new_fm_array
 
-        x_col_0 = left_most_x + new_frame_x / 2 * 0.197
-        x_spacing = (0.9) * new_frame_x
+        x_col_0 = left_most_x + new_x_pixel_count / 2 * um_per_pixel
+        x_spacing = (0.9) * new_x_pixel_count * um_per_pixel
 
         # Populate new_fm_array with row 0 x values
 
@@ -1096,9 +1115,9 @@ class cycif:
         for y in range(0, y_tiles):
             new_fm_array[0, y, 0:x_tiles] = fm_array[1][y][0]
 
-        # populate new_fm_array with dapi z values
-
-        new_fm_array[0, 0:y_tiles, 0:x_tiles] = fm_array[2][0][0]
+        # populate new_fm_array with dapi z values and everything else in planes 2-9
+        for slice in range(2,10):
+            new_fm_array[slice, 0:y_tiles, 0:x_tiles] = fm_array[slice][0][0]
 
         np.save('fm_array.npy', new_fm_array)
 
