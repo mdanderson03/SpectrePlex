@@ -495,7 +495,7 @@ class cycif:
             self.fm_channel_initial(experiment_directory, off_array, z_slices)
             self.establish_exp_arrays(experiment_directory)
 
-            if x_crop_percentage != 5056:
+            if x_frame_size != 5056:
                 self.x_overlap_adjuster(x_crop_percentage, experiment_directory)
             else:
                 pass
@@ -711,8 +711,6 @@ class cycif:
         else:
             pass
 
-        #np.save('fm_array.npy', fm_array)
-        #np.save('images.npy', images)
 
     ###########################################################
     #This section is the for the exposure functions.
@@ -1560,12 +1558,12 @@ class cycif:
         self.save_quick_tile(pna_stack, channel, cycle, experiment_directory, stain_bleach)
 
 
-    def image_cycle_acquire(self, cycle_number, experiment_directory, z_slices, stain_bleach, offset_array, list_status, window, establish_fm_array = 0, auto_focus_run = 0, auto_expose_run = 0, channels = ['DAPI', 'A488', 'A555', 'A647']):
+    def image_cycle_acquire(self, cycle_number, experiment_directory, z_slices, stain_bleach, offset_array, list_status, window, x_frame_size = 5056, establish_fm_array = 0, auto_focus_run = 0, auto_expose_run = 0, channels = ['DAPI', 'A488', 'A555', 'A647']):
 
         status_str = f'Cycle {cycle_number}: establish fm array'
         print(status_str)
         status_update(status_str, list_status, window)
-        self.establish_fm_array(experiment_directory, cycle_number, z_slices, offset_array, initialize= establish_fm_array, autofocus=auto_focus_run, auto_expose=auto_expose_run)
+        self.establish_fm_array(experiment_directory, cycle_number, z_slices, offset_array, initialize= establish_fm_array, x_frame_size = x_frame_size, autofocus=auto_focus_run, auto_expose=auto_expose_run)
         status_str = f'Cycle {cycle_number}: image capture to wake up engine'
         print(status_str)
         status_update(status_str, list_status, window)
@@ -1598,7 +1596,7 @@ class cycif:
         #self.marker_excel_file_generation(experiment_directory, cycle_number)
 
 
-    def full_cycle(self, experiment_directory, cycle_number, offset_array, stain_valve, fluidics_object, z_slices, window, list_status, incub_val=45):
+    def full_cycle(self, experiment_directory, cycle_number, offset_array, stain_valve, fluidics_object, z_slices, window, list_status, x_frame_size = 5056, incub_val=45):
 
         pump = fluidics_object
         # z_slices = 9
@@ -1607,7 +1605,7 @@ class cycif:
             status_str = f'Cycle {cycle_number}: baseline bleach image acquiring'
             status_update(status_str, list_status, window)
             # print(status_str)
-            self.image_cycle_acquire(cycle_number, experiment_directory, z_slices, 'Bleach', offset_array, list_status, window, establish_fm_array = 1, auto_focus_run=0, auto_expose_run=0)
+            self.image_cycle_acquire(cycle_number, experiment_directory, z_slices, 'Bleach', offset_array, list_status, window, x_frame_size, establish_fm_array = 1, auto_focus_run=0, auto_expose_run=0)
         else:
             status_str = f'Cycle {cycle_number}: Stain in progress'
             status_update(status_str, list_status, window)
