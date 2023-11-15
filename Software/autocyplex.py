@@ -484,7 +484,7 @@ class cycif:
     #########################################################
 
     def establish_fm_array(self, experiment_directory, desired_cycle_count, z_slices, off_array, initialize = 0, x_frame_size = 5056, autofocus = 0, auto_expose = 0):
-        # non autofocus. Need to build in auto focus ability
+
         self.file_structure(experiment_directory, desired_cycle_count)
 
 
@@ -1019,8 +1019,6 @@ class cycif:
         y_tiles = np.shape(fm_array[0])[0]
         x_tiles = np.shape(fm_array[0])[1]
 
-        #slice_gap = 2 # space between z slices in microns
-
         dummy_channel = np.empty_like(fm_array[0])
         dummy_channel = np.expand_dims(dummy_channel, axis=0)
         channel_count = np.shape(fm_array)[0]
@@ -1042,10 +1040,10 @@ class cycif:
         fm_array[9] = z_slice_array
 
 
-        fm_array[2] = fm_array[2] + int((z_slice_array[0][0] * slice_gap)/2)
-        fm_array[4] = fm_array[4] + int((z_slice_array[0][0] * slice_gap)/2)
-        fm_array[6] = fm_array[6] + int((z_slice_array[0][0] * slice_gap)/2)
-        fm_array[8] = fm_array[8] + int((z_slice_array[0][0] * slice_gap)/2)
+        fm_array[2] = fm_array[2] + int((z_slice_array[0][0] * slice_gap)/2) - 1
+        fm_array[4] = fm_array[4] + int((z_slice_array[0][0] * slice_gap)/2) - 1
+        fm_array[6] = fm_array[6] + int((z_slice_array[0][0] * slice_gap)/2) - 1
+        fm_array[8] = fm_array[8] + int((z_slice_array[0][0] * slice_gap)/2) - 1
 
         np.save(file_name, fm_array)
 
@@ -1187,112 +1185,7 @@ class cycif:
         return pixels
 
 
-    def core_tile_acquire(self, experiment_directory, channel = 'DAPI'):
-        '''
-        Makes numpy files that contain all tiles and z slices. Order is z, tiles.
-
-        :param self:
-        :param channels:
-        :param z_slices:
-        :return:
-        '''
-
-        numpy_path = experiment_directory +'/' + 'np_arrays'
-        os.chdir(numpy_path)
-        full_array = np.load('fm_array.npy', allow_pickle=False)
-        exp_time_array = np.load('exp_array.npy', allow_pickle=False)
-
-        height_pixels = 2960
-        width_pixels = 5056
-
-        numpy_x = full_array[0]
-        numpy_y = full_array[1]
-        x_tile_count = np.unique(numpy_x).size
-        y_tile_count = np.unique(numpy_y).size
-        total_tile_count = x_tile_count * y_tile_count
-        z_slices = full_array[3][0][0]
-        slice_gap = 2
-
-        core.set_xy_position(numpy_x[0][0], numpy_y[0][0])
-        time.sleep(1)
-
-        tif_stack = np.random.rand(int(z_slices), total_tile_count, height_pixels, width_pixels).astype('float16')
-
-
-        if channel == 'DAPI':
-            channel_index = 2
-            tif_stack_c_index = 0
-        if channel == 'A488':
-            channel_index = 4
-            tif_stack_c_index = 1
-        if channel == 'A555':
-            channel_index = 6
-            tif_stack_c_index = 2
-        if channel == 'A647':
-            channel_index = 8
-            tif_stack_c_index = 3
-
-        numpy_z = full_array[channel_index]
-        exp_time = int(exp_time_array[tif_stack_c_index])
-        core.set_config("Color", channel)
-        core.set_exposure(exp_time)
-        tile_counter = 0
-
-
-        for y in range(0, y_tile_count):
-            if y % 2 != 0:
-                for x in range(x_tile_count - 1, -1, -1):
-
-                    z_end = int(numpy_z[y][x])
-                    z_start = int(z_end - z_slices * slice_gap)
-                    core.set_xy_position(numpy_x[y][x], numpy_y[y][x])
-                    time.sleep(.5)
-
-                    z_counter = 0
-
-                    for z in range(z_start, z_end, slice_gap):
-                        core.set_position(z)
-                        time.sleep(0.5)
-                        core.snap_image()
-                        tagged_image = core.get_tagged_image()
-                        pixels = np.reshape(tagged_image.pix,newshape=[tagged_image.tags["Height"], tagged_image.tags["Width"]])
-                        tif_stack[z_counter][tile_counter] = pixels
-                        print(core.getRemainingImageCount())
-
-                        z_counter += 1
-
-                    tile_counter += 1
-
-
-            elif y % 2 == 0:
-                for x in range(0, x_tile_count):
-
-                    z_end = int(numpy_z[y][x])
-                    z_start = int(z_end - z_slices * slice_gap)
-                    core.set_xy_position(numpy_x[y][x], numpy_y[y][x])
-                    time.sleep(.5)
-
-                    z_counter = 0
-
-                    for z in range(z_start, z_end, slice_gap):
-                        core.set_position(z)
-                        time.sleep(0.5)
-                        core.snap_image()
-                        tagged_image = core.get_tagged_image()
-                        pixels = np.reshape(tagged_image.pix,
-                                            newshape=[tagged_image.tags["Height"], tagged_image.tags["Width"]])
-
-                        tif_stack[z_counter][tile_counter] = pixels
-
-
-                        z_counter += 1
-
-                    tile_counter += 1
-
-        return tif_stack
-
-
-    def multi_channel_z_stack_capture(self, experiment_directory, cycle_number, Stain_or_Bleach, list_status, window, slice_gap = 2, channels = ['DAPI', 'A488', 'A555', 'A647']):
+    def multi_channel_z_stack_capture(self, experiment_directory, cycle_number, Stain_or_Bleach, list_status, window, x_pixels = 5056, slice_gap = 2, channels = ['DAPI', 'A488', 'A555', 'A647']):
         '''
         Captures and saves all images in XY and Z dimensions. Order of operation is ZC XY(snake). Entire z stack with all
         channels is made into a numpy data structure and saved before going to next tile and being reused. This is done
@@ -1444,7 +1337,7 @@ class cycif:
                     status_str = f'Cycle {cycle_number}: {x} {y} start saving z stack'
                     print(status_str)
                     status_update(status_str, list_status, window)
-                    self.zc_save(zc_tif_stack, channels, x, y, cycle_number, experiment_directory, Stain_or_Bleach)
+                    self.zc_save(zc_tif_stack, channels, x, y, cycle_number, x_pixels, experiment_directory, Stain_or_Bleach)
                     status_str = f'Cycle {cycle_number}: {x} {y} finished saving z stack'
                     print(status_str)
                     status_update(status_str, list_status, window)
@@ -1453,109 +1346,6 @@ class cycif:
         status_str = f'Cycle {cycle_number}: finished acquiring'
         status_update(status_str, list_status, window)
         return
-    
-    def quick_tile_placement(self, z_tile_stack, overlap = 10):
-
-        numpy_path = 'E:/folder_structure' +'/' + 'np_arrays'
-        os.chdir(numpy_path)
-        full_array = np.load('fm_array.npy', allow_pickle=False)
-
-        numpy_x = full_array[0]
-        numpy_y = full_array[1]
-
-        x_tile_count = np.unique(numpy_x).size
-        y_tile_count = np.unique(numpy_y).size
-
-        height = z_tile_stack[0].shape[0]
-        width = z_tile_stack[0].shape[1]
-        overlapped_height = int(height * (1 - overlap / 100))
-        overlapped_width = int(width * (1 - overlap / 100))
-
-        pna_height = int(y_tile_count * height - int((y_tile_count) * overlap / 100 * height))
-        pna_width = int(x_tile_count * width - int((x_tile_count) * overlap / 100 * width))
-
-        pna = np.random.rand(pna_height, pna_width).astype('float16')
-        tile_counter = 0
-
-        for y in range(0, y_tile_count):
-            if y % 2 != 0:
-                for x in range(x_tile_count - 1, -1, -1):
-                    pna[y * overlapped_height:(y + 1) * overlapped_height,
-                    x * overlapped_width:(x + 1) * overlapped_width] = z_tile_stack[tile_counter][0:overlapped_height,
-                                                                       0:overlapped_width]
-
-                    tile_counter += 1
-
-
-            elif y % 2 == 0:
-                for x in range(0, x_tile_count):
-                    pna[y * overlapped_height:(y + 1) * overlapped_height,
-                    x * overlapped_width:(x + 1) * overlapped_width] = z_tile_stack[tile_counter][0:overlapped_height,
-                                                                       0:overlapped_width]
-
-                    tile_counter += 1
-
-        return pna
-
-    def quick_tile_optimal_z(self, z_tile_stack):
-
-        z_slice_count = z_tile_stack.shape[0]
-        tile_count = z_tile_stack[0].shape[0]
-
-        height = z_tile_stack[0].shape[1]
-        width = z_tile_stack[0].shape[2]
-
-        optimal_stack = np.random.rand(tile_count, height, width).astype('float16')
-        score_array = np.random.rand(z_slice_count, 1).astype('float32')
-
-
-        for tile in range(0, tile_count):
-
-            for z in range(0, z_slice_count):
-                score_array[z] = cycif.focus_bin_generator(z_tile_stack[z][tile])
-
-            min_score = np.min(score_array)
-            optimal_index = np.where(score_array == min_score)[0][0]
-            optimal_stack[tile] = z_tile_stack[optimal_index][tile]
-
-        return optimal_stack
-
-    def optimal_quick_preview_qt(self, z_tile_stack, channel, cycle, experiment_directory,  overlap = 10):
-
-        optimal_stack = self.quick_tile_optimal_z(z_tile_stack)
-        optimal_qt = self.quick_tile_placement(optimal_stack, overlap)
-        optimal_qt_binned = optimal_qt[0:-1:4, 0:-1:4]
-        self.save_optimal_quick_tile(optimal_qt_binned, channel, cycle, experiment_directory)
-
-
-
-    def quick_tile_all_z_save(self, z_tile_stack, channel, cycle, experiment_directory, stain_bleach,  overlap = 0):
-
-
-        z_slice_count = z_tile_stack.shape[0]
-        numpy_path = experiment_directory +'/' + 'np_arrays'
-        os.chdir(numpy_path)
-        full_array = np.load('fm_array.npy', allow_pickle=False)
-
-        numpy_x = full_array[0]
-        numpy_y = full_array[1]
-
-        x_tile_count = int(np.unique(numpy_x).size)
-        y_tile_count = int(np.unique(numpy_y).size)
-
-        height = int(z_tile_stack.shape[2])
-        width = int(z_tile_stack.shape[3])
-
-        pna_height = int(y_tile_count * height - int((y_tile_count) * overlap / 100 * height))
-        pna_width = int(x_tile_count * width - int((x_tile_count) * overlap / 100 * width))
-
-        pna_stack = np.random.rand(z_slice_count, pna_height, pna_width).astype('float16')
-
-        for z in range(0, z_slice_count):
-            pna = self.quick_tile_placement(z_tile_stack[z], overlap)
-            pna_stack[z] = pna
-
-        self.save_quick_tile(pna_stack, channel, cycle, experiment_directory, stain_bleach)
 
 
     def image_cycle_acquire(self, cycle_number, experiment_directory, z_slices, stain_bleach, offset_array, list_status, window, x_frame_size = 5056, establish_fm_array = 0, auto_focus_run = 0, auto_expose_run = 0, channels = ['DAPI', 'A488', 'A555', 'A647']):
@@ -1592,7 +1382,7 @@ class cycif:
         status_str = f'Cycle {cycle_number}:acquire all images'
         print(status_str)
         status_update(status_str, list_status, window)
-        self.multi_channel_z_stack_capture(experiment_directory, cycle_number, stain_bleach, list_status, window, slice_gap=2, channels = channels)
+        self.multi_channel_z_stack_capture(experiment_directory, cycle_number, stain_bleach, list_status, window, x_frame_size = x_frame_size,  slice_gap=2, channels = channels)
         #self.marker_excel_file_generation(experiment_directory, cycle_number)
 
 
@@ -1621,7 +1411,7 @@ class cycif:
             status_str = f'Cycle {cycle_number}: stain image acquistion in progress'
             status_update(status_str, list_status, window)
             # print(status_str)
-            self.image_cycle_acquire(cycle_number, experiment_directory, z_slices, 'Stain', offset_array, list_status, window, establish_fm_array=0, auto_focus_run=0, auto_expose_run = 1)
+            self.image_cycle_acquire(cycle_number, experiment_directory, z_slices, 'Stain', offset_array, list_status, window, x_frame_size = x_frame_size, establish_fm_array=0, auto_focus_run=0, auto_expose_run = 1)
             time.sleep(5)
             status_str = f'Cycle {cycle_number}: bleaching in progress'
             status_update(status_str, list_status, window)
@@ -1637,7 +1427,7 @@ class cycif:
             status_str = 'bleach images acquiring'
             status_update(status_str, list_status, window)
             # print(status_str)
-            self.image_cycle_acquire(cycle_number, experiment_directory, z_slices, 'Bleach', offset_array, list_status, window, establish_fm_array=0, auto_focus_run=0, auto_expose_run = 0)
+            self.image_cycle_acquire(cycle_number, experiment_directory, z_slices, 'Bleach', offset_array, list_status, window, x_frame_size = x_frame_size, establish_fm_array=0, auto_focus_run=0, auto_expose_run = 0)
             time.sleep(10)
 
 
@@ -1858,6 +1648,11 @@ class cycif:
 
         mc_micro_directory = experiment_directory + '/mcmicro'
         self.folder_addon(mc_micro_directory, ['raw'])
+        quick_tile_directory = experiment_directory + '/Quick_Tile'
+        self.folder_addon(quick_tile_directory, ['DAPI'])
+        self.folder_addon(quick_tile_directory, ['A488'])
+        self.folder_addon(quick_tile_directory, ['A555'])
+        self.folder_addon(quick_tile_directory, ['A647'])
 
         for channel in channels:
 
@@ -1930,10 +1725,9 @@ class cycif:
 
         return new_exp
 
-    def post_acquisition_processor(self, experiment_directory):
+    def post_acquisition_processor(self, experiment_directory, x_pixels):
 
         mcmicro_path = experiment_directory + r'\mcmicro\raw'
-        dapi_im_path = experiment_directory + '\DAPI\Stain'
         cycle_start = 1
         cycle_start_search = 0
 
@@ -1953,7 +1747,7 @@ class cycif:
             self.infocus(experiment_directory, cycle_number, 3 ,4)
             self.illumination_flattening(experiment_directory, cycle_number)
             self.mcmicro_image_stack_generator(cycle_number, experiment_directory)
-            self.stage_placement(experiment_directory, cycle_number)
+            self.stage_placement(experiment_directory, cycle_number, x_pixels)
 
     def mcmicro_image_stack_generator(self, cycle_number, experiment_directory):
 
@@ -2062,7 +1856,7 @@ class cycif:
 
         return xml
 
-    def stage_placement(self, experiment_directory, cycle_number):
+    def stage_placement(self, experiment_directory, cycle_number, x_pixels):
         '''
         Goal to place images via rough stage coords in a larger image. WIll have nonsense borders
         '''
@@ -2081,7 +1875,7 @@ class cycif:
         y_tile_count = numpy_x.shape[0]
         x_tile_count = numpy_y.shape[1]
 
-        fov_x_pixels = 5056
+        fov_x_pixels = x_pixels
         fov_y_pixels = 2960
         um_pixel = 0.20
 
@@ -2110,45 +1904,47 @@ class cycif:
         # load images into python
 
         channels = ['DAPI', 'A488', 'A555', 'A647']
+        types = ['\Stain', '\Bleach']
 
-        for channel in channels:
+        for type in types:
+            for channel in channels:
 
-            im_path = experiment_directory + '/' + channel + '\Stain\cy_' + str(cycle_number) + '\Tiles' + '/focused_basic_corrected'
-            os.chdir(im_path)
+                im_path = experiment_directory + '/' + channel + type + '\cy_' + str(cycle_number) + '\Tiles' + '/focused_basic_corrected'
+                os.chdir(im_path)
 
-            # place images into large array
+                # place images into large array
 
-            for x in range(0, x_tile_count):
-                for y in range(0, y_tile_count):
-                    filename = 'x' + str(x) + '_y_' + str(y) + '_c_' + channel + '.tif'
-                    image = io.imread(filename)
-                    # define subsection of large array that fits dimensions of single FOV
-                    #x_center = numpy_x_pixels[y][x]
-                    #y_center = numpy_y_pixels[y][x]
-                    #x_start = int(x_center - fov_x_pixels / 2)
-                    #x_end = int(x_center + fov_x_pixels / 2)
-                    #y_start = int(y_center - fov_y_pixels / 2)
-                    #y_end = int(y_center + fov_y_pixels / 2)
+                for x in range(0, x_tile_count):
+                    for y in range(0, y_tile_count):
+                        filename = 'x' + str(x) + '_y_' + str(y) + '_c_' + channel + '.tif'
+                        image = io.imread(filename)
+                        # define subsection of large array that fits dimensions of single FOV
+                        #x_center = numpy_x_pixels[y][x]
+                        #y_center = numpy_y_pixels[y][x]
+                        #x_start = int(x_center - fov_x_pixels / 2)
+                        #x_end = int(x_center + fov_x_pixels / 2)
+                        #y_start = int(y_center - fov_y_pixels / 2)
+                        #y_end = int(y_center + fov_y_pixels / 2)
 
-                    if x == 0 and y ==0:
-                        x_start = 0
-                        x_end = 5056
-                        y_start =0
-                        y_end = 2960
-                    else:
+                        if x == 0 and y ==0:
+                            x_start = 0
+                            x_end = x_pixels
+                            y_start =0
+                            y_end = 2960
+                        else:
 
-                        x_start = int(x * fov_x_pixels * 0.87)
-                        x_end = x_start + 5056
-                        y_start = int(y * fov_y_pixels * 0.9)
-                        y_end = y_start + 2960
+                            x_start = int(x * fov_x_pixels * 0.87)
+                            x_end = x_start + x_pixels
+                            y_start = int(y * fov_y_pixels * 0.9)
+                            y_end = y_start + 2960
 
 
                     # placed_image[y_start:y_end, x_start:x_end] = placed_image[y_start:y_end, x_start:x_end] + image
                     placed_image[y_start:y_end, x_start:x_end] = image
 
-            # save output image
-            os.chdir(quick_tile_path)
-            tf.imwrite(channel + '_cy' + str(cycle_number) + '_placed.tif', placed_image)
+                # save output image
+                os.chdir(quick_tile_path + '/' + channel)
+                tf.imwrite(channel + '_cy_' + str(cycle_number) + '_' + type + '_placed.tif', placed_image)
 
 
     def illumination_flattening(self, experiment_directory, cycle_number):
@@ -2325,7 +2121,7 @@ class cycif:
             tf.imwrite(filename, rebuilt_image)
 
 
-    def zc_save(self, zc_tif_stack, channels, x_tile, y_tile, cycle, experiment_directory, Stain_or_Bleach):
+    def zc_save(self, zc_tif_stack, channels, x_tile, y_tile, cycle, x_pixels, experiment_directory, Stain_or_Bleach):
 
         z_tile_count = np.shape(zc_tif_stack)[1]
 
@@ -2339,13 +2135,17 @@ class cycif:
             if channel == 'A647':
                 zc_index = 3
 
+            # establish x range to collect in image
+
+            side_pixel_count = int(5056 - x_pixels)
+
             save_directory = experiment_directory + '/' + str(channel) + '/' + Stain_or_Bleach + '/' + 'cy_' + str(cycle) + '/' + 'Tiles'
             os.chdir(save_directory)
 
             for z in range(0, z_tile_count):
 
                         file_name = 'z_' + str(z) + '_x' + str(x_tile) + '_y_' + str(y_tile) + '_c_' + str(channel)+ '.tif'
-                        image = zc_tif_stack[zc_index][z]
+                        image = zc_tif_stack[zc_index][z][::, side_pixel_count:side_pixel_count + x_pixels]
                         imwrite(file_name, image, photometric='minisblack')
 
 
@@ -2413,7 +2213,210 @@ class cycif:
 ############################################
 #depreciated or unused
 ############################################
+    def quick_tile_placement(self, z_tile_stack, overlap = 10):
 
+        numpy_path = 'E:/folder_structure' +'/' + 'np_arrays'
+        os.chdir(numpy_path)
+        full_array = np.load('fm_array.npy', allow_pickle=False)
+
+        numpy_x = full_array[0]
+        numpy_y = full_array[1]
+
+        x_tile_count = np.unique(numpy_x).size
+        y_tile_count = np.unique(numpy_y).size
+
+        height = z_tile_stack[0].shape[0]
+        width = z_tile_stack[0].shape[1]
+        overlapped_height = int(height * (1 - overlap / 100))
+        overlapped_width = int(width * (1 - overlap / 100))
+
+        pna_height = int(y_tile_count * height - int((y_tile_count) * overlap / 100 * height))
+        pna_width = int(x_tile_count * width - int((x_tile_count) * overlap / 100 * width))
+
+        pna = np.random.rand(pna_height, pna_width).astype('float16')
+        tile_counter = 0
+
+        for y in range(0, y_tile_count):
+            if y % 2 != 0:
+                for x in range(x_tile_count - 1, -1, -1):
+                    pna[y * overlapped_height:(y + 1) * overlapped_height,
+                    x * overlapped_width:(x + 1) * overlapped_width] = z_tile_stack[tile_counter][0:overlapped_height,
+                                                                       0:overlapped_width]
+
+                    tile_counter += 1
+
+
+            elif y % 2 == 0:
+                for x in range(0, x_tile_count):
+                    pna[y * overlapped_height:(y + 1) * overlapped_height,
+                    x * overlapped_width:(x + 1) * overlapped_width] = z_tile_stack[tile_counter][0:overlapped_height,
+                                                                       0:overlapped_width]
+
+                    tile_counter += 1
+
+        return pna
+
+    def quick_tile_optimal_z(self, z_tile_stack):
+
+        z_slice_count = z_tile_stack.shape[0]
+        tile_count = z_tile_stack[0].shape[0]
+
+        height = z_tile_stack[0].shape[1]
+        width = z_tile_stack[0].shape[2]
+
+        optimal_stack = np.random.rand(tile_count, height, width).astype('float16')
+        score_array = np.random.rand(z_slice_count, 1).astype('float32')
+
+
+        for tile in range(0, tile_count):
+
+            for z in range(0, z_slice_count):
+                score_array[z] = cycif.focus_bin_generator(z_tile_stack[z][tile])
+
+            min_score = np.min(score_array)
+            optimal_index = np.where(score_array == min_score)[0][0]
+            optimal_stack[tile] = z_tile_stack[optimal_index][tile]
+
+        return optimal_stack
+
+    def optimal_quick_preview_qt(self, z_tile_stack, channel, cycle, experiment_directory,  overlap = 10):
+
+        optimal_stack = self.quick_tile_optimal_z(z_tile_stack)
+        optimal_qt = self.quick_tile_placement(optimal_stack, overlap)
+        optimal_qt_binned = optimal_qt[0:-1:4, 0:-1:4]
+        self.save_optimal_quick_tile(optimal_qt_binned, channel, cycle, experiment_directory)
+
+    def core_tile_acquire(self, experiment_directory, channel = 'DAPI'):
+        '''
+        Makes numpy files that contain all tiles and z slices. Order is z, tiles.
+
+        :param self:
+        :param channels:
+        :param z_slices:
+        :return:
+        '''
+
+        numpy_path = experiment_directory +'/' + 'np_arrays'
+        os.chdir(numpy_path)
+        full_array = np.load('fm_array.npy', allow_pickle=False)
+        exp_time_array = np.load('exp_array.npy', allow_pickle=False)
+
+        height_pixels = 2960
+        width_pixels = 5056
+
+        numpy_x = full_array[0]
+        numpy_y = full_array[1]
+        x_tile_count = np.unique(numpy_x).size
+        y_tile_count = np.unique(numpy_y).size
+        total_tile_count = x_tile_count * y_tile_count
+        z_slices = full_array[3][0][0]
+        slice_gap = 2
+
+        core.set_xy_position(numpy_x[0][0], numpy_y[0][0])
+        time.sleep(1)
+
+        tif_stack = np.random.rand(int(z_slices), total_tile_count, height_pixels, width_pixels).astype('float16')
+
+
+        if channel == 'DAPI':
+            channel_index = 2
+            tif_stack_c_index = 0
+        if channel == 'A488':
+            channel_index = 4
+            tif_stack_c_index = 1
+        if channel == 'A555':
+            channel_index = 6
+            tif_stack_c_index = 2
+        if channel == 'A647':
+            channel_index = 8
+            tif_stack_c_index = 3
+
+        numpy_z = full_array[channel_index]
+        exp_time = int(exp_time_array[tif_stack_c_index])
+        core.set_config("Color", channel)
+        core.set_exposure(exp_time)
+        tile_counter = 0
+
+
+        for y in range(0, y_tile_count):
+            if y % 2 != 0:
+                for x in range(x_tile_count - 1, -1, -1):
+
+                    z_end = int(numpy_z[y][x])
+                    z_start = int(z_end - z_slices * slice_gap)
+                    core.set_xy_position(numpy_x[y][x], numpy_y[y][x])
+                    time.sleep(.5)
+
+                    z_counter = 0
+
+                    for z in range(z_start, z_end, slice_gap):
+                        core.set_position(z)
+                        time.sleep(0.5)
+                        core.snap_image()
+                        tagged_image = core.get_tagged_image()
+                        pixels = np.reshape(tagged_image.pix,newshape=[tagged_image.tags["Height"], tagged_image.tags["Width"]])
+                        tif_stack[z_counter][tile_counter] = pixels
+                        print(core.getRemainingImageCount())
+
+                        z_counter += 1
+
+                    tile_counter += 1
+
+
+            elif y % 2 == 0:
+                for x in range(0, x_tile_count):
+
+                    z_end = int(numpy_z[y][x])
+                    z_start = int(z_end - z_slices * slice_gap)
+                    core.set_xy_position(numpy_x[y][x], numpy_y[y][x])
+                    time.sleep(.5)
+
+                    z_counter = 0
+
+                    for z in range(z_start, z_end, slice_gap):
+                        core.set_position(z)
+                        time.sleep(0.5)
+                        core.snap_image()
+                        tagged_image = core.get_tagged_image()
+                        pixels = np.reshape(tagged_image.pix,
+                                            newshape=[tagged_image.tags["Height"], tagged_image.tags["Width"]])
+
+                        tif_stack[z_counter][tile_counter] = pixels
+
+
+                        z_counter += 1
+
+                    tile_counter += 1
+
+        return tif_stack
+
+    def quick_tile_all_z_save(self, z_tile_stack, channel, cycle, experiment_directory, stain_bleach,  overlap = 0):
+
+
+        z_slice_count = z_tile_stack.shape[0]
+        numpy_path = experiment_directory +'/' + 'np_arrays'
+        os.chdir(numpy_path)
+        full_array = np.load('fm_array.npy', allow_pickle=False)
+
+        numpy_x = full_array[0]
+        numpy_y = full_array[1]
+
+        x_tile_count = int(np.unique(numpy_x).size)
+        y_tile_count = int(np.unique(numpy_y).size)
+
+        height = int(z_tile_stack.shape[2])
+        width = int(z_tile_stack.shape[3])
+
+        pna_height = int(y_tile_count * height - int((y_tile_count) * overlap / 100 * height))
+        pna_width = int(x_tile_count * width - int((x_tile_count) * overlap / 100 * width))
+
+        pna_stack = np.random.rand(z_slice_count, pna_height, pna_width).astype('float16')
+
+        for z in range(0, z_slice_count):
+            pna = self.quick_tile_placement(z_tile_stack[z], overlap)
+            pna_stack[z] = pna
+
+        self.save_quick_tile(pna_stack, channel, cycle, experiment_directory, stain_bleach)
 
 
 ############################################
