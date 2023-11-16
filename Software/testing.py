@@ -5,15 +5,15 @@ from matplotlib import pyplot as plt
 
 import os
 
-from autocyplex import *
+#from autocyplex import *
 from pycromanager import Core, Studio, Magellan
-microscope = cycif() # initialize cycif object
+#microscope = cycif() # initialize cycif object
 #pump = fluidics(6, 3)
 
 
 
 
-experiment_directory = r'E:\new_garbage'
+experiment_directory = r'E:\14-11-23_test'
 numpy_path = experiment_directory + '/' + 'np_arrays'
 os.chdir(numpy_path)
 
@@ -53,7 +53,8 @@ y = 1
 #io.imshow(sp_array[3,:,:,0])
 #io.show()
 
-print(fm_array[3][0][0])
+io.imshow(fm_array[2])
+io.show()
 
 
 

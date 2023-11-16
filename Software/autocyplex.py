@@ -1893,7 +1893,7 @@ class cycif:
                 cycle_start_search = 1
 
         #cycle_end = len(os.listdir(dapi_im_path)) + 1
-        cycle_end = 9
+        cycle_end = 7
         cycle_start = 1
 
         for cycle_number in range(cycle_start, cycle_end):
