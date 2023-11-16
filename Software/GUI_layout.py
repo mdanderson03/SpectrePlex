@@ -11,7 +11,7 @@ layout_cycle = [[sg.Text("Directory:"), sg.Input(key="-path-"), sg.FolderBrowse(
                 [sg.Checkbox("Multiple Cycles", enable_events=True, key="-checkbox-",default=True),sg.Text("Start Cycle Number:"), sg.Combo(["0","1","2","3","4","5","6","7","8","9"],default_value="0", key="-cycle-", enable_events=True, readonly=True),sg.Text("End Cycle Number:", key="-txt_end-",visible=True), sg.Combo(cycle_options, default_value="8",key="-cycle_end-", visible=True, readonly=True)],
                 # [sg.Checkbox("Change number of z-slices (3 slices)", key="-slice-", enable_events=True), sg.Text("z-slices:", key="-slice_txt-", visible=False), sg.Input(key="-num_z-", size=(5,1),visible=False)],
                 [sg.Checkbox("Antibody Incubation Time (45 min)", key="-incub_time-", enable_events=True), sg.Text("Incubation Time:", key="-fc_incub_txt-", visible=False), sg.Input(key="-fc_incub_input-", visible=False, size=(10,1))],
-                [sg.Checkbox("Perform post-acquisition processing", key="-post_acq-", default=True)]]]
+                [sg.Checkbox("Perform post-acquisition processing", key="-post_acq-", default=True)]]
 
 # ----------- Add frames around changeable layouts ----------- #
 cycle_list = [sg.Column(layout_cycle)]

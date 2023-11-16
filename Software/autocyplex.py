@@ -1,5 +1,5 @@
 import ome_types
-#from pycromanager import Core, Acquisition, multi_d_acquisition_events, Dataset, MagellanAcquisition, Magellan, start_headless, XYTiledAcquisition, Studio
+from pycromanager import Core, Acquisition, multi_d_acquisition_events, Dataset, MagellanAcquisition, Magellan, start_headless, XYTiledAcquisition, Studio
 import numpy as np
 import time
 from scipy.optimize import curve_fit
@@ -29,14 +29,14 @@ from pybasic import shading_correction
 from path import Path
 import cv2
 from ctypes import *
-#from GUI_layout import *
+from GUI_layout import *
 sys.path.append(r'C:\Users\CyCIF PC\Documents\GitHub\AutoCIF\Python_64_elveflow\DLL64')#add the path of the library here
 sys.path.append(r'C:\Users\CyCIF PC\Documents\GitHub\AutoCIF\Python_64_elveflow')#add the path of the LoadElveflow.py
 sys.path.append(r'C:\Users\mike\Documents\GitHub\AutoCIF\Python_64_elveflow\DLL64')#add the path of the library here
 sys.path.append(r'C:\Users\mike\Documents\GitHub\AutoCIF\Python_64_elveflow')#add the path of the LoadElveflow.py
 
 from array import array
-#from Elveflow64 import *
+from Elveflow64 import *
 
 
 #mm_app_path = 'C:\Program Files\Micro-Manager-2.0'
@@ -46,8 +46,8 @@ from array import array
 #client = mqtt.Client('autocyplex_server')
 #client.connect('10.3.141.1', 1883)
 
-#core = Core()
-#magellan = Magellan()
+core = Core()
+magellan = Magellan()
 
 global level
 level = []
@@ -496,7 +496,7 @@ class cycif:
             self.establish_exp_arrays(experiment_directory)
 
             if x_frame_size != 5056:
-                self.x_overlap_adjuster(x_crop_percentage, experiment_directory)
+                self.x_overlap_adjuster(x_frame_size, experiment_directory)
             else:
                 pass
 
@@ -505,11 +505,11 @@ class cycif:
 
 
         if autofocus == 1 and auto_expose == 1:
-            self.DAPI_surface_autofocus(experiment_directory, 30, 2)
-            self.fm_channel_initial(experiment_directory, off_array, z_slices, 2)
+            self.DAPI_surface_autofocus(experiment_directory, 20, 2)
+            self.fm_channel_initial(experiment_directory, off_array, z_slices, 2, x_frame_size)
             self.fm_array_update_autofocus_autoexpose(experiment_directory, exp=1)
         if autofocus == 1 and auto_expose == 0:
-            self.DAPI_surface_autofocus(experiment_directory, 30, 2)
+            self.DAPI_surface_autofocus(experiment_directory, 20, 2, x_frame_size)
             self.fm_channel_initial(experiment_directory, off_array, z_slices, 2)
         if autofocus == 0 and auto_expose == 1:
             self.fm_array_update_autofocus_autoexpose(experiment_directory, exp = 1)
@@ -519,15 +519,16 @@ class cycif:
 
     def highest_brenner_index_solver(self, image_stack):
 
-        slice_count = np.shape(image_stack)[0]
+        slice_count = int(np.shape(image_stack)[0])
         scores = np.random.rand(slice_count)
 
-        for x in range(0, scores):
+        for x in range(0, slice_count):
 
             image = image_stack[x]
             score = self.focus_score(image, 17)
             scores[x] = score
 
+        print(scores)
         highest_score = np.max(scores)
         index = np.where(scores == highest_score)[0][0]
 
@@ -543,12 +544,14 @@ class cycif:
         numpy_x = fm_array[0]
         numpy_y = fm_array[1]
 
-        y_tile_count = numpy_y[0]
-        x_tile_count = numpy_y[1]
+        y_tile_count = int(np.shape(numpy_y)[0])
+        x_tile_count = int(np.shape(numpy_y)[1])
 
         center_z = magellan.get_surface('New Surface 1').get_points().get(0).z
         bottom_z = int(center_z - z_slices/2 * z_slice_gap)
         top_z = int(center_z + z_slices/2 * z_slice_gap)
+
+        print('bottom z ', bottom_z)
 
         #find crop range for x dimension
 
@@ -583,6 +586,7 @@ class cycif:
 
                     stack_index += 1
 
+                print('x', x, 'y', y)
                 z_index = self.highest_brenner_index_solver(z_stack)
                 focus_z_position = bottom_z + z_index * z_slice_gap
                 fm_array[2][y][x] = focus_z_position
@@ -704,7 +708,7 @@ class cycif:
             np.save(exp_calc_filename, exp_calc_array)
             #self.one_slice_calc_array_solver(experiment_directory)
             self.calc_array_solver(experiment_directory)
-            self.calc_array_2_exp_array(experiment_directory, 0.1)  # 0.2 =20% dynamic range used
+            self.calc_array_2_exp_array(experiment_directory, 0.35)  # 0.2 =20% dynamic range used
         else:
             pass
 
@@ -782,7 +786,7 @@ class cycif:
         return exp_time, trigger_state
 
 
-    def image_percentile_level(self, image, cut_off_threshold = 0.9):
+    def image_percentile_level(self, image, cut_off_threshold = 0.99):
         '''
         Takes in image and cut off threshold and finds pixel value that exists at that threshold point.
 
@@ -1045,10 +1049,10 @@ class cycif:
         fm_array[9] = z_slice_array
 
 
-        fm_array[2] = fm_array[2] + int((z_slice_array[0][0] * slice_gap)/2) - 1
-        fm_array[4] = fm_array[4] + int((z_slice_array[0][0] * slice_gap)/2) - 1
-        fm_array[6] = fm_array[6] + int((z_slice_array[0][0] * slice_gap)/2) - 1
-        fm_array[8] = fm_array[8] + int((z_slice_array[0][0] * slice_gap)/2) - 1
+        fm_array[2] = fm_array[2] + int(((z_slice_array[0][0]-1) * slice_gap)/2) - 2
+        fm_array[4] = fm_array[4] + int(((z_slice_array[0][0]-1) * slice_gap)/2) - 2
+        fm_array[6] = fm_array[6] + int(((z_slice_array[0][0]-1) * slice_gap)/2) - 2
+        fm_array[8] = fm_array[8] + int(((z_slice_array[0][0]-1) * slice_gap)/2) - 2
 
         np.save(file_name, fm_array)
 
@@ -1093,7 +1097,7 @@ class cycif:
 
         # generate new blank fm_array numpy array
 
-        new_fm_array = np.random.rand(10, y_tiles, new_x_tiles).astype('int16')
+        new_fm_array = np.random.rand(10, y_tiles, new_x_tiles).astype('float64')
 
         # Find border where x starts on the left (not center point, but x value for left most edge of left most tile
 
@@ -1108,17 +1112,17 @@ class cycif:
 
         # Populate new_fm_array with row 0 x values
 
-        for x in range(0, x_tiles):
-            new_fm_array[0, 0:y_tiles, x] = x_col_0 + x * x_spacing
+        for x in range(0, new_x_tiles):
+            new_fm_array[0][0:y_tiles, x] = x_col_0 + x * x_spacing
 
         # populate new_fm_array with y values
 
         for y in range(0, y_tiles):
-            new_fm_array[0, y, 0:x_tiles] = fm_array[1][y][0]
+            new_fm_array[1][y, 0:new_x_tiles] = fm_array[1][y][0]
 
         # populate new_fm_array with dapi z values and everything else in planes 2-9
         for slice in range(2,10):
-            new_fm_array[slice, 0:y_tiles, 0:x_tiles] = fm_array[slice][0][0]
+            new_fm_array[slice, 0:y_tiles, 0:new_x_tiles] = fm_array[slice][0][0]
 
         np.save('fm_array.npy', new_fm_array)
 
@@ -1236,6 +1240,8 @@ class cycif:
             if y % 2 != 0:
                 for x in range(x_tile_count - 1, -1, -1):
 
+                    print('x', numpy_x[y][x], 'y', numpy_y[y][x])
+
                     core.set_xy_position(numpy_x[y][x], numpy_y[y][x])
                     time.sleep(1)
 
@@ -1285,7 +1291,7 @@ class cycif:
                     status_str = f'Cycle {cycle_number}: {x} {y} start saving z stack'
                     print(status_str)
                     status_update(status_str, list_status, window)
-                    self.zc_save(zc_tif_stack, channels, x, y, cycle_number, experiment_directory, Stain_or_Bleach)
+                    self.zc_save(zc_tif_stack, channels, x, y, cycle_number, x_pixels, experiment_directory, Stain_or_Bleach)
                     status_str = f'Cycle {cycle_number}: {x} {y} finished saving z stack'
                     print(status_str)
                     status_update(status_str, list_status, window)
@@ -1293,6 +1299,8 @@ class cycif:
 
             elif y % 2 == 0:
                 for x in range(0, x_tile_count):
+
+                    print('x', numpy_x[y][x], 'y', numpy_y[y][x])
 
                     core.set_xy_position(numpy_x[y][x], numpy_y[y][x])
                     time.sleep(1)
@@ -1387,11 +1395,11 @@ class cycif:
         status_str = f'Cycle {cycle_number}:acquire all images'
         print(status_str)
         status_update(status_str, list_status, window)
-        self.multi_channel_z_stack_capture(experiment_directory, cycle_number, stain_bleach, list_status, window, x_frame_size = x_frame_size,  slice_gap=2, channels = channels)
+        self.multi_channel_z_stack_capture(experiment_directory, cycle_number, stain_bleach, list_status, window, x_pixels = x_frame_size,  slice_gap=2, channels = channels)
         #self.marker_excel_file_generation(experiment_directory, cycle_number)
 
 
-    def full_cycle(self, experiment_directory, cycle_number, offset_array, stain_valve, fluidics_object, z_slices, window, list_status, x_frame_size = 5056, incub_val=45):
+    def full_cycle(self, experiment_directory, cycle_number, offset_array, stain_valve, fluidics_object, z_slices, window, list_status, incub_val=45, x_frame_size = 2960):
 
         pump = fluidics_object
         # z_slices = 9
@@ -1400,17 +1408,17 @@ class cycif:
             status_str = f'Cycle {cycle_number}: baseline bleach image acquiring'
             status_update(status_str, list_status, window)
             # print(status_str)
-            self.image_cycle_acquire(cycle_number, experiment_directory, z_slices, 'Bleach', offset_array, list_status, window, x_frame_size, establish_fm_array = 1, auto_focus_run=0, auto_expose_run=0)
+            self.image_cycle_acquire(cycle_number, experiment_directory, z_slices, 'Bleach', offset_array, list_status, window, x_frame_size = x_frame_size, establish_fm_array = 1, auto_focus_run=1, auto_expose_run=0)
         else:
             status_str = f'Cycle {cycle_number}: Stain in progress'
             status_update(status_str, list_status, window)
             # print(status_str)
-            pump.liquid_action('Stain', incub_val, stain_valve, window, list_status)  # nuc is valve=7, pbs valve=8, bleach valve=1 (action, stain_valve, heater state (off = 0, on = 1))
+            pump.liquid_action('Stain', incub_val=incub_val, stain_valve=stain_valve, window=window, list_status=list_status)  # nuc is valve=7, pbs valve=8, bleach valve=1 (action, stain_valve, heater state (off = 0, on = 1))
             #print('washing')
             time.sleep(5)
             status_str = f'Cycle {cycle_number}: washing in progress'
             status_update(status_str, list_status, window)
-            pump.liquid_action('Wash', stain_valve, window, list_status)  # nuc is valve=7, pbs valve=8, bleach valve=1 (action, stain_valve, heater state (off = 0, on = 1))
+            pump.liquid_action('Wash', stain_valve=stain_valve, window=window, list_status=list_status)  # nuc is valve=7, pbs valve=8, bleach valve=1 (action, stain_valve, heater state (off = 0, on = 1))
             #pump.liquid_action('PBS flow off')  # nuc is valve=7, pbs valve=8, bleach valve=1 (action, stain_valve, heater state (off = 0, on = 1))
             #time.sleep(5)
             status_str = f'Cycle {cycle_number}: stain image acquistion in progress'
@@ -1421,12 +1429,12 @@ class cycif:
             status_str = f'Cycle {cycle_number}: bleaching in progress'
             status_update(status_str, list_status, window)
             # print(status_str)
-            pump.liquid_action('Bleach', stain_valve, list_status, window)  # nuc is valve=7, pbs valve=8, bleach valve=1 (action, stain_valve, heater state (off = 0, on = 1))
+            pump.liquid_action('Bleach', stain_valve=stain_valve, window=window, list_status=list_status)  # nuc is valve=7, pbs valve=8, bleach valve=1 (action, stain_valve, heater state (off = 0, on = 1))
             #print('washing')
             #time.sleep(5)
             status_str = f'Cycle {cycle_number}: washing in progress'
             status_update(status_str, list_status, window)
-            pump.liquid_action('Wash', stain_valve, window, list_status)  # nuc is valve=7, pbs valve=8, bleach valve=1 (action, stain_valve, heater state (off = 0, on = 1))
+            pump.liquid_action('Wash', stain_valve=stain_valve, window=window, list_status=list_status)  # nuc is valve=7, pbs valve=8, bleach valve=1 (action, stain_valve, heater state (off = 0, on = 1))
             #pump.liquid_action('PBS flow off')  # nuc is valve=7, pbs valve=8, bleach valve=1 (action, stain_valve, heater state (off = 0, on = 1))
             time.sleep(5)
             status_str = 'bleach images acquiring'
@@ -1434,6 +1442,8 @@ class cycif:
             # print(status_str)
             self.image_cycle_acquire(cycle_number, experiment_directory, z_slices, 'Bleach', offset_array, list_status, window, x_frame_size = x_frame_size, establish_fm_array=0, auto_focus_run=0, auto_expose_run = 0)
             time.sleep(10)
+
+        self.post_acquisition_processor(experiment_directory, x_frame_size)
 
 
     def antibody_kinetics(self, experiment_directory, capture_rate_staining, capture_rate_bleaching, duration_staining, duration_bleaching, stain_valve,  fluidic_object, channels = ['DAPI', 'A488', 'A555', 'A647']):
@@ -1745,22 +1755,22 @@ class cycif:
                 cycle_start_search = 1
 
         #cycle_end = len(os.listdir(dapi_im_path)) + 1
-        cycle_end = 9
+        cycle_end = 4
         cycle_start = 1
 
         for cycle_number in range(cycle_start, cycle_end):
-            self.infocus(experiment_directory, cycle_number, 3 ,4)
+            self.infocus(experiment_directory, cycle_number, x_pixels, 1 ,1)
             self.illumination_flattening(experiment_directory, cycle_number)
-            self.mcmicro_image_stack_generator(cycle_number, experiment_directory)
+            self.mcmicro_image_stack_generator(cycle_number, experiment_directory, x_pixels)
             self.stage_placement(experiment_directory, cycle_number, x_pixels)
 
-    def mcmicro_image_stack_generator(self, cycle_number, experiment_directory):
+    def mcmicro_image_stack_generator(self, cycle_number, experiment_directory, x_frame_size):
 
         numpy_path = experiment_directory + '/' + 'np_arrays'
         os.chdir(numpy_path)
         full_array = np.load('fm_array.npy', allow_pickle=False)
 
-        xml_metadata = self.metadata_generator(experiment_directory)
+        xml_metadata = self.metadata_generator(experiment_directory, x_frame_size)
 
         numpy_x = full_array[0]
         numpy_y = full_array[1]
@@ -1775,7 +1785,7 @@ class cycif:
 
         mcmicro_path = experiment_directory + r'\mcmicro\raw'
 
-        mcmicro_stack = np.random.rand(tile_count * 4, 2960, 5056).astype('uint16')
+        mcmicro_stack = np.random.rand(tile_count * 4, 2960, x_frame_size).astype('uint16')
 
         tile = 0
         for x in range(0, x_tile_count):
@@ -1788,20 +1798,20 @@ class cycif:
                 base_count_number_stack = tile * 4
 
                 os.chdir(dapi_im_path)
-                image = io.imread(dapi_file_name).astype('uint16')
-                mcmicro_stack[base_count_number_stack + 0] = image
+                image = cv2.imread(dapi_file_name)
+                mcmicro_stack[base_count_number_stack + 0] = image[::,::,0]
 
                 os.chdir(a488_im_path)
-                image = io.imread(a488_file_name).astype('uint16')
-                mcmicro_stack[base_count_number_stack + 1] = image
+                image = cv2.imread(a488_file_name)
+                mcmicro_stack[base_count_number_stack + 1] = image[::,::,0]
 
                 os.chdir(a555_im_path)
-                image = io.imread(a555_file_name).astype('uint16')
-                mcmicro_stack[base_count_number_stack + 2] = image
+                image = cv2.imread(a555_file_name)
+                mcmicro_stack[base_count_number_stack + 2]= image[::,::,0]
 
                 os.chdir(a647_im_path)
-                image = io.imread(a647_file_name).astype('uint16')
-                mcmicro_stack[base_count_number_stack + 3] = image
+                image = cv2.imread(a647_file_name)
+                mcmicro_stack[base_count_number_stack + 3]= image[::,::,0]
 
                 tile += 1
 
@@ -1809,11 +1819,11 @@ class cycif:
         mcmicro_file_name = str(experiment_directory.split("\\")[-1]) + '-cycle-0' + str(cycle_number) + '.ome.tif'
         tf.imwrite(mcmicro_file_name, mcmicro_stack, photometric='minisblack', description=xml_metadata)
 
-    def metadata_generator(self, experiment_directory):
+    def metadata_generator(self, experiment_directory, x_frame_size):
 
         new_ome = OME()
-        ome = from_xml(r'C:\Users\mike\Documents\GitHub\AutoCIF/image.xml', parser='lxml')
-        #ome = from_xml(r'C:\Users\CyCIF PC\Documents\GitHub\AutoCIF/image.xml', parser='lxml')
+        #ome = from_xml(r'C:\Users\mike\Documents\GitHub\AutoCIF/image.xml', parser='lxml')
+        ome = from_xml(r'C:\Users\CyCIF PC\Documents\GitHub\AutoCIF/image.xml', parser='lxml')
         ome = ome.images[0]
 
         numpy_path = experiment_directory + '/' + 'np_arrays'
@@ -1835,7 +1845,7 @@ class cycif:
         # sub in needed pixel size and pixel grid changes
         ome.pixels.physical_size_x = 0.2
         ome.pixels.physical_size_y = 0.2
-        ome.pixels.size_x = 5056
+        ome.pixels.size_x = x_frame_size
         ome.pixels.size_y = 2960
         # sub in other optional numbers to make metadata more accurate
 
@@ -1909,12 +1919,15 @@ class cycif:
         # load images into python
 
         channels = ['DAPI', 'A488', 'A555', 'A647']
-        types = ['\Stain', '\Bleach']
+        types = ['Stain', 'Bleach']
 
         for type in types:
             for channel in channels:
 
-                im_path = experiment_directory + '/' + channel + type + '\cy_' + str(cycle_number) + '\Tiles' + '/focused_basic_corrected'
+                if type == 'Stain':
+                    im_path = experiment_directory + '/' + channel + "/" + type + '\cy_' + str(cycle_number) + '\Tiles' + '/focused_basic_corrected'
+                elif type == 'Bleach':
+                    im_path = experiment_directory + '/' + channel + "/" + type + '\cy_' + str(cycle_number) + '\Tiles' + '/focused'
                 os.chdir(im_path)
 
                 # place images into large array
@@ -1922,7 +1935,7 @@ class cycif:
                 for x in range(0, x_tile_count):
                     for y in range(0, y_tile_count):
                         filename = 'x' + str(x) + '_y_' + str(y) + '_c_' + channel + '.tif'
-                        image = io.imread(filename)
+                        image = cv2.imread(filename)[::,::,0]
                         # define subsection of large array that fits dimensions of single FOV
                         #x_center = numpy_x_pixels[y][x]
                         #y_center = numpy_y_pixels[y][x]
@@ -1938,14 +1951,14 @@ class cycif:
                             y_end = 2960
                         else:
 
-                            x_start = int(x * fov_x_pixels * 0.87)
+                            x_start = int(x * fov_x_pixels * 0.9)
                             x_end = x_start + x_pixels
                             y_start = int(y * fov_y_pixels * 0.9)
                             y_end = y_start + 2960
 
 
-                    # placed_image[y_start:y_end, x_start:x_end] = placed_image[y_start:y_end, x_start:x_end] + image
-                    placed_image[y_start:y_end, x_start:x_end] = image
+                        #placed_image[y_start:y_end, x_start:x_end] = placed_image[y_start:y_end, x_start:x_end] + image
+                        placed_image[y_start:y_end, x_start:x_end] = image
 
                 # save output image
                 os.chdir(quick_tile_path + '/' + channel)
@@ -1987,7 +2000,7 @@ class cycif:
             cv2.imwrite(str(darkfield_name), optimizer.darkfield_fullsize.astype(np.float32))
             optimizer.write_images(output_directory, epsilon=epsilon)
 
-    def infocus(self, experiment_directory, cycle_number, x_sub_section_count, y_sub_section_count):
+    def infocus(self, experiment_directory, cycle_number, x_frame_size, x_sub_section_count, y_sub_section_count):
 
         bin_values = [4]
         channels = ['DAPI', 'A488', 'A555', 'A647']
@@ -2022,7 +2035,7 @@ class cycif:
             im_path = experiment_directory + '/' + channel + '\Stain\cy_' + str(cycle_number) + '\Tiles'
             os.chdir(im_path)
 
-            z_stack = np.random.rand(z_slice_count, 2960, 5056).astype('uint16')
+            z_stack = np.random.rand(z_slice_count, 2960, x_frame_size).astype('uint16')
             for x in range(0, x_tile_count):
                 for y in range(0, y_tile_count):
                     for z in range(0, z_slice_count):
@@ -2054,7 +2067,7 @@ class cycif:
 
                     reconstruct_array = self.brenner_reconstruct_array(brenner_sub_selector, z_slice_count, number_bins)
                     reconstruct_array = skimage.filters.median(reconstruct_array)
-                    self.image_reconstructor(experiment_directory, reconstruct_array, channel, cycle_number, y, x)
+                    self.image_reconstructor(experiment_directory, reconstruct_array, channel, cycle_number, x_frame_size, y, x)
 
     def brenner_reconstruct_array(self, brenner_sub_selector, z_slice_count, number_bins):
         '''
@@ -2084,7 +2097,7 @@ class cycif:
 
         return reconstruct_array
 
-    def image_reconstructor(self, experiment_directory, reconstruct_array, channel, cycle_number, y_tile_number, x_tile_number):
+    def image_reconstructor(self, experiment_directory, reconstruct_array, channel, cycle_number, x_frame_size, y_tile_number, x_tile_number):
 
         y_sections = np.shape(reconstruct_array)[0]
         x_sections = np.shape(reconstruct_array)[1]
@@ -2101,15 +2114,15 @@ class cycif:
                 t = 5
 
             # rebuilt image container
-            rebuilt_image = np.random.rand(2960, 5056).astype('uint16')
+            rebuilt_image = np.random.rand(2960, x_frame_size).astype('uint16')
 
             for y in range(0, y_sections):
                 for x in range(0, x_sections):
                     # define y and x start and ends subsection of rebuilt image
                     y_end = int((y + 1) * (2960 / y_sections))
                     y_start = int(y * (2960 / y_sections))
-                    x_end = int((x + 1) * (5056 / x_sections))
-                    x_start = int(x * (5056 / x_sections))
+                    x_end = int((x + 1) * (x_frame_size/ x_sections))
+                    x_start = int(x * ((x_frame_size) / x_sections))
 
                     # find z for specific subsection
                     z_slice = reconstruct_array[y][x]
