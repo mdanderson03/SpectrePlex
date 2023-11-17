@@ -542,7 +542,8 @@ class cycif:
         y_tile_count = int(np.shape(numpy_y)[0])
         x_tile_count = int(np.shape(numpy_y)[1])
 
-        center_z = magellan.get_surface('New Surface 1').get_points().get(0).z
+        #center_z = magellan.get_surface('New Surface 1').get_points().get(0).z
+        center_z = -45
         bottom_z = int(center_z - z_slices / 2 * z_slice_gap)
         top_z = int(center_z + z_slices / 2 * z_slice_gap)
 
