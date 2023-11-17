@@ -15,6 +15,10 @@ experiment_directory = r'E:\14-11-23_test'
 offset_array = [0, -8, -7, -11.5]
 z_slices = 9
 
+
+
+
+
 #for cycle in range(1,9):
 #    microscope.full_cycle(experiment_directory, cycle, offset_array, cycle, pump)
 
