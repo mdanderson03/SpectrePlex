@@ -497,6 +497,7 @@ class cycif:
 
             if x_frame_size != 5056:
                 self.x_overlap_adjuster(x_frame_size, experiment_directory)
+                self.establish_exp_arrays(experiment_directory)
             else:
                 pass
 
