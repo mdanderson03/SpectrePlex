@@ -25,8 +25,8 @@ self.image_cycle_acquire(cycle_number, experiment_directory, z_slices, 'Bleach',
 time.sleep(10)
 
 
-for cycle in range(2,4):
-    microscope.full_cycle(experiment_directory, cycle, offset_array, cycle, pump)
+#for cycle in range(2,4):
+#    microscope.full_cycle(experiment_directory, cycle, offset_array, cycle, pump)
 
 
 
