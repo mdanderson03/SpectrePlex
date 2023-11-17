@@ -496,6 +496,7 @@ class cycif:
 
             if x_frame_size != 5056:
                 self.x_overlap_adjuster(x_frame_size, experiment_directory)
+                self.establish_exp_arrays(experiment_directory)
             else:
                 pass
 
@@ -505,11 +506,13 @@ class cycif:
         if autofocus == 1 and auto_expose == 1:
             self.DAPI_surface_autofocus(experiment_directory, 20, 2)
             self.fm_channel_initial(experiment_directory, off_array, z_slices, 2, x_frame_size)
+            self.establish_exp_arrays(experiment_directory)
             self.fm_array_update_autofocus_autoexpose(experiment_directory, exp=1)
         if autofocus == 1 and auto_expose == 0:
             self.DAPI_surface_autofocus(experiment_directory, 20, 2, x_frame_size)
             self.fm_channel_initial(experiment_directory, off_array, z_slices, 2)
         if autofocus == 0 and auto_expose == 1:
+            self.establish_exp_arrays(experiment_directory)
             self.fm_array_update_autofocus_autoexpose(experiment_directory, exp=1)
         else:
             pass
@@ -621,7 +624,7 @@ class cycif:
         core.set_xy_position(numpy_x[0][0], numpy_y[0][0])
 
         # define range to scan through. 3 equally distributed points
-        images = np.random.rand(3, 2960, 5056).astype('uint16')
+        images = np.random.rand(3, 2960, 2960).astype('uint16')
         # order is x,y channel and z points
 
         self.image_capture(experiment_directory, 'DAPI', 50, 0, 0, 0)  # wake up lumencor light engine
