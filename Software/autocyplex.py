@@ -30,7 +30,7 @@ from pybasic import shading_correction
 from path import Path
 import cv2
 from ctypes import *
-from GUI_layout import *
+# from GUI_layout import *
 
 sys.path.append(
     r'C:\Users\CyCIF PC\Documents\GitHub\AutoCIF\Python_64_elveflow\DLL64')  # add the path of the library here
@@ -136,6 +136,7 @@ class cycif:
         # Note: Uniform background is a bit mandatory
 
         # do Brenner score
+
         a = image[derivative_jump:, :]
         a = a.astype('float64')
         b = image[:-derivative_jump, :]
@@ -504,30 +505,33 @@ class cycif:
             pass
 
         if autofocus == 1 and auto_expose == 1:
-            self.DAPI_surface_autofocus(experiment_directory, 20, 2)
-            self.fm_channel_initial(experiment_directory, off_array, z_slices, 2, x_frame_size)
+            self.DAPI_surface_autofocus(experiment_directory, 20, 2, x_frame_size)
+            #self.fm_channel_initial(experiment_directory, off_array, z_slices, 2)
             self.establish_exp_arrays(experiment_directory)
             self.fm_array_update_autofocus_autoexpose(experiment_directory, exp=1)
         if autofocus == 1 and auto_expose == 0:
             self.DAPI_surface_autofocus(experiment_directory, 20, 2, x_frame_size)
-            self.fm_channel_initial(experiment_directory, off_array, z_slices, 2)
+            #self.fm_channel_initial(experiment_directory, off_array, z_slices, 2)
         if autofocus == 0 and auto_expose == 1:
             self.establish_exp_arrays(experiment_directory)
             self.fm_array_update_autofocus_autoexpose(experiment_directory, exp=1)
         else:
             pass
 
+        self.fm_channel_update(experiment_directory, off_array, z_slices)
+
     def highest_brenner_index_solver(self, image_stack):
 
         slice_count = int(np.shape(image_stack)[0])
         scores = np.random.rand(slice_count)
+        slice_array = np.random.rand(slice_count)
 
         for x in range(0, slice_count):
             image = image_stack[x]
             score = self.focus_score(image, 17)
             scores[x] = score
+            slice_array[x] = x
 
-        print(scores)
         highest_score = np.max(scores)
         index = np.where(scores == highest_score)[0][0]
 
@@ -546,7 +550,7 @@ class cycif:
         x_tile_count = int(np.shape(numpy_y)[1])
 
         #center_z = magellan.get_surface('New Surface 1').get_points().get(0).z
-        center_z = -45
+        center_z = -117
         bottom_z = int(center_z - z_slices / 2 * z_slice_gap)
         top_z = int(center_z + z_slices / 2 * z_slice_gap)
 
@@ -587,6 +591,7 @@ class cycif:
                 print('x', x, 'y', y)
                 z_index = self.highest_brenner_index_solver(z_stack)
                 focus_z_position = bottom_z + z_index * z_slice_gap
+                print('focus', focus_z_position)
                 fm_array[2][y][x] = focus_z_position
 
         np.save('fm_array.npy', fm_array)
@@ -995,6 +1000,23 @@ class cycif:
 
         return new_numpy
 
+    def fm_channel_update(self, experiment_directory, off_array, z_slices, slice_gap = 2):
+
+        numpy_path = experiment_directory + '/' + 'np_arrays'
+        os.chdir(numpy_path)
+        file_name = 'fm_array.npy'
+        fm_array = np.load(file_name, allow_pickle=False)
+
+        a488_channel_offset = off_array[1]  # determine if each of these are good and repeatable offsets
+        a555_channel_offset = off_array[2]
+        a647_channel_offset = off_array[3]
+
+        fm_array[4] = fm_array[2] + a488_channel_offset  # index for a488 = 3
+        fm_array[6] = fm_array[2] + a555_channel_offset
+        fm_array[8] = fm_array[2] + a647_channel_offset
+
+        np.save(file_name, fm_array)
+
     def fm_channel_initial(self, experiment_directory, off_array, z_slices, slice_gap=2):
 
         numpy_path = experiment_directory + '/' + 'np_arrays'
@@ -1029,10 +1051,10 @@ class cycif:
         fm_array[7] = z_slice_array
         fm_array[9] = z_slice_array
 
-        fm_array[2] = fm_array[2] + int(((z_slice_array[0][0] - 1) * slice_gap) / 2) - 2
-        fm_array[4] = fm_array[4] + int(((z_slice_array[0][0] - 1) * slice_gap) / 2) - 2
-        fm_array[6] = fm_array[6] + int(((z_slice_array[0][0] - 1) * slice_gap) / 2) - 2
-        fm_array[8] = fm_array[8] + int(((z_slice_array[0][0] - 1) * slice_gap) / 2) - 2
+        fm_array[2] = fm_array[2] + int(((z_slice_array[0][0] - 1) * slice_gap) / 2)
+        fm_array[4] = fm_array[4] + int(((z_slice_array[0][0] - 1) * slice_gap) / 2)
+        fm_array[6] = fm_array[6] + int(((z_slice_array[0][0] - 1) * slice_gap) / 2)
+        fm_array[8] = fm_array[8] + int(((z_slice_array[0][0] - 1) * slice_gap) / 2)
 
         np.save(file_name, fm_array)
 
@@ -1201,8 +1223,10 @@ class cycif:
         numpy_x = full_array[0]
         numpy_y = full_array[1]
 
-        x_tile_count = np.unique(numpy_x).size
-        y_tile_count = np.unique(numpy_y).size
+        #x_tile_count = np.unique(numpy_x).size
+        #y_tile_count = np.unique(numpy_y).size
+        x_tile_count = 1
+        y_tile_count = 1
         z_slices = full_array[5][0][0]
         # z_slices = 11
         # go to upper left corner to start pattern
@@ -1306,10 +1330,12 @@ class cycif:
                         z_end = int(numpy_z[y][x])
                         z_start = int(z_end - z_slices * slice_gap)
                         z_counter = 0
+                        print('channel', channel, 'z_range', z_start, z_end)
 
                         for z in range(z_start, z_end, slice_gap):
                             core.set_position(z)
                             time.sleep(0.3)
+                            print(core.get_position())
                             core.snap_image()
                             tagged_image = core.get_tagged_image()
                             pixels = np.reshape(tagged_image.pix,
@@ -1356,7 +1382,7 @@ class cycif:
         self.multi_channel_z_stack_capture(experiment_directory, cycle_number, stain_bleach,x_pixels=x_frame_size, slice_gap=2, channels=channels)
         # self.marker_excel_file_generation(experiment_directory, cycle_number)
 
-    def full_cycle(self, experiment_directory, cycle_number, offset_array, stain_valve, fluidics_object, z_slices,incub_val=45, x_frame_size=2960):
+    def full_cycle(self, experiment_directory, cycle_number, offset_array, stain_valve, fluidics_object, z_slices, incub_val=45, x_frame_size=2960):
 
         pump = fluidics_object
         # z_slices = 9
@@ -1393,7 +1419,7 @@ class cycif:
                                      auto_expose_run=0)
             time.sleep(10)
 
-        self.post_acquisition_processor(experiment_directory, x_frame_size)
+        # self.post_acquisition_processor(experiment_directory, x_frame_size)
 
     def antibody_kinetics(self, experiment_directory, capture_rate_staining, capture_rate_bleaching, duration_staining,
                           duration_bleaching, stain_valve, fluidic_object, channels=['DAPI', 'A488', 'A555', 'A647']):
@@ -1698,7 +1724,7 @@ class cycif:
 
         # cycle_end = len(os.listdir(dapi_im_path)) + 1
         cycle_end = 4
-        cycle_start = 1
+        cycle_start = 2
 
         for cycle_number in range(cycle_start, cycle_end):
             self.infocus(experiment_directory, cycle_number, x_pixels, 1, 1)
@@ -2607,7 +2633,7 @@ class fluidics:
             plt.plot(time_points, flow_points, 'o', color='black')
             plt.show()
 
-    def liquid_action(self, action_type, incub_val=0, stain_valve=0, heater_state=0):
+    def liquid_action(self, action_type, stain_valve=0, incub_val=0, heater_state=0):
 
         bleach_valve = 11
         pbs_valve = 12
