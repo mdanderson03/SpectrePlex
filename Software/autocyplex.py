@@ -137,13 +137,13 @@ class cycif:
 
         # do Brenner score
 
-        a = image[derivative_jump:, :]
-        a = a.astype('float64')
-        b = image[:-derivative_jump, :]
-        b = b.astype('float64')
-        c = (a - b)
-        c = c / 10000 * c / 10000
-        f_score_shadow = c.sum(dtype=np.float64) + 0.00001
+        kernel = np.array([[0, 0, 0],
+                           [-1, 0, 1],
+                           [0, 0, 0]])
+
+        c = cv.filter2D(image, cv.CV_32F, kernel)
+        c = c / 1000 * c / 1000
+        f_score_shadow = c.sum(dtype=np.float64)  # + 0.00001
 
         return f_score_shadow
 
