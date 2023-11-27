@@ -1,5 +1,5 @@
 import ome_types
-#from pycromanager import Core, Acquisition, multi_d_acquisition_events, Dataset, MagellanAcquisition, Magellan, start_headless, XYTiledAcquisition, Studio
+from pycromanager import Core, Acquisition, multi_d_acquisition_events, Dataset, MagellanAcquisition, Magellan, start_headless, XYTiledAcquisition, Studio
 import numpy as np
 import time
 from scipy.optimize import curve_fit
@@ -38,8 +38,8 @@ sys.path.append(r'C:\Users\CyCIF PC\Documents\GitHub\AutoCIF\Python_64_elveflow'
 sys.path.append(r'C:\Users\mike\Documents\GitHub\AutoCIF\Python_64_elveflow\DLL64')  # add the path of the library here
 sys.path.append(r'C:\Users\mike\Documents\GitHub\AutoCIF\Python_64_elveflow')  # add the path of the LoadElveflow.py
 
-#from array import array
-#from Elveflow64 import *
+from array import array
+from Elveflow64 import *
 
 # mm_app_path = 'C:\Program Files\Micro-Manager-2.0'
 # config_file = r'C:\Users\CyCIF PC\Desktop\lumencor_auto_cycif.cfg'
@@ -48,8 +48,8 @@ sys.path.append(r'C:\Users\mike\Documents\GitHub\AutoCIF\Python_64_elveflow')  #
 # client = mqtt.Client('autocyplex_server')
 # client.connect('10.3.141.1', 1883)
 
-#core = Core()
-#magellan = Magellan()
+core = Core()
+magellan = Magellan()
 
 global level
 level = []
@@ -1666,8 +1666,8 @@ class cycif:
                 cycle_start_search = 1
 
         # cycle_end = len(os.listdir(dapi_im_path)) + 1
-        cycle_end = 2
-        cycle_start = 1
+        cycle_end = 8
+        cycle_start = 2
 
         for cycle_number in range(cycle_start, cycle_end):
             self.infocus(experiment_directory, cycle_number, x_pixels, 1, 1)
@@ -1714,20 +1714,20 @@ class cycif:
                 base_count_number_stack = tile * 4
 
                 os.chdir(dapi_im_path)
-                image = cv2.imread(dapi_file_name)
-                mcmicro_stack[base_count_number_stack + 0] = image[::, ::, 0]
+                image = io.imread(dapi_file_name)
+                mcmicro_stack[base_count_number_stack + 0] = image
 
                 os.chdir(a488_im_path)
-                image = cv2.imread(a488_file_name)
-                mcmicro_stack[base_count_number_stack + 1] = image[::, ::, 0]
+                image = io.imread(a488_file_name)
+                mcmicro_stack[base_count_number_stack + 1] = image
 
                 os.chdir(a555_im_path)
-                image = cv2.imread(a555_file_name)
-                mcmicro_stack[base_count_number_stack + 2] = image[::, ::, 0]
+                image = io.imread(a555_file_name)
+                mcmicro_stack[base_count_number_stack + 2] = image
 
                 os.chdir(a647_im_path)
-                image = cv2.imread(a647_file_name)
-                mcmicro_stack[base_count_number_stack + 3] = image[::, ::, 0]
+                image = io.imread(a647_file_name)
+                mcmicro_stack[base_count_number_stack + 3] = image
 
                 tile += 1
 
@@ -1738,8 +1738,8 @@ class cycif:
     def metadata_generator(self, experiment_directory, x_frame_size):
 
         new_ome = OME()
-        ome = from_xml(r'C:\Users\mike\Documents\GitHub\AutoCIF/image.xml', parser='lxml')
-        #ome = from_xml(r'C:\Users\CyCIF PC\Documents\GitHub\AutoCIF/image.xml', parser='lxml')
+        #ome = from_xml(r'C:\Users\mike\Documents\GitHub\AutoCIF/image.xml', parser='lxml')
+        ome = from_xml(r'C:\Users\CyCIF PC\Documents\GitHub\AutoCIF/image.xml', parser='lxml')
         ome = ome.images[0]
 
         numpy_path = experiment_directory + '/' + 'np_arrays'
@@ -1851,7 +1851,7 @@ class cycif:
                 for x in range(0, x_tile_count):
                     for y in range(0, y_tile_count):
                         filename = 'x' + str(x) + '_y_' + str(y) + '_c_' + channel + '.tif'
-                        image = cv2.imread(filename)[::, ::, 0]
+                        image = io.imread(filename)
                         # define subsection of large array that fits dimensions of single FOV
                         # x_center = numpy_x_pixels[y][x]
                         # y_center = numpy_y_pixels[y][x]
@@ -2104,7 +2104,7 @@ class cycif:
                     color_bleach = io.imread(filename)
                     color_subbed = color_reg - color_bleach
                     color_subbed[color_subbed < 0] = 0
-                    color_subbed = color_subbed.astype('int32')
+                    color_subbed = color_subbed.astype('float32')
 
                     # save
 
@@ -2118,7 +2118,7 @@ class cycif:
                     subbed_filename = 'x' + str(x) + '_y_' + str(y) + '_c_' + channel + '.tif'
                     # bleach_filename ='x' + str(x) + '_y_' + str(y) + '_c_' + channel + '_bleach.tif'
                     # reg_filename = 'x' + str(x) + '_y_' + str(y) + '_c_' + channel + '_registered.tif'
-                    io.imsave(subbed_filename, color_subbed)
+                    tf.imwrite(subbed_filename, color_subbed)
                     # io.imsave(bleach_filename, color_bleach)
                     # io.imsave(reg_filename, color_reg)
 

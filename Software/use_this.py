@@ -12,7 +12,7 @@ microscope = cycif() # initialize cycif object
 
 
 
-experiment_directory = r'D:\Images\AutoCyPlex\2-11-23 test'
+experiment_directory = r'D:\Images\AutoCyPlex\KRISH-UPLOAD\17-10-23 testing'
 offset_array = [0, -8, -7, -7]
 z_slices = 7
 x_frame_size = 5056
@@ -27,6 +27,9 @@ x_frame_size = 5056
 #    microscope.full_cycle(experiment_directory, cycle, offset_array, cycle, pump, z_slices)
 
 microscope.post_acquisition_processor(experiment_directory, x_frame_size)
+#microscope.stage_placement(experiment_directory, 1, x_frame_size)
+
+
 
 '''
 
