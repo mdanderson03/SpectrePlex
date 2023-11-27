@@ -1,6 +1,5 @@
 import ome_types
-from pycromanager import Core, Acquisition, multi_d_acquisition_events, Dataset, MagellanAcquisition, Magellan, \
-    start_headless, XYTiledAcquisition, Studio
+#from pycromanager import Core, Acquisition, multi_d_acquisition_events, Dataset, MagellanAcquisition, Magellan, start_headless, XYTiledAcquisition, Studio
 import numpy as np
 import time
 from scipy.optimize import curve_fit
@@ -26,6 +25,7 @@ from ome_types import from_xml, OME, from_tiff, to_xml
 from scipy import stats
 from copy import copy, deepcopy
 import sys
+from pystackreg import StackReg
 from pybasic import shading_correction
 from path import Path
 import cv2
@@ -38,8 +38,8 @@ sys.path.append(r'C:\Users\CyCIF PC\Documents\GitHub\AutoCIF\Python_64_elveflow'
 sys.path.append(r'C:\Users\mike\Documents\GitHub\AutoCIF\Python_64_elveflow\DLL64')  # add the path of the library here
 sys.path.append(r'C:\Users\mike\Documents\GitHub\AutoCIF\Python_64_elveflow')  # add the path of the LoadElveflow.py
 
-from array import array
-from Elveflow64 import *
+#from array import array
+#from Elveflow64 import *
 
 # mm_app_path = 'C:\Program Files\Micro-Manager-2.0'
 # config_file = r'C:\Users\CyCIF PC\Desktop\lumencor_auto_cycif.cfg'
@@ -48,8 +48,8 @@ from Elveflow64 import *
 # client = mqtt.Client('autocyplex_server')
 # client.connect('10.3.141.1', 1883)
 
-core = Core()
-magellan = Magellan()
+#core = Core()
+#magellan = Magellan()
 
 global level
 level = []
@@ -73,52 +73,6 @@ class cycif:
 
         return
 
-    def tissue_center(self, mag_surface):
-        '''
-        take magellan surface and find the xy coordinates of the center of the surface
-        :param mag_surface:
-        :param magellan:
-        :return: x tissue center position and y tissue center position
-        :rtype: list[float, float]
-        '''
-        xy_pos = self.tile_xy_pos(mag_surface)
-        x_center = (max(xy_pos[0]) + min(xy_pos[0])) / 2
-        y_center = (max(xy_pos[1]) + min(xy_pos[1])) / 2
-        return x_center, y_center
-
-    def num_surfaces_count(self):
-        '''
-        Looks at magellan surfaces that start with New Surface in its name, ie. 'New Surface 1' as that is the default generated prefix.
-
-        :param object magellan: magellan object from magellan = Magellan() in pycromanager
-        :return: surface_count
-        :rtype: int
-        '''
-        x = 1
-        while magellan.get_surface("New Surface " + str(x)) != None:
-            x += 1
-        surface_count = x - 1
-        time.sleep(1)
-
-        return surface_count
-
-    def surface_exist_check(self, surface_name):
-        '''
-        Checks name of surface to see if exists. If it does, returns 1, if not returns 0
-
-        :param object magellan: magellan object from magellan = Magellan() in pycromanager
-        :param str surface_name: name of surface to check if exists
-
-        :return: status
-        :rtype: int
-        '''
-
-        status = 0
-        if magellan.get_surface(surface_name) != None:
-            status += 1
-
-        return status
-
     ####################################################################
     ############ All in section are functions for the autofocus function
     ####################################################################
@@ -141,7 +95,7 @@ class cycif:
                            [-1, 0, 1],
                            [0, 0, 0]])
 
-        c = cv.filter2D(image, cv.CV_32F, kernel)
+        c = cv2.filter2D(image, cv2.CV_32F, kernel)
         c = c / 1000 * c / 1000
         f_score_shadow = c.sum(dtype=np.float64)  # + 0.00001
 
@@ -1158,17 +1112,6 @@ class cycif:
     # Using core snap and not pycromanager acquire
     ############################################
 
-    def position_verify(self, z_position):
-
-        difference_range = 1
-        current_z = core.get_position()
-        difference = abs(z_position - current_z)
-        while difference > difference_range:
-            core.set_position(z_position)
-            current_z = core.get_position()
-            difference = abs(z_position - current_z)
-            time.sleep(0.5)
-
     def image_capture(self, experiment_directory, channel, exp_time, x, y, z):
 
         numpy_path = experiment_directory + '/' + 'np_arrays'
@@ -1723,11 +1666,12 @@ class cycif:
                 cycle_start_search = 1
 
         # cycle_end = len(os.listdir(dapi_im_path)) + 1
-        cycle_end = 4
-        cycle_start = 2
+        cycle_end = 2
+        cycle_start = 1
 
         for cycle_number in range(cycle_start, cycle_end):
             self.infocus(experiment_directory, cycle_number, x_pixels, 1, 1)
+            self.background_sub(experiment_directory, cycle_number)
             self.illumination_flattening(experiment_directory, cycle_number)
             self.mcmicro_image_stack_generator(cycle_number, experiment_directory, x_pixels)
             self.stage_placement(experiment_directory, cycle_number, x_pixels)
@@ -1794,8 +1738,8 @@ class cycif:
     def metadata_generator(self, experiment_directory, x_frame_size):
 
         new_ome = OME()
-        # ome = from_xml(r'C:\Users\mike\Documents\GitHub\AutoCIF/image.xml', parser='lxml')
-        ome = from_xml(r'C:\Users\CyCIF PC\Documents\GitHub\AutoCIF/image.xml', parser='lxml')
+        ome = from_xml(r'C:\Users\mike\Documents\GitHub\AutoCIF/image.xml', parser='lxml')
+        #ome = from_xml(r'C:\Users\CyCIF PC\Documents\GitHub\AutoCIF/image.xml', parser='lxml')
         ome = ome.images[0]
 
         numpy_path = experiment_directory + '/' + 'np_arrays'
@@ -1950,7 +1894,10 @@ class cycif:
             if channel == 3:
                 channel_name = 'A647'
 
-            directory = directory_start + channel_name + '\Stain\cy_' + str(cycle_number) + r'\Tiles\focused'
+            if channel == 0:
+                directory = directory_start + channel_name + '\Stain\cy_' + str(cycle_number) + r'\Tiles\focused'
+            else:
+                directory = directory_start + channel_name + '\Stain\cy_' + str(cycle_number) + r'\Tiles\focused\background_subbed'
             output_directory = directory_start + channel_name + '\Stain\cy_' + str(
                 cycle_number) + r'\Tiles\focused_basic_corrected'
 
@@ -2111,6 +2058,70 @@ class cycif:
             filename = 'x' + str(x_tile_number) + '_y_' + str(y_tile_number) + '_c_' + str(channel) + '.tif'
             tf.imwrite(filename, rebuilt_image)
 
+    def background_sub(self, experiment_directory, cycle):
+
+        experiment_directory = experiment_directory + '/'
+
+        numpy_path = experiment_directory + '/' + 'np_arrays'
+        os.chdir(numpy_path)
+        file_name = 'fm_array.npy'
+        fm_array = np.load(file_name, allow_pickle=False)
+
+        y_tile_count = np.shape(fm_array[0])[0]
+        x_tile_count = np.shape(fm_array[0])[1]
+
+        channels = ['A488', 'A555', 'A647']
+
+        for y in range(0, y_tile_count):
+            for x in range(0, x_tile_count):
+
+                # load reference and "moved" image
+                ref_path = experiment_directory + 'DAPI\Bleach\cy_' + str(cycle) + '\Tiles/focused'
+                os.chdir(ref_path)
+                ref_name = 'x' + str(x) + '_y_' + str(y) + '_c_DAPI.tif'
+                ref = io.imread(ref_name)
+                mov_path = experiment_directory + 'DAPI\Stain\cy_' + str(cycle) + '\Tiles/focused'
+                os.chdir(mov_path)
+                mov_name = 'x' + str(x) + '_y_' + str(y) + '_c_DAPI.tif'
+                mov = io.imread(mov_name)
+
+                # Translational transformation
+                sr = StackReg(StackReg.TRANSLATION)
+                out_tra = sr.register_transform(ref, mov)
+
+                # apply translation to other color channels
+
+                for channel in channels:
+                    stain_color_path = experiment_directory + channel + r'/Stain/cy_' + str(cycle) + '\Tiles/focused'
+                    os.chdir(stain_color_path)
+                    filename = 'x' + str(x) + '_y_' + str(y) + '_c_' + channel + '.tif'
+                    color_im = io.imread(filename)
+                    color_reg = sr.transform(color_im)
+
+                    # sub background color channels
+                    bleach_color_path = experiment_directory + channel + r'/Bleach/cy_' + str(cycle) + '\Tiles/focused'
+                    os.chdir(bleach_color_path)
+                    color_bleach = io.imread(filename)
+                    color_subbed = color_reg - color_bleach
+                    color_subbed[color_subbed < 0] = 0
+                    color_subbed = color_subbed.astype('int32')
+
+                    # save
+
+                    save_path = experiment_directory + channel + r'/Stain/cy_' + str(cycle) + '\Tiles/focused/background_subbed'
+                    try:
+                        os.chdir(save_path)
+                    except:
+                        os.mkdir(save_path)
+                        os.chdir(save_path)
+
+                    subbed_filename = 'x' + str(x) + '_y_' + str(y) + '_c_' + channel + '.tif'
+                    # bleach_filename ='x' + str(x) + '_y_' + str(y) + '_c_' + channel + '_bleach.tif'
+                    # reg_filename = 'x' + str(x) + '_y_' + str(y) + '_c_' + channel + '_registered.tif'
+                    io.imsave(subbed_filename, color_subbed)
+                    # io.imsave(bleach_filename, color_bleach)
+                    # io.imsave(reg_filename, color_reg)
+
     def zc_save(self, zc_tif_stack, channels, x_tile, y_tile, cycle, x_pixels, experiment_directory, Stain_or_Bleach):
 
         z_tile_count = np.shape(zc_tif_stack)[1]
@@ -2198,6 +2209,64 @@ class cycif:
     ############################################
     # depreciated or unused
     ############################################
+
+    def position_verify(self, z_position):
+
+        difference_range = 1
+        current_z = core.get_position()
+        difference = abs(z_position - current_z)
+        while difference > difference_range:
+            core.set_position(z_position)
+            current_z = core.get_position()
+            difference = abs(z_position - current_z)
+            time.sleep(0.5)
+
+    def tissue_center(self, mag_surface):
+        '''
+        take magellan surface and find the xy coordinates of the center of the surface
+        :param mag_surface:
+        :param magellan:
+        :return: x tissue center position and y tissue center position
+        :rtype: list[float, float]
+        '''
+        xy_pos = self.tile_xy_pos(mag_surface)
+        x_center = (max(xy_pos[0]) + min(xy_pos[0])) / 2
+        y_center = (max(xy_pos[1]) + min(xy_pos[1])) / 2
+        return x_center, y_center
+
+    def num_surfaces_count(self):
+        '''
+        Looks at magellan surfaces that start with New Surface in its name, ie. 'New Surface 1' as that is the default generated prefix.
+
+        :param object magellan: magellan object from magellan = Magellan() in pycromanager
+        :return: surface_count
+        :rtype: int
+        '''
+        x = 1
+        while magellan.get_surface("New Surface " + str(x)) != None:
+            x += 1
+        surface_count = x - 1
+        time.sleep(1)
+
+        return surface_count
+
+    def surface_exist_check(self, surface_name):
+        '''
+        Checks name of surface to see if exists. If it does, returns 1, if not returns 0
+
+        :param object magellan: magellan object from magellan = Magellan() in pycromanager
+        :param str surface_name: name of surface to check if exists
+
+        :return: status
+        :rtype: int
+        '''
+
+        status = 0
+        if magellan.get_surface(surface_name) != None:
+            status += 1
+
+        return status
+
     def quick_tile_placement(self, z_tile_stack, overlap=10):
 
         numpy_path = 'E:/folder_structure' + '/' + 'np_arrays'
