@@ -1666,8 +1666,8 @@ class cycif:
                 cycle_start_search = 1
 
         # cycle_end = len(os.listdir(dapi_im_path)) + 1
-        cycle_end = 8
-        cycle_start = 2
+        cycle_end = 4
+        cycle_start = 1
 
         for cycle_number in range(cycle_start, cycle_end):
             self.infocus(experiment_directory, cycle_number, x_pixels, 1, 1)
@@ -1714,19 +1714,31 @@ class cycif:
                 base_count_number_stack = tile * 4
 
                 os.chdir(dapi_im_path)
-                image = io.imread(dapi_file_name)
+                try:
+                    image = io.imread(dapi_file_name)
+                except:
+                    image = cv2.imread(dapi_file_name)[::, ::, 0]
                 mcmicro_stack[base_count_number_stack + 0] = image
 
                 os.chdir(a488_im_path)
-                image = io.imread(a488_file_name)
+                try:
+                    image = io.imread(a488_file_name)
+                except:
+                    image = cv2.imread(a488_file_name)[::, ::, 0]
                 mcmicro_stack[base_count_number_stack + 1] = image
 
                 os.chdir(a555_im_path)
-                image = io.imread(a555_file_name)
+                try:
+                    image = io.imread(a555_file_name)
+                except:
+                    image = cv2.imread(a555_file_name)[::, ::, 0]
                 mcmicro_stack[base_count_number_stack + 2] = image
 
                 os.chdir(a647_im_path)
-                image = io.imread(a647_file_name)
+                try:
+                    image = io.imread(a647_file_name)
+                except:
+                    image = cv2.imread(a647_file_name)[::, ::, 0]
                 mcmicro_stack[base_count_number_stack + 3] = image
 
                 tile += 1
@@ -1851,7 +1863,11 @@ class cycif:
                 for x in range(0, x_tile_count):
                     for y in range(0, y_tile_count):
                         filename = 'x' + str(x) + '_y_' + str(y) + '_c_' + channel + '.tif'
-                        image = io.imread(filename)
+                        try:
+                            image = io.imread(filename)
+                        except:
+                            image = cv2.imread(filename)[::,::,0]
+
                         # define subsection of large array that fits dimensions of single FOV
                         # x_center = numpy_x_pixels[y][x]
                         # y_center = numpy_y_pixels[y][x]
@@ -2702,12 +2718,12 @@ class fluidics:
             plt.plot(time_points, flow_points, 'o', color='black')
             plt.show()
 
-    def liquid_action(self, action_type, stain_valve=0, incub_val=0, heater_state=0):
+    def liquid_action(self, action_type, stain_valve=0, incub_val=45, heater_state=0):
 
         bleach_valve = 11
         pbs_valve = 12
         bleach_time = 3  # minutes
-        stain_flow_time = 45  # seconds
+        stain_flow_time = 112  # seconds
         if heater_state == 0:
             stain_inc_time = incub_val  # minutes
         if heater_state == 1:
@@ -2720,7 +2736,7 @@ class fluidics:
 
             self.valve_select(bleach_valve)
             self.flow(500)
-            time.sleep(70)
+            time.sleep(150)
             self.flow(0)
             # time.sleep(bleach_time*60)
             self.valve_select(pbs_valve)
@@ -2750,7 +2766,7 @@ class fluidics:
 
             for x in range(0, stain_inc_time):
                 time.sleep(60)
-                # print('Staining Time Elapsed ', x)
+                print('Staining Time Elapsed ', x)
 
             # if heater_state == 1:
             #    arduino.heater_state(0)
@@ -2767,7 +2783,7 @@ class fluidics:
 
             self.valve_select(pbs_valve)
             self.flow(500)
-            time.sleep(70)
+            time.sleep(150)
             self.flow(0)
 
 
