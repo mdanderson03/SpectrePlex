@@ -91,13 +91,13 @@ class cycif:
 
         # do Brenner score
 
-        kernel = np.array([[0, 0, 0],
-                           [-1, 0, 1],
-                           [0, 0, 0]])
-
-        c = cv2.filter2D(image, cv2.CV_32F, kernel)
-        c = c / 1000 * c / 1000
-        f_score_shadow = c.sum(dtype=np.float64)  # + 0.00001
+        a = image[derivative_jump:, :]
+        a = a.astype('float64')
+        b = image[:-derivative_jump, :]
+        b = b.astype('float64')
+        c = (a - b)
+        c = c/10000 * c/10000
+        f_score_shadow = c.sum(dtype=np.float64) + 0.00001
 
         return f_score_shadow
 
@@ -1166,10 +1166,10 @@ class cycif:
         numpy_x = full_array[0]
         numpy_y = full_array[1]
 
-        #x_tile_count = np.unique(numpy_x).size
-        #y_tile_count = np.unique(numpy_y).size
-        x_tile_count = 1
-        y_tile_count = 1
+        x_tile_count = np.unique(numpy_x).size
+        y_tile_count = np.unique(numpy_y).size
+        #x_tile_count = 1
+        #y_tile_count = 1
         z_slices = full_array[5][0][0]
         # z_slices = 11
         # go to upper left corner to start pattern
@@ -1240,7 +1240,7 @@ class cycif:
             elif y % 2 == 0:
                 for x in range(0, x_tile_count):
 
-                    print('x', numpy_x[y][x], 'y', numpy_y[y][x])
+                    #print('x', numpy_x[y][x], 'y', numpy_y[y][x])
 
                     core.set_xy_position(numpy_x[y][x], numpy_y[y][x])
                     time.sleep(1)
@@ -1273,12 +1273,12 @@ class cycif:
                         z_end = int(numpy_z[y][x])
                         z_start = int(z_end - z_slices * slice_gap)
                         z_counter = 0
-                        print('channel', channel, 'z_range', z_start, z_end)
+                        #print('channel', channel, 'z_range', z_start, z_end)
 
                         for z in range(z_start, z_end, slice_gap):
                             core.set_position(z)
                             time.sleep(0.3)
-                            print(core.get_position())
+
                             core.snap_image()
                             tagged_image = core.get_tagged_image()
                             pixels = np.reshape(tagged_image.pix,
@@ -2735,7 +2735,7 @@ class fluidics:
         if action_type == 'Bleach':
 
             self.valve_select(bleach_valve)
-            self.flow(500)
+            self.flow(200)
             time.sleep(150)
             self.flow(0)
             # time.sleep(bleach_time*60)
@@ -2744,7 +2744,7 @@ class fluidics:
             for x in range(0, bleach_time):
                 time.sleep(60)
 
-            self.flow(500)
+            self.flow(200)
             time.sleep(70)
             self.flow(0)
             time.sleep(5)
@@ -2759,7 +2759,7 @@ class fluidics:
 
             time.sleep(4)
             self.valve_select(stain_valve)
-            self.flow(500)
+            self.flow(200)
             time.sleep(stain_flow_time)
             self.flow(0)
             self.valve_select(pbs_valve)
@@ -2782,7 +2782,7 @@ class fluidics:
         elif action_type == "Wash":
 
             self.valve_select(pbs_valve)
-            self.flow(500)
+            self.flow(200)
             time.sleep(150)
             self.flow(0)
 

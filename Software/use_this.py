@@ -24,14 +24,14 @@ cycle = 0
 
 
 #pump.liquid_action('Stain', stain_valve = 1, incub_val=45)
-
+#pump.liquid_action('Wash')
 
 #microscope.establish_fm_array(experiment_directory, 2, z_slices, offset_array, initialize=0,x_frame_size=x_frame_size, autofocus=1, auto_expose=0)
 
 #print(core.get_position())
-#microscope.image_cycle_acquire( 0, experiment_directory, 7, 'Bleach', offset_array, x_frame_size=x_frame_size, establish_fm_array=0, auto_focus_run=0, auto_expose_run=0)
+microscope.image_cycle_acquire(3, experiment_directory, z_slices, 'Stain', offset_array, x_frame_size=x_frame_size, establish_fm_array=0, auto_focus_run=0, auto_expose_run=0)
 
-#for cycle in range(2,4):
+#for cycle in range(2,9):
 #    microscope.full_cycle(experiment_directory, cycle, offset_array, cycle, pump, z_slices)
 
 #microscope.post_acquisition_processor(experiment_directory, x_frame_size)
