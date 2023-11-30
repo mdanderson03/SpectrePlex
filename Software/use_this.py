@@ -29,8 +29,8 @@ cycle = 0
 #microscope.establish_fm_array(experiment_directory, 2, z_slices, offset_array, initialize=0,x_frame_size=x_frame_size, autofocus=1, auto_expose=0)
 
 #print(core.get_position())
-microscope.image_cycle_acquire(3, experiment_directory, z_slices, 'Stain', offset_array, x_frame_size=x_frame_size, establish_fm_array=0, auto_focus_run=0, auto_expose_run=0)
-
+#microscope.image_cycle_acquire(3, experiment_directory, z_slices, 'Stain', offset_array, x_frame_size=x_frame_size, establish_fm_array=0, auto_focus_run=0, auto_expose_run=0)
+microscope.antibody_kinetics(experiment_directory, 1, 1, 60, 3, 4, pump, channels=['DAPI', 'A488', 'A647'])
 #for cycle in range(2,9):
 #    microscope.full_cycle(experiment_directory, cycle, offset_array, cycle, pump, z_slices)
 

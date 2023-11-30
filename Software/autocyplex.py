@@ -1409,8 +1409,8 @@ class cycif:
         data_points_bleach = np.full((time_point_bleach_count, channel_count, y_pixel_count, x_pixel_count), 0)
 
         fluidic_object.valve_select(stain_valve)
-        fluidic_object.flow(500)
-        time.sleep(45)
+        fluidic_object.flow(200)
+        time.sleep(112)
         fluidic_object.flow(0)
         fluidic_object.valve_select(12)
 
@@ -1448,9 +1448,9 @@ class cycif:
             os.chdir(a647_path)
             io.imsave('a647_stain_stack', data_points_stain[::, 3, ::, ::])
 
-            fluidic_object.valve_select(11)
-            fluidic_object.flow(500)
-            time.sleep(45)
+            fluidic_object.valve_select(12)
+            fluidic_object.flow(200)
+            time.sleep(112)
             fluidic_object.flow(0)
 
             for time_point in range(0, time_point_bleach_count):
@@ -1488,7 +1488,7 @@ class cycif:
             io.imsave('a647_stain_stack', data_points_bleach[::, 3, ::, ::])
 
             fluidic_object.valve_select(12)
-            fluidic_object.flow(500)
+            fluidic_object.flow(200)
             time.sleep(70)
             fluidic_object.flow(0)
 
