@@ -595,7 +595,6 @@ class cycif:
                 scan_range = 25
                 sample_mid_z = numpy_z[0][0] - 2 * number_slices / 2
                 sample_span = [sample_mid_z - scan_range / 2, sample_mid_z, sample_mid_z + scan_range / 2]
-                print(sample_span)
 
                 for channel_index in range(0, 4):
 
@@ -1161,10 +1160,12 @@ class cycif:
         exp_time_array = np.load('exp_array.npy', allow_pickle=False)
 
         height_pixels = 2960
-        width_pixels = 5056
+        width_pixels = x_pixels
         # determine attributes like tile counts,z slices and channel counts
         numpy_x = full_array[0]
         numpy_y = full_array[1]
+
+        side_pixel_count = int(5056 - x_pixels)
 
         x_tile_count = np.unique(numpy_x).size
         y_tile_count = np.unique(numpy_y).size
@@ -1183,8 +1184,6 @@ class cycif:
         for y in range(0, y_tile_count):
             if y % 2 != 0:
                 for x in range(x_tile_count - 1, -1, -1):
-
-                    print('x', numpy_x[y][x], 'y', numpy_y[y][x])
 
                     core.set_xy_position(numpy_x[y][x], numpy_y[y][x])
                     time.sleep(1)
@@ -1226,7 +1225,7 @@ class cycif:
                             tagged_image = core.get_tagged_image()
                             pixels = np.reshape(tagged_image.pix,
                                                 newshape=[tagged_image.tags["Height"], tagged_image.tags["Width"]])
-                            zc_tif_stack[zc_index][z_counter] = pixels
+                            zc_tif_stack[zc_index][z_counter] = pixels[::, side_pixel_count:side_pixel_count + x_pixels]
 
                             # core.pop_next_tagged_image()
                             image_number_counter += 1
@@ -1283,7 +1282,7 @@ class cycif:
                             tagged_image = core.get_tagged_image()
                             pixels = np.reshape(tagged_image.pix,
                                                 newshape=[tagged_image.tags["Height"], tagged_image.tags["Width"]])
-                            zc_tif_stack[zc_index][z_counter] = pixels
+                            zc_tif_stack[zc_index][z_counter] = pixels[::, side_pixel_count:side_pixel_count + x_pixels]
 
                             # core.pop_next_tagged_image()
                             image_number_counter += 1
@@ -2154,7 +2153,7 @@ class cycif:
 
             # establish x range to collect in image
 
-            side_pixel_count = int(5056 - x_pixels)
+            #side_pixel_count = int(5056 - x_pixels)
 
             save_directory = experiment_directory + '/' + str(channel) + '/' + Stain_or_Bleach + '/' + 'cy_' + str(
                 cycle) + '/' + 'Tiles'
@@ -2162,7 +2161,7 @@ class cycif:
 
             for z in range(0, z_tile_count):
                 file_name = 'z_' + str(z) + '_x' + str(x_tile) + '_y_' + str(y_tile) + '_c_' + str(channel) + '.tif'
-                image = zc_tif_stack[zc_index][z][::, side_pixel_count:side_pixel_count + x_pixels]
+                image = zc_tif_stack[zc_index][z]
                 imwrite(file_name, image, photometric='minisblack')
 
     def save_files(self, z_tile_stack, channel, cycle, experiment_directory, Stain_or_Bleach='Stain'):
