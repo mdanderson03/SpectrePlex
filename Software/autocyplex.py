@@ -1380,15 +1380,27 @@ class cycif:
         :return:
         '''
 
-        exp_array = [50, 5, 5, 5]
+        exp_array = [50, 75, 50, 75]
 
         # create folders
 
         os.chdir(experiment_directory)
-        os.mkdir('DAPI')
-        os.mkdir('A488')
-        os.mkdir('A555')
-        os.mkdir('A647')
+        try:
+            os.mkdir('DAPI')
+        except:
+            pass
+        try:
+            os.mkdir('A488')
+        except:
+            pass
+        try:
+            os.mkdir('A555')
+        except:
+            pass
+        try:
+            os.mkdir('A647')
+        except:
+            pass
 
         dapi_path = experiment_directory + r'\DAPI'
         a488_path = experiment_directory + r'\A488'
@@ -1403,6 +1415,7 @@ class cycif:
         time_point_bleach_count = int(duration_bleaching * capture_rate_bleaching)
         time_gap_staining = 1 / capture_rate_staining * 60
         time_gap_bleach = 1 / capture_rate_bleaching * 60
+        print('tiome gap stain', time_gap_staining)
 
         # create data structure for staining images
         data_points_stain = np.full((time_point_stain_count, channel_count, y_pixel_count, x_pixel_count), 0)
@@ -1414,7 +1427,9 @@ class cycif:
         fluidic_object.flow(0)
         fluidic_object.valve_select(12)
 
+        print('total time points', time_point_stain_count)
         for time_point in range(0, time_point_stain_count):
+            print(time_point)
             for channel in channels:
 
                 if channel == 'DAPI':
@@ -1439,59 +1454,64 @@ class cycif:
 
             time.sleep(time_gap_staining)
 
-            os.chdir(dapi_path)
-            io.imsave('dapi_stain_stack', data_points_stain[::, 0, ::, ::])
-            os.chdir(a488_path)
-            io.imsave('a488_stain_stack', data_points_stain[::, 1, ::, ::])
-            os.chdir(a555_path)
-            io.imsave('a555_stain_stack', data_points_stain[::, 2, ::, ::])
-            os.chdir(a647_path)
-            io.imsave('a647_stain_stack', data_points_stain[::, 3, ::, ::])
+        os.chdir(dapi_path)
+        tf.imwrite('dapi_stain_stack', data_points_stain[::, 0, ::, ::])
+        os.chdir(a488_path)
+        tf.imwrite('a488_stain_stack', data_points_stain[::, 1, ::, ::])
+        os.chdir(a555_path)
+        tf.imwrite('a555_stain_stack', data_points_stain[::, 2, ::, ::])
+        os.chdir(a647_path)
+        tf.imwrite('a647_stain_stack', data_points_stain[::, 3, ::, ::])
 
-            fluidic_object.valve_select(12)
-            fluidic_object.flow(200)
-            time.sleep(112)
-            fluidic_object.flow(0)
+        fluidic_object.valve_select(12)
+        fluidic_object.flow(200)
+        time.sleep(112)
+        fluidic_object.flow(0)
 
-            for time_point in range(0, time_point_bleach_count):
-                for channel in channels:
+        print('total bleach points', time_point_bleach_count)
+        for time_point in range(0, time_point_bleach_count):
+            print(time_point)
+            for channel in channels:
 
-                    if channel == 'DAPI':
-                        channel_index = 0
-                    if channel == 'A488':
-                        channel_index = 1
-                    if channel == 'A555':
-                        channel_index = 2
-                    if channel == 'A647':
-                        channel_index = 3
+                if channel == 'DAPI':
+                    channel_index = 0
+                if channel == 'A488':
+                    channel_index = 1
+                if channel == 'A555':
+                    channel_index = 2
+                if channel == 'A647':
+                    channel_index = 3
 
-                    exp_time = exp_array[channel_index]
+                exp_time = exp_array[channel_index]
 
-                    core.set_config("Color", channel)
-                    core.set_exposure(exp_time)
+                core.set_config("Color", channel)
+                core.set_exposure(exp_time)
 
-                    core.snap_image()
-                    tagged_image = core.get_tagged_image()
-                    pixels = np.reshape(tagged_image.pix,
-                                        newshape=[tagged_image.tags["Height"], tagged_image.tags["Width"]])
-                    data_points_bleach[time_point][channel_index] = pixels
+                core.snap_image()
+                tagged_image = core.get_tagged_image()
+                pixels = np.reshape(tagged_image.pix,
+                                    newshape=[tagged_image.tags["Height"], tagged_image.tags["Width"]])
+                data_points_bleach[time_point][channel_index] = pixels
 
-                time.sleep(time_gap_bleach)
+            time.sleep(time_gap_bleach)
 
-            os.chdir(dapi_path)
-            io.imsave('dapi_stain_stack', data_points_bleach[::, 0, ::, ::])
-            os.chdir(a488_path)
-            io.imsave('a488_stain_stack', data_points_bleach[::, 1, ::, ::])
-            os.chdir(a555_path)
-            io.imsave('a555_stain_stack', data_points_bleach[::, 2, ::, ::])
-            os.chdir(a647_path)
-            io.imsave('a647_stain_stack', data_points_bleach[::, 3, ::, ::])
+        print('saving')
 
-            fluidic_object.valve_select(12)
-            fluidic_object.flow(200)
-            time.sleep(70)
-            fluidic_object.flow(0)
-
+        os.chdir(dapi_path)
+        tf.imwrite('dapi_bleach_stack', data_points_bleach[::, 0, ::, ::])
+        os.chdir(a488_path)
+        tf.imwrite('a488_bleach_stack', data_points_bleach[::, 1, ::, ::])
+        os.chdir(a555_path)
+        tf.imwrite('a555_bleach_stack', data_points_bleach[::, 2, ::, ::])
+        os.chdir(a647_path)
+        tf.imwrite('a647_bleach_stack', data_points_bleach[::, 3, ::, ::])
+        print('finsihed')
+        '''
+        fluidic_object.valve_select(12)
+        fluidic_object.flow(200)
+        time.sleep(70)
+        fluidic_object.flow(0)
+        '''
     ######Folder System Generation########################################################
 
     def marker_excel_file_generation(self, experiment_directory, cycle_number):
