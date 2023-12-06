@@ -503,8 +503,8 @@ class cycif:
         y_tile_count = int(np.shape(numpy_y)[0])
         x_tile_count = int(np.shape(numpy_y)[1])
 
-        #center_z = magellan.get_surface('New Surface 1').get_points().get(0).z
-        center_z = -117
+        center_z = magellan.get_surface('New Surface 1').get_points().get(0).z
+        #center_z = -117
         bottom_z = int(center_z - z_slices / 2 * z_slice_gap)
         top_z = int(center_z + z_slices / 2 * z_slice_gap)
 
@@ -660,7 +660,7 @@ class cycif:
             np.save(exp_calc_filename, exp_calc_array)
             # self.one_slice_calc_array_solver(experiment_directory)
             self.calc_array_solver(experiment_directory)
-            self.calc_array_2_exp_array(experiment_directory, 0.35)  # 0.2 =20% dynamic range used
+            self.calc_array_2_exp_array(experiment_directory, 0.1)  # 0.2 =20% dynamic range used
         else:
             pass
 
@@ -1124,7 +1124,7 @@ class cycif:
         core.set_config("Color", channel)
         core.set_exposure(exp_time)
         core.set_xy_position(numpy_x[y][x], numpy_y[y][x])
-        # time.sleep(1)
+        time.sleep(1)
         core.set_position(z)
         time.sleep(0.5)
 
@@ -1685,7 +1685,7 @@ class cycif:
                 cycle_start_search = 1
 
         # cycle_end = len(os.listdir(dapi_im_path)) + 1
-        cycle_end = 4
+        cycle_end = 8
         cycle_start = 1
 
         for cycle_number in range(cycle_start, cycle_end):
@@ -2764,7 +2764,7 @@ class fluidics:
                 time.sleep(60)
 
             self.flow(200)
-            time.sleep(70)
+            time.sleep(200)
             self.flow(0)
             time.sleep(5)
 
@@ -2793,8 +2793,8 @@ class fluidics:
             # else:
             #    pass
 
-            self.flow(500)
-            time.sleep(70)
+            self.flow(200)
+            time.sleep(200)
             self.flow(0)
 
 

@@ -13,11 +13,11 @@ from pycromanager import Core, Studio, Magellan
 
 
 
-experiment_directory = r'E:\14-11-23_test'
+experiment_directory = r'E:\5-12-23 test'
 numpy_path = experiment_directory + '/' + 'np_arrays'
 os.chdir(numpy_path)
 
-#fm_array = np.load('fm_array.npy', allow_pickle=False)
+fm_array = np.load('fm_array.npy', allow_pickle=False)
 #dapi_sp_array = np.load('dapi_sp_array.npy', allow_pickle=False)
 #images = np.load('images.npy', allow_pickle=False)
 
@@ -34,14 +34,16 @@ os.chdir(numpy_path)
 #y = dapi_sp_array[0:3, 1, 0, 0]
 #x = dapi_sp_array[0:3, 1, 0, 1]
 
+focus_map = fm_array[2]
+
 #print(x)
-#io.imshow(focus_map)
-#io.show()
+io.imshow(focus_map)
+io.show()
 
 
 #microscope.sp_array_surface_2_fm(experiment_directory, 'DAPI')
-fm_array = np.load('fm_array.npy', allow_pickle=False)
-sp_array = np.load('exp_calc_array.npy', allow_pickle=False)
+#fm_array = np.load('fm_array.npy', allow_pickle=False)
+#sp_array = np.load('exp_calc_array.npy', allow_pickle=False)
 
 
 x = 0
@@ -53,8 +55,8 @@ y = 1
 #io.imshow(sp_array[3,:,:,0])
 #io.show()
 
-io.imshow(fm_array[2])
-io.show()
+#io.imshow(fm_array[2])
+#io.show()
 
 
 
