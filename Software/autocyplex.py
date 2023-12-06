@@ -1,5 +1,5 @@
 import ome_types
-from pycromanager import Core, Acquisition, multi_d_acquisition_events, Dataset, MagellanAcquisition, Magellan, start_headless, XYTiledAcquisition, Studio
+#from pycromanager import Core, Acquisition, multi_d_acquisition_events, Dataset, MagellanAcquisition, Magellan, start_headless, XYTiledAcquisition, Studio
 import numpy as np
 import time
 from scipy.optimize import curve_fit
@@ -39,7 +39,7 @@ sys.path.append(r'C:\Users\mike\Documents\GitHub\AutoCIF\Python_64_elveflow\DLL6
 sys.path.append(r'C:\Users\mike\Documents\GitHub\AutoCIF\Python_64_elveflow')  # add the path of the LoadElveflow.py
 
 from array import array
-from Elveflow64 import *
+#from Elveflow64 import *
 
 # mm_app_path = 'C:\Program Files\Micro-Manager-2.0'
 # config_file = r'C:\Users\CyCIF PC\Desktop\lumencor_auto_cycif.cfg'
@@ -48,8 +48,8 @@ from Elveflow64 import *
 # client = mqtt.Client('autocyplex_server')
 # client.connect('10.3.141.1', 1883)
 
-core = Core()
-magellan = Magellan()
+#core = Core()
+#magellan = Magellan()
 
 global level
 level = []
@@ -1666,8 +1666,8 @@ class cycif:
                 cycle_start_search = 1
 
         # cycle_end = len(os.listdir(dapi_im_path)) + 1
-        cycle_end = 4
-        cycle_start = 1
+        cycle_end = 3
+        cycle_start = 2
 
         for cycle_number in range(cycle_start, cycle_end):
             self.infocus(experiment_directory, cycle_number, x_pixels, 1, 1)
