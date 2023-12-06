@@ -28,6 +28,8 @@ import sys
 from pystackreg import StackReg
 from pybasic import shading_correction
 from path import Path
+from csbdeep.utils import normalize
+from stardist.models import StarDist2D
 import cv2
 from ctypes import *
 # from GUI_layout import *
@@ -459,12 +461,14 @@ class cycif:
             pass
 
         if autofocus == 1 and auto_expose == 1:
-            self.DAPI_surface_autofocus(experiment_directory, 20, 2, x_frame_size)
+            #self.DAPI_surface_autofocus(experiment_directory, 20, 2, x_frame_size)
+            self.recursive_stardist_autofocus(experiment_directory, cycle)
             #self.fm_channel_initial(experiment_directory, off_array, z_slices, 2)
             self.establish_exp_arrays(experiment_directory)
             self.fm_array_update_autofocus_autoexpose(experiment_directory, exp=1)
         if autofocus == 1 and auto_expose == 0:
-            self.DAPI_surface_autofocus(experiment_directory, 20, 2, x_frame_size)
+            #self.DAPI_surface_autofocus(experiment_directory, 20, 2, x_frame_size)
+            self.recursive_stardist_autofocus(experiment_directory, cycle)
             #self.fm_channel_initial(experiment_directory, off_array, z_slices, 2)
         if autofocus == 0 and auto_expose == 1:
             self.establish_exp_arrays(experiment_directory)
@@ -1106,6 +1110,124 @@ class cycif:
         np.save(file_name, xyz)
 
         return xyz
+
+    #recursize autofocusfunctions#####################################
+
+    def highest_index(self, score_array):
+
+        max_score = np.max(score_array)
+        index = np.where(score_array == max_score)
+        index = index[0][0]
+
+        return index
+
+    def generate_nuc_mask(self, experiment_directory):
+
+        model = StarDist2D.from_pretrained('2D_versatile_fluo')
+
+        # load numpy arrays in
+        numpy_path = experiment_directory + '/' + 'np_arrays'
+        os.chdir(numpy_path)
+        full_array = np.load('fm_array.npy', allow_pickle=False)
+
+        numpy_x = full_array[0]
+        numpy_y = full_array[1]
+
+        y_tile_count = numpy_x.shape[0]
+        x_tile_count = numpy_y.shape[1]
+
+        dapi_im_path = experiment_directory + '/' + 'DAPI' '\Stain\cy_' + str(1) + '\Tiles'
+        os.chdir(experiment_directory)
+        try:
+            os.mkdir('Labelled_Nuc')
+        except:
+            pass
+
+        labelled_path = experiment_directory + '/Labelled_Nuc'
+
+        for x in range(0, x_tile_count):
+            for y in range(0, y_tile_count):
+                os.chdir(dapi_im_path)
+                file_name = 'z_' + str(4) + '_x' + str(x) + '_y_' + str(y) + '_c_DAPI.tif'
+                labelled_file_name = 'x' + str(x) + '_y_' + str(y) + '_c_DAPI.tif'
+                img = io.imread(file_name)
+                labels, _ = model.predict_instances(normalize(img))
+                labels[labels > 0] = 1
+
+                os.chdir(labelled_path)
+                io.imsave(labelled_file_name, labels)
+
+    def recursive_stardist_autofocus(self, experiment_directory, cycle, slice_gap=2):
+        '''
+        Finds center of dapi z stack for each tile and updates focus map to center it.
+        Cycle 1 uses cycle 0 dapi z stacks. So cycle n-1 informs focus map for cycle n.
+        A pretrained network for stardist is used to screen out junk in images and increase
+        reliability. Note, must have pregenerated binary nuclei images available to use.
+        See generate_nuc_mask function to make them. This automakes if cycle = 0.
+
+        :param experimental_directory:
+        :param cycle:
+        :return:
+        '''
+
+        labelled_path = experiment_directory + '/Labelled_Nuc'
+        if cycle == 0:
+            dapi_im_path = experiment_directory + '/' + 'DAPI' '\Stain\cy_' + str(cycle) + '\Tiles'
+        else:
+            dapi_im_path = experiment_directory + '/' + 'DAPI' '\Stain\cy_' + str(cycle - 1) + '\Tiles'
+
+        # load numpy arrays in (focus map)
+        numpy_path = experiment_directory + '/' + 'np_arrays'
+        os.chdir(numpy_path)
+        fm_array = np.load('fm_array.npy', allow_pickle=False)
+
+        numpy_x = fm_array[0]
+        numpy_y = fm_array[1]
+
+        y_tile_count = numpy_x.shape[0]
+        x_tile_count = numpy_y.shape[1]
+        z_count = fm_array[3][0][0]
+        z_middle = int(z_count / 2)  # if odd, z_count will round down. Since index counts from 0, it is the middle
+
+        step_size = 17  # brenner score step size
+
+        # make nuclear masks if cycle 0
+
+        if cycle == 0:
+            self.generate_nuc_mask(experiment_directory)
+        else:
+            pass
+
+        # make numpy array to hold scores in for each tile
+        score_array = np.random.rand(z_count)
+
+        # iterate through tiles and find index of slice most in focus
+        for x in range(0, x_tile_count):
+            for y in range(0, y_tile_count):
+                for z in range(0, z_count):
+                    # load in binary image mask
+                    os.chdir(labelled_path)
+                    file_name = 'x' + str(x) + '_y_' + str(y) + '_c_DAPI.tif'
+                    labels = io.imread(file_name)
+                    # load in z slice
+                    os.chdir(dapi_im_path)
+                    file_name = 'z_' + str(z) + '_x' + str(x) + '_y_' + str(y) + '_c_DAPI.tif'
+                    img = io.imread(file_name)
+                    # apply mask to image and find brenner score
+                    img = img * labels
+                    score = self.focus_score(img, step_size)
+                    score_array[z] = score
+                # find highest score slice index and find shift amount
+                focus_index = self.highest_index(score_array)
+                center_focus_index_difference = int(z_middle - focus_index)
+                new_fm_z_position = center_focus_index_difference * slice_gap
+                # update focus map for all channels
+                fm_array[2][y][x] = fm_array[2][y][x] + new_fm_z_position
+
+        # save updated focus array
+        numpy_path = experiment_directory + '/' + 'np_arrays'
+        os.chdir(numpy_path)
+        np.save('fm_array.npy', fm_array)
 
     ############################################
     # Using core snap and not pycromanager acquire
