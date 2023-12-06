@@ -26,10 +26,10 @@ cycle = 0
 #pump.liquid_action('Stain', stain_valve = 1, incub_val=60)
 #pump.liquid_action('Bleach')
 
-#microscope.establish_fm_array(experiment_directory, 1, z_slices, offset_array, initialize=1,x_frame_size=x_frame_size, autofocus=1, auto_expose=0)
+microscope.establish_fm_array(experiment_directory, 1, z_slices, offset_array, initialize=0,x_frame_size=x_frame_size, autofocus=1, auto_expose=0)
 
 #print(core.get_position())
-microscope.image_cycle_acquire(1, experiment_directory, z_slices, 'Bleach', offset_array, x_frame_size=x_frame_size, establish_fm_array=1, auto_focus_run=0, auto_expose_run=0)
+#microscope.image_cycle_acquire(1, experiment_directory, z_slices, 'Bleach', offset_array, x_frame_size=x_frame_size, establish_fm_array=1, auto_focus_run=0, auto_expose_run=0)
 
 
 #microscope.antibody_kinetics(experiment_directory, 1, 1, 45, 3, 4, pump)
@@ -40,10 +40,10 @@ microscope.image_cycle_acquire(1, experiment_directory, z_slices, 'Bleach', offs
 
 
 
-for cycle in range(2,8):
-    microscope.full_cycle(experiment_directory, cycle, offset_array, cycle, pump, z_slices, incub_val=60)
+#for cycle in range(2,8):
+#    microscope.full_cycle(experiment_directory, cycle, offset_array, cycle, pump, z_slices, incub_val=60)
 
-microscope.post_acquisition_processor(experiment_directory, x_frame_size)
+#microscope.post_acquisition_processor(experiment_directory, x_frame_size)
 #microscope.stage_placement(experiment_directory, 1, x_frame_size)
 
 #microscope.mcmicro_image_stack_generator(1, experiment_directory, x_frame_size)

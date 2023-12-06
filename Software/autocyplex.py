@@ -462,13 +462,13 @@ class cycif:
 
         if autofocus == 1 and auto_expose == 1:
             #self.DAPI_surface_autofocus(experiment_directory, 20, 2, x_frame_size)
-            self.recursive_stardist_autofocus(experiment_directory, cycle)
+            self.recursive_stardist_autofocus(experiment_directory, desired_cycle_count)
             #self.fm_channel_initial(experiment_directory, off_array, z_slices, 2)
             self.establish_exp_arrays(experiment_directory)
             self.fm_array_update_autofocus_autoexpose(experiment_directory, exp=1)
         if autofocus == 1 and auto_expose == 0:
             #self.DAPI_surface_autofocus(experiment_directory, 20, 2, x_frame_size)
-            self.recursive_stardist_autofocus(experiment_directory, cycle)
+            self.recursive_stardist_autofocus(experiment_directory, desired_cycle_count)
             #self.fm_channel_initial(experiment_directory, off_array, z_slices, 2)
         if autofocus == 0 and auto_expose == 1:
             self.establish_exp_arrays(experiment_directory)
@@ -1172,7 +1172,7 @@ class cycif:
 
         labelled_path = experiment_directory + '/Labelled_Nuc'
         if cycle == 0:
-            dapi_im_path = experiment_directory + '/' + 'DAPI' '\Stain\cy_' + str(cycle) + '\Tiles'
+            dapi_im_path = experiment_directory + '/' + 'DAPI' '\Bleach\cy_' + str(cycle) + '\Tiles'
         else:
             dapi_im_path = experiment_directory + '/' + 'DAPI' '\Stain\cy_' + str(cycle - 1) + '\Tiles'
 
@@ -1186,7 +1186,7 @@ class cycif:
 
         y_tile_count = numpy_x.shape[0]
         x_tile_count = numpy_y.shape[1]
-        z_count = fm_array[3][0][0]
+        z_count = int(fm_array[3][0][0])
         z_middle = int(z_count / 2)  # if odd, z_count will round down. Since index counts from 0, it is the middle
 
         step_size = 17  # brenner score step size
@@ -1220,6 +1220,7 @@ class cycif:
                 # find highest score slice index and find shift amount
                 focus_index = self.highest_index(score_array)
                 center_focus_index_difference = int(z_middle - focus_index)
+                print(center_focus_index_difference)
                 new_fm_z_position = center_focus_index_difference * slice_gap
                 # update focus map for all channels
                 fm_array[2][y][x] = fm_array[2][y][x] + new_fm_z_position
