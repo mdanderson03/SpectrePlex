@@ -1,5 +1,5 @@
 import ome_types
-#from pycromanager import Core, Acquisition, multi_d_acquisition_events, Dataset, MagellanAcquisition, Magellan, start_headless, XYTiledAcquisition, Studio
+from pycromanager import Core, Acquisition, multi_d_acquisition_events, Dataset, MagellanAcquisition, Magellan, start_headless, XYTiledAcquisition, Studio
 import numpy as np
 import time
 from scipy.optimize import curve_fit
@@ -39,7 +39,7 @@ sys.path.append(r'C:\Users\mike\Documents\GitHub\AutoCIF\Python_64_elveflow\DLL6
 sys.path.append(r'C:\Users\mike\Documents\GitHub\AutoCIF\Python_64_elveflow')  # add the path of the LoadElveflow.py
 
 from array import array
-#from Elveflow64 import *
+from Elveflow64 import *
 
 # mm_app_path = 'C:\Program Files\Micro-Manager-2.0'
 # config_file = r'C:\Users\CyCIF PC\Desktop\lumencor_auto_cycif.cfg'
@@ -48,8 +48,8 @@ from array import array
 # client = mqtt.Client('autocyplex_server')
 # client.connect('10.3.141.1', 1883)
 
-#core = Core()
-#magellan = Magellan()
+core = Core()
+magellan = Magellan()
 
 global level
 level = []
@@ -503,8 +503,8 @@ class cycif:
         y_tile_count = int(np.shape(numpy_y)[0])
         x_tile_count = int(np.shape(numpy_y)[1])
 
-        #center_z = magellan.get_surface('New Surface 1').get_points().get(0).z
-        center_z = -117
+        center_z = magellan.get_surface('New Surface 1').get_points().get(0).z
+        #center_z = -117
         bottom_z = int(center_z - z_slices / 2 * z_slice_gap)
         top_z = int(center_z + z_slices / 2 * z_slice_gap)
 
@@ -595,7 +595,6 @@ class cycif:
                 scan_range = 25
                 sample_mid_z = numpy_z[0][0] - 2 * number_slices / 2
                 sample_span = [sample_mid_z - scan_range / 2, sample_mid_z, sample_mid_z + scan_range / 2]
-                print(sample_span)
 
                 for channel_index in range(0, 4):
 
@@ -661,7 +660,7 @@ class cycif:
             np.save(exp_calc_filename, exp_calc_array)
             # self.one_slice_calc_array_solver(experiment_directory)
             self.calc_array_solver(experiment_directory)
-            self.calc_array_2_exp_array(experiment_directory, 0.35)  # 0.2 =20% dynamic range used
+            self.calc_array_2_exp_array(experiment_directory, 0.1)  # 0.2 =20% dynamic range used
         else:
             pass
 
@@ -1125,7 +1124,7 @@ class cycif:
         core.set_config("Color", channel)
         core.set_exposure(exp_time)
         core.set_xy_position(numpy_x[y][x], numpy_y[y][x])
-        # time.sleep(1)
+        time.sleep(1)
         core.set_position(z)
         time.sleep(0.5)
 
@@ -1161,10 +1160,12 @@ class cycif:
         exp_time_array = np.load('exp_array.npy', allow_pickle=False)
 
         height_pixels = 2960
-        width_pixels = 5056
+        width_pixels = x_pixels
         # determine attributes like tile counts,z slices and channel counts
         numpy_x = full_array[0]
         numpy_y = full_array[1]
+
+        side_pixel_count = int(5056 - x_pixels)
 
         x_tile_count = np.unique(numpy_x).size
         y_tile_count = np.unique(numpy_y).size
@@ -1183,8 +1184,6 @@ class cycif:
         for y in range(0, y_tile_count):
             if y % 2 != 0:
                 for x in range(x_tile_count - 1, -1, -1):
-
-                    print('x', numpy_x[y][x], 'y', numpy_y[y][x])
 
                     core.set_xy_position(numpy_x[y][x], numpy_y[y][x])
                     time.sleep(1)
@@ -1226,7 +1225,7 @@ class cycif:
                             tagged_image = core.get_tagged_image()
                             pixels = np.reshape(tagged_image.pix,
                                                 newshape=[tagged_image.tags["Height"], tagged_image.tags["Width"]])
-                            zc_tif_stack[zc_index][z_counter] = pixels
+                            zc_tif_stack[zc_index][z_counter] = pixels[::, side_pixel_count:side_pixel_count + x_pixels]
 
                             # core.pop_next_tagged_image()
                             image_number_counter += 1
@@ -1283,7 +1282,7 @@ class cycif:
                             tagged_image = core.get_tagged_image()
                             pixels = np.reshape(tagged_image.pix,
                                                 newshape=[tagged_image.tags["Height"], tagged_image.tags["Width"]])
-                            zc_tif_stack[zc_index][z_counter] = pixels
+                            zc_tif_stack[zc_index][z_counter] = pixels[::, side_pixel_count:side_pixel_count + x_pixels]
 
                             # core.pop_next_tagged_image()
                             image_number_counter += 1
@@ -1381,15 +1380,27 @@ class cycif:
         :return:
         '''
 
-        exp_array = [50, 5, 5, 5]
+        exp_array = [50, 75, 50, 75]
 
         # create folders
 
         os.chdir(experiment_directory)
-        os.mkdir('DAPI')
-        os.mkdir('A488')
-        os.mkdir('A555')
-        os.mkdir('A647')
+        try:
+            os.mkdir('DAPI')
+        except:
+            pass
+        try:
+            os.mkdir('A488')
+        except:
+            pass
+        try:
+            os.mkdir('A555')
+        except:
+            pass
+        try:
+            os.mkdir('A647')
+        except:
+            pass
 
         dapi_path = experiment_directory + r'\DAPI'
         a488_path = experiment_directory + r'\A488'
@@ -1404,18 +1415,21 @@ class cycif:
         time_point_bleach_count = int(duration_bleaching * capture_rate_bleaching)
         time_gap_staining = 1 / capture_rate_staining * 60
         time_gap_bleach = 1 / capture_rate_bleaching * 60
+        print('tiome gap stain', time_gap_staining)
 
         # create data structure for staining images
         data_points_stain = np.full((time_point_stain_count, channel_count, y_pixel_count, x_pixel_count), 0)
         data_points_bleach = np.full((time_point_bleach_count, channel_count, y_pixel_count, x_pixel_count), 0)
 
         fluidic_object.valve_select(stain_valve)
-        fluidic_object.flow(500)
-        time.sleep(45)
+        fluidic_object.flow(200)
+        time.sleep(112)
         fluidic_object.flow(0)
         fluidic_object.valve_select(12)
 
+        print('total time points', time_point_stain_count)
         for time_point in range(0, time_point_stain_count):
+            print(time_point)
             for channel in channels:
 
                 if channel == 'DAPI':
@@ -1440,59 +1454,64 @@ class cycif:
 
             time.sleep(time_gap_staining)
 
-            os.chdir(dapi_path)
-            io.imsave('dapi_stain_stack', data_points_stain[::, 0, ::, ::])
-            os.chdir(a488_path)
-            io.imsave('a488_stain_stack', data_points_stain[::, 1, ::, ::])
-            os.chdir(a555_path)
-            io.imsave('a555_stain_stack', data_points_stain[::, 2, ::, ::])
-            os.chdir(a647_path)
-            io.imsave('a647_stain_stack', data_points_stain[::, 3, ::, ::])
+        os.chdir(dapi_path)
+        tf.imwrite('dapi_stain_stack', data_points_stain[::, 0, ::, ::])
+        os.chdir(a488_path)
+        tf.imwrite('a488_stain_stack', data_points_stain[::, 1, ::, ::])
+        os.chdir(a555_path)
+        tf.imwrite('a555_stain_stack', data_points_stain[::, 2, ::, ::])
+        os.chdir(a647_path)
+        tf.imwrite('a647_stain_stack', data_points_stain[::, 3, ::, ::])
 
-            fluidic_object.valve_select(11)
-            fluidic_object.flow(500)
-            time.sleep(45)
-            fluidic_object.flow(0)
+        fluidic_object.valve_select(12)
+        fluidic_object.flow(200)
+        time.sleep(112)
+        fluidic_object.flow(0)
 
-            for time_point in range(0, time_point_bleach_count):
-                for channel in channels:
+        print('total bleach points', time_point_bleach_count)
+        for time_point in range(0, time_point_bleach_count):
+            print(time_point)
+            for channel in channels:
 
-                    if channel == 'DAPI':
-                        channel_index = 0
-                    if channel == 'A488':
-                        channel_index = 1
-                    if channel == 'A555':
-                        channel_index = 2
-                    if channel == 'A647':
-                        channel_index = 3
+                if channel == 'DAPI':
+                    channel_index = 0
+                if channel == 'A488':
+                    channel_index = 1
+                if channel == 'A555':
+                    channel_index = 2
+                if channel == 'A647':
+                    channel_index = 3
 
-                    exp_time = exp_array[channel_index]
+                exp_time = exp_array[channel_index]
 
-                    core.set_config("Color", channel)
-                    core.set_exposure(exp_time)
+                core.set_config("Color", channel)
+                core.set_exposure(exp_time)
 
-                    core.snap_image()
-                    tagged_image = core.get_tagged_image()
-                    pixels = np.reshape(tagged_image.pix,
-                                        newshape=[tagged_image.tags["Height"], tagged_image.tags["Width"]])
-                    data_points_bleach[time_point][channel_index] = pixels
+                core.snap_image()
+                tagged_image = core.get_tagged_image()
+                pixels = np.reshape(tagged_image.pix,
+                                    newshape=[tagged_image.tags["Height"], tagged_image.tags["Width"]])
+                data_points_bleach[time_point][channel_index] = pixels
 
-                time.sleep(time_gap_bleach)
+            time.sleep(time_gap_bleach)
 
-            os.chdir(dapi_path)
-            io.imsave('dapi_stain_stack', data_points_bleach[::, 0, ::, ::])
-            os.chdir(a488_path)
-            io.imsave('a488_stain_stack', data_points_bleach[::, 1, ::, ::])
-            os.chdir(a555_path)
-            io.imsave('a555_stain_stack', data_points_bleach[::, 2, ::, ::])
-            os.chdir(a647_path)
-            io.imsave('a647_stain_stack', data_points_bleach[::, 3, ::, ::])
+        print('saving')
 
-            fluidic_object.valve_select(12)
-            fluidic_object.flow(500)
-            time.sleep(70)
-            fluidic_object.flow(0)
-
+        os.chdir(dapi_path)
+        tf.imwrite('dapi_bleach_stack', data_points_bleach[::, 0, ::, ::])
+        os.chdir(a488_path)
+        tf.imwrite('a488_bleach_stack', data_points_bleach[::, 1, ::, ::])
+        os.chdir(a555_path)
+        tf.imwrite('a555_bleach_stack', data_points_bleach[::, 2, ::, ::])
+        os.chdir(a647_path)
+        tf.imwrite('a647_bleach_stack', data_points_bleach[::, 3, ::, ::])
+        print('finsihed')
+        '''
+        fluidic_object.valve_select(12)
+        fluidic_object.flow(200)
+        time.sleep(70)
+        fluidic_object.flow(0)
+        '''
     ######Folder System Generation########################################################
 
     def marker_excel_file_generation(self, experiment_directory, cycle_number):
@@ -1666,8 +1685,8 @@ class cycif:
                 cycle_start_search = 1
 
         # cycle_end = len(os.listdir(dapi_im_path)) + 1
-        cycle_end = 3
-        cycle_start = 2
+        cycle_end = 8
+        cycle_start = 1
 
         for cycle_number in range(cycle_start, cycle_end):
             self.infocus(experiment_directory, cycle_number, x_pixels, 1, 1)
@@ -2154,7 +2173,7 @@ class cycif:
 
             # establish x range to collect in image
 
-            side_pixel_count = int(5056 - x_pixels)
+            #side_pixel_count = int(5056 - x_pixels)
 
             save_directory = experiment_directory + '/' + str(channel) + '/' + Stain_or_Bleach + '/' + 'cy_' + str(
                 cycle) + '/' + 'Tiles'
@@ -2162,7 +2181,7 @@ class cycif:
 
             for z in range(0, z_tile_count):
                 file_name = 'z_' + str(z) + '_x' + str(x_tile) + '_y_' + str(y_tile) + '_c_' + str(channel) + '.tif'
-                image = zc_tif_stack[zc_index][z][::, side_pixel_count:side_pixel_count + x_pixels]
+                image = zc_tif_stack[zc_index][z]
                 imwrite(file_name, image, photometric='minisblack')
 
     def save_files(self, z_tile_stack, channel, cycle, experiment_directory, Stain_or_Bleach='Stain'):
@@ -2745,7 +2764,7 @@ class fluidics:
                 time.sleep(60)
 
             self.flow(200)
-            time.sleep(70)
+            time.sleep(200)
             self.flow(0)
             time.sleep(5)
 
@@ -2774,8 +2793,8 @@ class fluidics:
             # else:
             #    pass
 
-            self.flow(500)
-            time.sleep(70)
+            self.flow(200)
+            time.sleep(200)
             self.flow(0)
 
 
