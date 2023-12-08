@@ -79,7 +79,7 @@ class cycif:
     ############ All in section are functions for the autofocus function
     ####################################################################
 
-    def focus_score(self, image, derivative_jump):
+    def focus_score(self, image, derivative_jump, labels):
         '''
         Calculates focus score on image with Brenners algorithm on downsampled image.
 
@@ -98,7 +98,9 @@ class cycif:
         b = image[:-derivative_jump, :]
         b = b.astype('float64')
         c = (a - b)
-        c = c/10000 * c/10000
+        c = c/100 * c/100
+        labels = labels[derivative_jump:, :]
+        c = c * labels
         f_score_shadow = c.sum(dtype=np.float64) + 0.00001
 
         return f_score_shadow
@@ -1136,7 +1138,7 @@ class cycif:
         y_tile_count = numpy_x.shape[0]
         x_tile_count = numpy_y.shape[1]
 
-        dapi_im_path = experiment_directory + '/' + 'DAPI' '\Stain\cy_' + str(1) + '\Tiles'
+        dapi_im_path = experiment_directory + '/' + 'DAPI' '\Bleach\cy_' + str(0) + '\Tiles'
         os.chdir(experiment_directory)
         try:
             os.mkdir('Labelled_Nuc')
@@ -1171,8 +1173,8 @@ class cycif:
         '''
 
         labelled_path = experiment_directory + '/Labelled_Nuc'
-        if cycle == 0:
-            dapi_im_path = experiment_directory + '/' + 'DAPI' '\Bleach\cy_' + str(cycle) + '\Tiles'
+        if cycle == 1:
+            dapi_im_path = experiment_directory + '/' + 'DAPI' '\Bleach\cy_' + str(cycle-1) + '\Tiles'
         else:
             dapi_im_path = experiment_directory + '/' + 'DAPI' '\Stain\cy_' + str(cycle - 1) + '\Tiles'
 
@@ -1186,17 +1188,14 @@ class cycif:
 
         y_tile_count = numpy_x.shape[0]
         x_tile_count = numpy_y.shape[1]
+        #y_tile_count = 1
+        #x_tile_count = 1
         z_count = int(fm_array[3][0][0])
         z_middle = int(z_count / 2)  # if odd, z_count will round down. Since index counts from 0, it is the middle
 
         step_size = 17  # brenner score step size
+        x_axis = np.array([0,1,2,3,4,5,6,7,8])
 
-        # make nuclear masks if cycle 0
-
-        if cycle == 0:
-            self.generate_nuc_mask(experiment_directory)
-        else:
-            pass
 
         # make numpy array to hold scores in for each tile
         score_array = np.random.rand(z_count)
@@ -1214,16 +1213,26 @@ class cycif:
                     file_name = 'z_' + str(z) + '_x' + str(x) + '_y_' + str(y) + '_c_DAPI.tif'
                     img = io.imread(file_name)
                     # apply mask to image and find brenner score
-                    img = img * labels
-                    score = self.focus_score(img, step_size)
+                    score = self.focus_score(img, step_size, labels)
                     score_array[z] = score
                 # find highest score slice index and find shift amount
                 focus_index = self.highest_index(score_array)
-                center_focus_index_difference = int(z_middle - focus_index)
+                print('cycle',cycle,'x', x, 'y', y)
+                #plt.scatter(x_axis, score_array)
+                #plt.show()
+                center_focus_index_difference = int(focus_index - z_middle)
                 print(center_focus_index_difference)
                 new_fm_z_position = center_focus_index_difference * slice_gap
                 # update focus map for all channels
                 fm_array[2][y][x] = fm_array[2][y][x] + new_fm_z_position
+
+
+        # make nuclear masks if cycle 0
+
+        if cycle == 0:
+            self.generate_nuc_mask(experiment_directory)
+        else:
+            pass
 
         # save updated focus array
         numpy_path = experiment_directory + '/' + 'np_arrays'
@@ -1292,6 +1301,8 @@ class cycif:
 
         x_tile_count = np.unique(numpy_x).size
         y_tile_count = np.unique(numpy_y).size
+        #x_tile_count = 1
+        #y_tile_count = 1
         #x_tile_count = 1
         #y_tile_count = 1
         z_slices = full_array[5][0][0]
@@ -1538,7 +1549,7 @@ class cycif:
         time_point_bleach_count = int(duration_bleaching * capture_rate_bleaching)
         time_gap_staining = 1 / capture_rate_staining * 60
         time_gap_bleach = 1 / capture_rate_bleaching * 60
-        print('tiome gap stain', time_gap_staining)
+        print('time gap stain', time_gap_staining)
 
         # create data structure for staining images
         data_points_stain = np.full((time_point_stain_count, channel_count, y_pixel_count, x_pixel_count), 0)
@@ -1546,13 +1557,16 @@ class cycif:
 
         fluidic_object.valve_select(stain_valve)
         fluidic_object.flow(200)
+        print('flowing stain')
         time.sleep(112)
         fluidic_object.flow(0)
+        print('flow stain ended')
         fluidic_object.valve_select(12)
 
         print('total time points', time_point_stain_count)
         for time_point in range(0, time_point_stain_count):
-            print(time_point)
+            print('time point', time_point)
+            start_time = time.time()
             for channel in channels:
 
                 if channel == 'DAPI':
@@ -1575,7 +1589,12 @@ class cycif:
                                     newshape=[tagged_image.tags["Height"], tagged_image.tags["Width"]])
                 data_points_stain[time_point][channel_index] = pixels
 
+
+            end_time = time.time()
+            print('frame_time_gap', end_time - start_time)
             time.sleep(time_gap_staining)
+
+
 
         os.chdir(dapi_path)
         tf.imwrite('dapi_stain_stack', data_points_stain[::, 0, ::, ::])
@@ -1628,7 +1647,7 @@ class cycif:
         tf.imwrite('a555_bleach_stack', data_points_bleach[::, 2, ::, ::])
         os.chdir(a647_path)
         tf.imwrite('a647_bleach_stack', data_points_bleach[::, 3, ::, ::])
-        print('finsihed')
+        print('finished')
         '''
         fluidic_object.valve_select(12)
         fluidic_object.flow(200)
