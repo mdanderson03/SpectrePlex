@@ -105,6 +105,30 @@ class cycif:
 
         return f_score_shadow
 
+    def focus_score_post_processing(self, image, derivative_jump):
+        '''
+        Calculates focus score on image with Brenners algorithm on downsampled image.
+
+
+        :param numpy image: single image from hooked from acquistion
+
+        :return: focus score for image
+        :rtype: float
+        '''
+        # Note: Uniform background is a bit mandatory
+
+        # do Brenner score
+
+        a = image[derivative_jump:, :]
+        a = a.astype('float64')
+        b = image[:-derivative_jump, :]
+        b = b.astype('float64')
+        c = (a - b)
+        c = c/1000 * c/1000
+        f_score_shadow = c.sum(dtype=np.float64) + 0.00001
+
+        return f_score_shadow
+
     def sp_array(self, experiment_directory):
         '''
         Generate super pixel array as defined in powerpoint autofocus network
@@ -464,14 +488,15 @@ class cycif:
 
         if autofocus == 1 and auto_expose == 1:
             self.recursive_stardist_autofocus(experiment_directory, desired_cycle_count)
-            self.auto_exposure(experiment_directory, x_frame_size, percentage_cut_off = 0.999, target_percentage = 0.2)
+            self.establish_exp_arrays(experiment_directory)
+            self.auto_exposure(experiment_directory, x_frame_size, percentage_cut_off = 0.995, target_percentage = 0.2)
         if autofocus == 1 and auto_expose == 0:
             #self.DAPI_surface_autofocus(experiment_directory, 20, 2, x_frame_size)
             self.recursive_stardist_autofocus(experiment_directory, desired_cycle_count)
             #self.fm_channel_initial(experiment_directory, off_array, z_slices, 2)
         if autofocus == 0 and auto_expose == 1:
             self.establish_exp_arrays(experiment_directory)
-            self.auto_exposure(experiment_directory, x_frame_size, percentage_cut_off = 0.999, target_percentage = 0.2)
+            self.auto_exposure(experiment_directory, x_frame_size, percentage_cut_off = 0.995, target_percentage = 0.2)
         else:
             pass
 
@@ -574,6 +599,10 @@ class cycif:
         #make psuedo stack to hold images in
         image_stack = np.random.rand(y_tiles, x_tiles, 2960, x_frame_size)
 
+        side_pixel_count = int((5056 - x_frame_size)/2)
+        start_frame = side_pixel_count
+        end_frame = side_pixel_count + x_frame_size
+
         for channel in channels:
             if channel == 'DAPI':
                 channel_index = 0
@@ -593,7 +622,7 @@ class cycif:
                     image = self.image_capture(experiment_directory, channel, exp_time, x,y,z)
                     image, new_exp_time = self.exp_bound_solver(image, exp_time, 0.999)
                     #add to stack and update exp used
-                    image_stack[y][x] = image
+                    image_stack[y][x] = image[::, start_frame: end_frame]
                     exp_calc_array[channel_index][0][y][x] = new_exp_time
 
             #find intensities and projected exp to acheive target_percentage
@@ -621,7 +650,7 @@ class cycif:
         x_tiles = np.shape(fm_array[0])[1]
 
         exp_calc_array = np.random.rand(4, 3, y_tiles, x_tiles)
-        exp_array = np.array([100, 100, 100, 100])
+        exp_array = [100, 100, 100, 100]
         exp_calc_array[::, 0, ::, ::] = 100
 
         file_name = 'exp_calc_array.npy'
@@ -692,7 +721,15 @@ class cycif:
         for channel_index in range(0, 4):
             # find lowest exp time
             lowest_exp = np.min(exp_calc_array[channel_index, 2, ::, ::])
-            exp_array[channel_index] = lowest_exp
+
+            if lowest_exp < 2000:
+                exp_array[channel_index] = int(lowest_exp)
+            if lowest_exp > 2000:
+                exp_array[channel_index] = int(2000)
+            if lowest_exp < 50:
+                exp_array[channel_index] = int(50)
+
+            print('channel_index', channel_index, 'time', exp_array[channel_index])
 
         np.save('exp_array.npy', exp_array)
 
@@ -710,9 +747,10 @@ class cycif:
         max_time = 100
         trigger_state = 0
 
-        intensity = self.image_percentile_level(image, 0.99)
+        intensity = self.image_percentile_level(image, percentage_cutoff)
+        #print(intensity)
 
-        while intensity > 65000:
+        while intensity > 45000:
             exp_time = exp_time / 10
             core.set_exposure(exp_time)
             core.snap_image()
@@ -1023,9 +1061,17 @@ class cycif:
 
         labelled_path = experiment_directory + '/Labelled_Nuc'
         if cycle == 1:
-            dapi_im_path = experiment_directory + '/' + 'DAPI' '\Bleach\cy_' + str(cycle-1) + '\Tiles'
+            dapi_im_path = experiment_directory + '/' + 'DAPI' '\Bleach\cy_' + str(cycle - 1) + '\Tiles'
         else:
             dapi_im_path = experiment_directory + '/' + 'DAPI' '\Stain\cy_' + str(cycle - 1) + '\Tiles'
+
+        # make nuclear masks if cycle 0
+
+        if cycle == 1:
+            self.generate_nuc_mask(experiment_directory)
+        else:
+            pass
+
 
         # load numpy arrays in (focus map)
         numpy_path = experiment_directory + '/' + 'np_arrays'
@@ -1076,13 +1122,6 @@ class cycif:
                 fm_array[2][y][x] = fm_array[2][y][x] + new_fm_z_position
 
 
-        # make nuclear masks if cycle 0
-
-        if cycle == 0:
-            self.generate_nuc_mask(experiment_directory)
-        else:
-            pass
-
         # save updated focus array
         numpy_path = experiment_directory + '/' + 'np_arrays'
         os.chdir(numpy_path)
@@ -1108,11 +1147,10 @@ class cycif:
 
 
         core.set_config("Color", channel)
-        core.set_exposure(exp_time)
         core.set_xy_position(numpy_x[y][x], numpy_y[y][x])
-        time.sleep(1)
         core.set_position(z_pos)
         time.sleep(0.5)
+        core.set_exposure(int(exp_time))
 
         core.snap_image()
         tagged_image = core.get_tagged_image()
@@ -1174,7 +1212,7 @@ class cycif:
                 for x in range(x_tile_count - 1, -1, -1):
 
                     core.set_xy_position(numpy_x[y][x], numpy_y[y][x])
-                    time.sleep(1)
+                    #time.sleep(1)
 
                     for channel in channels:
 
@@ -1230,7 +1268,7 @@ class cycif:
                     #print('x', numpy_x[y][x], 'y', numpy_y[y][x])
 
                     core.set_xy_position(numpy_x[y][x], numpy_y[y][x])
-                    time.sleep(1)
+                    #time.sleep(1)
 
                     for channel in channels:
 
@@ -2011,7 +2049,7 @@ class cycif:
 
                                 for b in range(0, number_bins):
                                     bin_value = int(bin_values[b])
-                                    score = self.focus_score(sub_image, bin_value)
+                                    score = self.focus_score_post_processing(sub_image, bin_value)
                                     brenner_sub_selector[z][b][y_sub][x_sub] = score
 
                     reconstruct_array = self.brenner_reconstruct_array(brenner_sub_selector, z_slice_count, number_bins)
@@ -2892,7 +2930,7 @@ class fluidics:
         bleach_valve = 11
         pbs_valve = 12
         bleach_time = 3  # minutes
-        stain_flow_time = 112  # seconds
+        stain_flow_time = 45  # seconds
         if heater_state == 0:
             stain_inc_time = incub_val  # minutes
         if heater_state == 1:
@@ -2904,8 +2942,8 @@ class fluidics:
         if action_type == 'Bleach':
 
             self.valve_select(bleach_valve)
-            self.flow(200)
-            time.sleep(150)
+            self.flow(500)
+            time.sleep(70)
             self.flow(0)
             # time.sleep(bleach_time*60)
             self.valve_select(pbs_valve)
@@ -2913,8 +2951,8 @@ class fluidics:
             for x in range(0, bleach_time):
                 time.sleep(60)
 
-            self.flow(200)
-            time.sleep(200)
+            self.flow(500)
+            time.sleep(70)
             self.flow(0)
             time.sleep(5)
 
@@ -2928,7 +2966,7 @@ class fluidics:
 
             time.sleep(4)
             self.valve_select(stain_valve)
-            self.flow(200)
+            self.flow(500)
             time.sleep(stain_flow_time)
             self.flow(0)
             self.valve_select(pbs_valve)
@@ -2943,16 +2981,16 @@ class fluidics:
             # else:
             #    pass
 
-            self.flow(200)
-            time.sleep(200)
+            self.flow(500)
+            time.sleep(70)
             self.flow(0)
 
 
         elif action_type == "Wash":
 
             self.valve_select(pbs_valve)
-            self.flow(200)
-            time.sleep(150)
+            self.flow(500)
+            time.sleep(70)
             self.flow(0)
 
 
