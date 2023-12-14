@@ -98,10 +98,10 @@ class cycif:
         b = image[:-derivative_jump, :]
         b = b.astype('float64')
         c = (a - b)
-        c = c/100 * c/100
+        c = c/1000 * c/1000
         labels = labels[derivative_jump:, :]
         c = c * labels
-        f_score_shadow = c.sum(dtype=np.float64) + 0.00001
+        f_score_shadow = c.sum(dtype=np.float64)
 
         return f_score_shadow
 
@@ -489,14 +489,14 @@ class cycif:
         if autofocus == 1 and auto_expose == 1:
             self.recursive_stardist_autofocus(experiment_directory, desired_cycle_count)
             self.establish_exp_arrays(experiment_directory)
-            self.auto_exposure(experiment_directory, x_frame_size, percentage_cut_off = 0.995, target_percentage = 0.2)
+            self.auto_exposure(experiment_directory, x_frame_size, percentage_cut_off = 0.997, target_percentage = 0.3)
         if autofocus == 1 and auto_expose == 0:
             #self.DAPI_surface_autofocus(experiment_directory, 20, 2, x_frame_size)
             self.recursive_stardist_autofocus(experiment_directory, desired_cycle_count)
             #self.fm_channel_initial(experiment_directory, off_array, z_slices, 2)
         if autofocus == 0 and auto_expose == 1:
             self.establish_exp_arrays(experiment_directory)
-            self.auto_exposure(experiment_directory, x_frame_size, percentage_cut_off = 0.995, target_percentage = 0.2)
+            self.auto_exposure(experiment_directory, x_frame_size, percentage_cut_off = 0.997, target_percentage = 0.3)
         else:
             pass
 
@@ -718,7 +718,7 @@ class cycif:
         exp_calc_array = np.load('exp_calc_array.npy', allow_pickle=False)
         exp_array = np.load('exp_array.npy', allow_pickle=False)
 
-        for channel_index in range(0, 4):
+        for channel_index in range(1, 4):
             # find lowest exp time
             lowest_exp = np.min(exp_calc_array[channel_index, 2, ::, ::])
 
@@ -729,8 +729,11 @@ class cycif:
             if lowest_exp < 50:
                 exp_array[channel_index] = int(50)
 
+
+
             print('channel_index', channel_index, 'time', exp_array[channel_index])
 
+        exp_array[0] = 230
         np.save('exp_array.npy', exp_array)
 
     def exp_bound_solver(self, image, exp_time, percentage_cutoff):
@@ -1004,9 +1007,17 @@ class cycif:
 
     def highest_index(self, score_array):
 
+
+        middle_index = (np.shape(score_array)[0] - 1)/2
+        middle_index = int(middle_index)
+
         max_score = np.max(score_array)
         index = np.where(score_array == max_score)
-        index = index[0][0]
+        try:
+            index = index[0][0]
+        except:
+            index = (np.shape(score_array)[0] - 1) / 2
+            index = int(index)
 
         return index
 
@@ -1370,7 +1381,7 @@ class cycif:
             # time.sleep(5)
 
             # print(status_str)
-            self.image_cycle_acquire(cycle_number, experiment_directory, z_slices, 'Stain', offset_array,x_frame_size=x_frame_size, establish_fm_array=0, auto_focus_run=0,
+            self.image_cycle_acquire(cycle_number, experiment_directory, z_slices, 'Stain', offset_array,x_frame_size=x_frame_size, establish_fm_array=0, auto_focus_run=1,
                                      auto_expose_run=1)
             time.sleep(5)
 
@@ -1406,7 +1417,7 @@ class cycif:
         :return:
         '''
 
-        exp_array = [50, 75, 50, 75]
+        exp_array = [50, 100, 75, 75]
 
         # create folders
 
@@ -2049,7 +2060,8 @@ class cycif:
 
                                 for b in range(0, number_bins):
                                     bin_value = int(bin_values[b])
-                                    score = self.focus_score_post_processing(sub_image, bin_value)
+                                    #score = self.focus_score_post_processing(sub_image, bin_value)
+                                    score = 500
                                     brenner_sub_selector[z][b][y_sub][x_sub] = score
 
                     reconstruct_array = self.brenner_reconstruct_array(brenner_sub_selector, z_slice_count, number_bins)
@@ -2114,7 +2126,8 @@ class cycif:
                     x_start = int(x * ((x_frame_size) / x_sections))
 
                     # find z for specific subsection
-                    z_slice = reconstruct_array[y][x]
+                    #z_slice = reconstruct_array[y][x]
+                    z_slice = 5
                     # load in image to extract for subsection
                     file_name = 'z_' + str(z_slice) + '_x' + str(x_tile_number) + '_y_' + str(
                         y_tile_number) + '_c_' + str(channel) + '.tif'
@@ -2816,41 +2829,57 @@ class fluidics:
         set_target = float(flow_rate)  # in uL/min for flow
         set_target = c_double(set_target)  # convert to c_double
 
-        # OB1_Start_Remote_Measurement(self.pump_ID, self.calibration_array, 1000)
-        OB1_Set_Remote_Target(self.pump_ID, set_channel, set_target)
+        if flow_rate == 0:
+            # stop PI Loop
+            PID_Set_Running_Remote(self.pump_ID, set_channel, 0)
+            #time.sleep(.2)
 
-        data_sens = c_double()
-        data_reg = c_double()
-        set_channel = int(1)  # convert to int
-        set_channel = c_int32(set_channel)  # convert to c_int32
-        OB1_Get_Remote_Data(self.pump_ID, set_channel, byref(data_reg), byref(data_sens))
-        current_flow_rate = data_sens.value
-        current_pressure = int(data_reg.value)
-        # print('current flow rate', int(current_flow_rate))
-        time.sleep(3)
+            #set pressure to 0
 
-        time_log = 0
-        '''
+            OB1_Set_Remote_Target(self.pump_ID, set_channel, set_target)
 
-        while current_flow_rate < flow_rate * 0.95 or current_flow_rate > flow_rate * 1.05 and current_pressure > 0:
+            #time.sleep(2)
+
+            # start PI Loop
+            PID_Set_Running_Remote(self.pump_ID, set_channel, 1)
+            #time.sleep(.2)
+
+        else:
+            # OB1_Start_Remote_Measurement(self.pump_ID, self.calibration_array, 1000)
+            OB1_Set_Remote_Target(self.pump_ID, set_channel, set_target)
 
             data_sens = c_double()
             data_reg = c_double()
             set_channel = int(1)  # convert to int
             set_channel = c_int32(set_channel)  # convert to c_int32
             OB1_Get_Remote_Data(self.pump_ID, set_channel, byref(data_reg), byref(data_sens))
-            current_flow_rate = int(data_sens.value)
-            current_pressure = data_reg.value
-            #print('current flow rate', current_flow_rate)
-            time.sleep(1)
-            time_log += 1
-            if time_log > 10:
-                OB1_Set_Remote_Target(self.pump_ID, set_channel, set_target)
-                time_log = 0
-            else:
-                pass
+            current_flow_rate = data_sens.value
+            current_pressure = int(data_reg.value)
+            # print('current flow rate', int(current_flow_rate))
+            time.sleep(3)
 
-        '''
+            time_log = 0
+            '''
+    
+            while current_flow_rate < flow_rate * 0.95 or current_flow_rate > flow_rate * 1.05 and current_pressure > 0:
+    
+                data_sens = c_double()
+                data_reg = c_double()
+                set_channel = int(1)  # convert to int
+                set_channel = c_int32(set_channel)  # convert to c_int32
+                OB1_Get_Remote_Data(self.pump_ID, set_channel, byref(data_reg), byref(data_sens))
+                current_flow_rate = int(data_sens.value)
+                current_pressure = data_reg.value
+                #print('current flow rate', current_flow_rate)
+                time.sleep(1)
+                time_log += 1
+                if time_log > 10:
+                    OB1_Set_Remote_Target(self.pump_ID, set_channel, set_target)
+                    time_log = 0
+                else:
+                    pass
+    
+            '''
 
         # OB1_Stop_Remote_Measurement(self.pump_ID)
 
