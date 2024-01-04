@@ -1,0 +1,3 @@
+1. 1:1k mouse A647 secondary with 1 minute intervalsa at 75ms exp and 90% pwr
+
+2. 1:1K A48 SMA with 1 minute intervals at 50ms exp and 90% pwr
