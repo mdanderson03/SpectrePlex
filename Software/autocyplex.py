@@ -1457,14 +1457,14 @@ class cycif:
         # create data structure for staining images
         data_points_stain = np.full((time_point_stain_count, channel_count, y_pixel_count, x_pixel_count), 0)
         data_points_bleach = np.full((time_point_bleach_count, channel_count, y_pixel_count, x_pixel_count), 0)
-
         fluidic_object.valve_select(stain_valve)
-        fluidic_object.flow(200)
+        fluidic_object.flow(500)
         print('flowing stain')
-        time.sleep(112)
+        time.sleep(45)
         fluidic_object.flow(0)
         print('flow stain ended')
         fluidic_object.valve_select(12)
+
 
         print('total time points', time_point_stain_count)
         for time_point in range(0, time_point_stain_count):
@@ -1491,14 +1491,15 @@ class cycif:
                 pixels = np.reshape(tagged_image.pix,
                                     newshape=[tagged_image.tags["Height"], tagged_image.tags["Width"]])
                 data_points_stain[time_point][channel_index] = pixels
+            print('time point', time_point)
 
 
             end_time = time.time()
-            print('frame_time_gap', end_time - start_time)
+            #print('frame_time_gap', end_time - start_time)
             time.sleep(time_gap_staining)
 
 
-
+        print('saving')
         os.chdir(dapi_path)
         tf.imwrite('dapi_stain_stack', data_points_stain[::, 0, ::, ::])
         os.chdir(a488_path)
@@ -1507,10 +1508,10 @@ class cycif:
         tf.imwrite('a555_stain_stack', data_points_stain[::, 2, ::, ::])
         os.chdir(a647_path)
         tf.imwrite('a647_stain_stack', data_points_stain[::, 3, ::, ::])
-
+        print('done saving')
         fluidic_object.valve_select(12)
-        fluidic_object.flow(200)
-        time.sleep(112)
+        fluidic_object.flow(500)
+        time.sleep(45)
         fluidic_object.flow(0)
 
         print('total bleach points', time_point_bleach_count)

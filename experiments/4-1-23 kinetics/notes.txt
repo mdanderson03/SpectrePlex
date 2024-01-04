@@ -1,0 +1,5 @@
+a488: 1:1k SMA
+A555: 1:100 epcam
+A647: 1:1k MUC2
+
+At 78 minutes, I refocused in the A488 channel
