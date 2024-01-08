@@ -1400,8 +1400,78 @@ class cycif:
 
         # self.post_acquisition_processor(experiment_directory, x_frame_size)
 
-    def antibody_kinetics(self, experiment_directory, capture_rate_staining, capture_rate_bleaching, duration_staining,
-                          duration_bleaching, stain_valve, fluidic_object, channels=['DAPI', 'A488', 'A555', 'A647']):
+    ######Kinetics and its functions#####################################################
+
+    def kinetic_autofocus(self, experiment_directory, focus_z_position, planes):
+        '''
+        Takes planes number of images, split in half above and below focus position. Gives back plane position
+        that had highest brenner score with skip 17.
+        :param experiment_directory: where the experiment files are contained
+        :param focus_z_position: expected focus position in the z axis
+        :param planes: number planes to acquire for focusing purposes
+        :return:
+        '''
+
+
+        os.chdir(experiment_directory)
+        try:
+            os.mkdir('nuclei_focus_images')
+        except:
+            pass
+
+        focus_image_path = experiment_directory + '/nuclei_focus_images'
+        os.chdir(focus_image_path)
+
+        # set channel and exposure times in ms
+        a488_2_dapi_offset = 8
+        core.set_config("DAPI", channel)
+        core.set_exposure(75)
+
+        # make image stack object
+        dapi_tif_stack = np.random.rand(planes, 2960, 5056).astype('float16')
+
+        # find z range to be scanned
+        dapi_focus_z_position = focus_z_position + a488_2_dapi_offset
+        slice_step_size = 2 # in microns
+        bottom_z = dapi_focus_z_position - int(planes/2) * slice_step_size #remember int() rounds down
+        top_z = focus_z_position + int(planes/2) * slice_step_size #remember int() rounds down
+        image_slice_counter = 0
+
+        #capture images for stack
+        for z in range(bottom_z, top_z + 2, 2):
+
+            core.set_position(z)
+            time.sleep(0.3)
+            core.snap_image()
+            tagged_image = core.get_tagged_image()
+            pixels = np.reshape(tagged_image.pix,newshape=[tagged_image.tags["Height"], tagged_image.tags["Width"]])
+            dapi_tif_stack[image_slice_counter] = pixels
+            image_slice_counter += 1
+
+        #save images in folder
+        filename = 'dapi_autofocus.tif'
+        io.imsave(filename, dapi_tif_stack)
+
+        scores = np.random.rand(planes).astype('float64')
+
+        for plane in range(0, planes):
+
+            score = self.focus_score(dapi_tif_stack[plane], 17)
+            scores[plane] = score
+
+        #find highest brenner score index
+        max_score = np.max(scores)
+        focus_index = np.where(scores == max_score)
+        #make range of z values scanned
+        dapi_scan_range = np.linspace(bottom_z, top_z, num=planes)
+        # find focus value
+        dapi_in_focus_z_position = dapi_scan_range[focus_index]
+        a488_in_focus_z_position = dapi_in_focus_z_position - a488_2_dapi_offset
+
+        return a488_in_focus_z_position
+
+
+    def antibody_kinetics(self, experiment_directory, capture_rate_staining, duration_staining, stain_valve, fluidic_object, channels=['DAPI', 'A488', 'A555', 'A647']):
 
         '''
         Dispenses stain avia fluidic system and images until certain time point. After that, bleach dispenses and capturing continues at a different
@@ -1438,6 +1508,14 @@ class cycif:
             os.mkdir('A647')
         except:
             pass
+        try:
+            os.mkdir('auto_fluorescence')
+        except:
+            pass
+        try:
+            os.mkdir('post_wash')
+        except:
+            pass
 
         dapi_path = experiment_directory + r'\DAPI'
         a488_path = experiment_directory + r'\A488'
@@ -1449,15 +1527,43 @@ class cycif:
         x_pixel_count = 5056
         channel_count = len(channels)
         time_point_stain_count = int(duration_staining * capture_rate_staining)
-        time_point_bleach_count = int(duration_bleaching * capture_rate_bleaching)
         time_gap_staining = 1 / capture_rate_staining * 60
-        time_gap_bleach = 1 / capture_rate_bleaching * 60
         print('time gap stain', time_gap_staining)
+
+        # find current focus position
+        focus_position = core.get_position()
 
         # create data structure for staining images
         data_points_stain = np.full((time_point_stain_count, channel_count, y_pixel_count, x_pixel_count), 0)
-        data_points_bleach = np.full((time_point_bleach_count, channel_count, y_pixel_count, x_pixel_count), 0)
         fluidic_object.valve_select(stain_valve)
+
+        #capture pre stain images (so autofluorescence)
+
+        os.chdir(experiment_directory + 'auto_fluorescence')
+        for channel in channels:
+
+            if channel == 'DAPI':
+                channel_index = 0
+            if channel == 'A488':
+                channel_index = 1
+            if channel == 'A555':
+                channel_index = 2
+            if channel == 'A647':
+                channel_index = 3
+
+            exp_time = exp_array[channel_index]
+
+            core.set_config("Color", channel)
+            core.set_exposure(exp_time)
+
+            core.snap_image()
+            tagged_image = core.get_tagged_image()
+            pixels = np.reshape(tagged_image.pix,newshape=[tagged_image.tags["Height"], tagged_image.tags["Width"]])
+            io.imsave(channel + '.tif', pixels)
+
+        os.chdir(experiment_directory)
+
+        #start flow
         fluidic_object.flow(500)
         print('flowing stain')
         time.sleep(45)
@@ -1465,11 +1571,17 @@ class cycif:
         print('flow stain ended')
         fluidic_object.valve_select(12)
 
-
+        # acquire kinetic time points
         print('total time points', time_point_stain_count)
         for time_point in range(0, time_point_stain_count):
             print('time point', time_point)
             start_time = time.time()
+
+            # run auto focus and set new focus position
+            focus_position = self.kinetic_autofocus(experiment_directory, focus_z_position= focus_position, planes = 7)
+            core.set_position(focus_position)
+            time.sleep(0.3)
+
             for channel in channels:
 
                 if channel == 'DAPI':
@@ -1491,14 +1603,13 @@ class cycif:
                 pixels = np.reshape(tagged_image.pix,
                                     newshape=[tagged_image.tags["Height"], tagged_image.tags["Width"]])
                 data_points_stain[time_point][channel_index] = pixels
-            print('time point', time_point)
 
-
+            #adjust for time to acquire to make time between frames = time_gap_staining
             end_time = time.time()
-            #print('frame_time_gap', end_time - start_time)
-            time.sleep(time_gap_staining)
+            time_elapsed = end_time - start_time
+            time.sleep(time_gap_staining - time_elapsed)
 
-
+        # save images
         print('saving')
         os.chdir(dapi_path)
         tf.imwrite('dapi_stain_stack', data_points_stain[::, 0, ::, ::])
@@ -1509,55 +1620,42 @@ class cycif:
         os.chdir(a647_path)
         tf.imwrite('a647_stain_stack', data_points_stain[::, 3, ::, ::])
         print('done saving')
+
+        # start flow of PBS
+        print('starting wash')
         fluidic_object.valve_select(12)
         fluidic_object.flow(500)
         time.sleep(45)
         fluidic_object.flow(0)
+        print('wash completed')
 
-        print('total bleach points', time_point_bleach_count)
-        for time_point in range(0, time_point_bleach_count):
-            print(time_point)
-            for channel in channels:
+        # acquire post wash images
 
-                if channel == 'DAPI':
-                    channel_index = 0
-                if channel == 'A488':
-                    channel_index = 1
-                if channel == 'A555':
-                    channel_index = 2
-                if channel == 'A647':
-                    channel_index = 3
+        os.chdir(experiment_directory + 'post_wash')
+        for channel in channels:
 
-                exp_time = exp_array[channel_index]
+            if channel == 'DAPI':
+                channel_index = 0
+            if channel == 'A488':
+                channel_index = 1
+            if channel == 'A555':
+                channel_index = 2
+            if channel == 'A647':
+                channel_index = 3
 
-                core.set_config("Color", channel)
-                core.set_exposure(exp_time)
+            exp_time = exp_array[channel_index]
 
-                core.snap_image()
-                tagged_image = core.get_tagged_image()
-                pixels = np.reshape(tagged_image.pix,
-                                    newshape=[tagged_image.tags["Height"], tagged_image.tags["Width"]])
-                data_points_bleach[time_point][channel_index] = pixels
+            core.set_config("Color", channel)
+            core.set_exposure(exp_time)
 
-            time.sleep(time_gap_bleach)
+            core.snap_image()
+            tagged_image = core.get_tagged_image()
+            pixels = np.reshape(tagged_image.pix,newshape=[tagged_image.tags["Height"], tagged_image.tags["Width"]])
+            io.imsave(channel + '.tif', pixels)
 
-        print('saving')
 
-        os.chdir(dapi_path)
-        tf.imwrite('dapi_bleach_stack', data_points_bleach[::, 0, ::, ::])
-        os.chdir(a488_path)
-        tf.imwrite('a488_bleach_stack', data_points_bleach[::, 1, ::, ::])
-        os.chdir(a555_path)
-        tf.imwrite('a555_bleach_stack', data_points_bleach[::, 2, ::, ::])
-        os.chdir(a647_path)
-        tf.imwrite('a647_bleach_stack', data_points_bleach[::, 3, ::, ::])
-        print('finished')
-        '''
-        fluidic_object.valve_select(12)
-        fluidic_object.flow(200)
-        time.sleep(70)
-        fluidic_object.flow(0)
-        '''
+
+
     ######Folder System Generation########################################################
 
     def marker_excel_file_generation(self, experiment_directory, cycle_number):
