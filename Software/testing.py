@@ -1,70 +1,23 @@
 import numpy as np
 import os
-from skimage import io
+from skimage import io, morphology
 from matplotlib import pyplot as plt
-
 import os
 
-#from autocyplex import *
-from pycromanager import Core, Studio, Magellan
-#microscope = cycif() # initialize cycif object
-#pump = fluidics(6, 3)
 
+os.chdir(r'C:\Users\CyCIF PC\Desktop')
+binary_image = io.imread('x1_y_2_c_A555_binary.tif')
+tissue_binary_image = io.imread('x1_y_2_c_A555_tissue_binary.tif')
+nucs_binary = io.imread('nucs_binary.tif')
+#er = binary_image
+footprint=np.ones((2, 2))
+er = morphology.binary_erosion(nucs_binary)
+dilate = morphology.binary_erosion(nucs_binary)
+er = morphology.binary_erosion(er)
+er = morphology.binary_erosion(er)
+er = morphology.binary_erosion(er)
+er = morphology.binary_erosion(er)
+er = morphology.binary_erosion(er)
 
-
-
-experiment_directory = r'E:\5-12-23 test'
-numpy_path = experiment_directory + '/' + 'np_arrays'
-os.chdir(numpy_path)
-
-fm_array = np.load('fm_array.npy', allow_pickle=False)
-#dapi_sp_array = np.load('dapi_sp_array.npy', allow_pickle=False)
-#images = np.load('images.npy', allow_pickle=False)
-
-#io.imshow(images[2])
-#io.show()
-
-#scores = [microscope.focus_score(images[0], 17), microscope.focus_score(images[1], 17), microscope.focus_score(images[2], 17)]
-#print(scores)
-
-
-#focus_map = dapi_sp_array[3, ::, ::, 0] * dapi_sp_array[4, ::, ::, 0]
-#print(np.shape(dapi_sp_array))
-
-#y = dapi_sp_array[0:3, 1, 0, 0]
-#x = dapi_sp_array[0:3, 1, 0, 1]
-
-focus_map = fm_array[2]
-
-#print(x)
-io.imshow(focus_map)
+io.imshow(er)
 io.show()
-
-
-#microscope.sp_array_surface_2_fm(experiment_directory, 'DAPI')
-#fm_array = np.load('fm_array.npy', allow_pickle=False)
-#sp_array = np.load('exp_calc_array.npy', allow_pickle=False)
-
-
-x = 0
-y = 1
-
-#im = microscope.image_capture(experiment_directory, 'DAPI', 50, x, y, fm_array[2][y][x] - 2)
-
-
-#io.imshow(sp_array[3,:,:,0])
-#io.show()
-
-#io.imshow(fm_array[2])
-#io.show()
-
-
-
-#io.imshow(im)
-#io.show()
-
-
-#plt.scatter(x,y)
-#plt.show()
-
-
