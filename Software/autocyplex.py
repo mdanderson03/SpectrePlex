@@ -1,5 +1,5 @@
 import ome_types
-from pycromanager import Core, Acquisition, multi_d_acquisition_events, Dataset, MagellanAcquisition, Magellan, start_headless, XYTiledAcquisition, Studio
+from pycromanager import Core,Magellan
 import numpy as np
 import time
 from scipy.optimize import curve_fit
@@ -51,7 +51,7 @@ from Elveflow64 import *
 # client.connect('10.3.141.1', 1883)
 
 core = Core()
-magellan = Magellan()
+#magellan = Magellan()
 
 global level
 level = []
@@ -1424,21 +1424,24 @@ class cycif:
 
         # set channel and exposure times in ms
         a488_2_dapi_offset = 8
-        core.set_config("DAPI", channel)
+        core.set_config("Color", 'DAPI')
         core.set_exposure(75)
+        core.snap_image()
+        tagged_image = core.get_tagged_image()
+        time.sleep(10)
 
         # make image stack object
         dapi_tif_stack = np.random.rand(planes, 2960, 5056).astype('float16')
 
         # find z range to be scanned
         dapi_focus_z_position = focus_z_position + a488_2_dapi_offset
-        slice_step_size = 2 # in microns
+        slice_step_size = 1 # in microns
         bottom_z = dapi_focus_z_position - int(planes/2) * slice_step_size #remember int() rounds down
-        top_z = focus_z_position + int(planes/2) * slice_step_size #remember int() rounds down
+        top_z = dapi_focus_z_position + int(planes/2) * slice_step_size #remember int() rounds down
         image_slice_counter = 0
 
         #capture images for stack
-        for z in range(bottom_z, top_z + 2, 2):
+        for z in range(bottom_z, top_z + slice_step_size, slice_step_size):
 
             core.set_position(z)
             time.sleep(0.3)
@@ -1456,7 +1459,7 @@ class cycif:
 
         for plane in range(0, planes):
 
-            score = self.focus_score(dapi_tif_stack[plane], 17)
+            score = self.focus_score_post_processing(dapi_tif_stack[plane], 17)
             scores[plane] = score
 
         #find highest brenner score index
@@ -1466,7 +1469,7 @@ class cycif:
         dapi_scan_range = np.linspace(bottom_z, top_z, num=planes)
         # find focus value
         dapi_in_focus_z_position = dapi_scan_range[focus_index]
-        a488_in_focus_z_position = dapi_in_focus_z_position - a488_2_dapi_offset
+        a488_in_focus_z_position = int(dapi_in_focus_z_position - a488_2_dapi_offset)
 
         return a488_in_focus_z_position
 
@@ -1487,7 +1490,8 @@ class cycif:
         :return:
         '''
 
-        exp_array = [50, 100, 75, 75]
+        exp_array = [50, 200, 75, 75]
+        A488_to_channels_offset = [8, 0, 0, 3]
 
         # create folders
 
@@ -1532,14 +1536,17 @@ class cycif:
 
         # find current focus position
         focus_position = core.get_position()
+        print('focus position acquired')
+        focus_position = int(focus_position)
 
         # create data structure for staining images
         data_points_stain = np.full((time_point_stain_count, channel_count, y_pixel_count, x_pixel_count), 0)
         fluidic_object.valve_select(stain_valve)
+        print('valve selected')
 
         #capture pre stain images (so autofluorescence)
 
-        os.chdir(experiment_directory + 'auto_fluorescence')
+        os.chdir(experiment_directory + r'\auto_fluorescence')
         for channel in channels:
 
             if channel == 'DAPI':
@@ -1552,9 +1559,14 @@ class cycif:
                 channel_index = 3
 
             exp_time = exp_array[channel_index]
+            channel_offset = A488_to_channels_offset[channel_index]
+            core.set_position(focus_position + channel_offset)
+            time.sleep(0.5)
 
             core.set_config("Color", channel)
             core.set_exposure(exp_time)
+
+            print('capturing pre image', channel)
 
             core.snap_image()
             tagged_image = core.get_tagged_image()
@@ -1567,7 +1579,7 @@ class cycif:
         fluidic_object.flow(500)
         print('flowing stain')
         time.sleep(45)
-        fluidic_object.flow(0)
+        fluidic_object.flow(-3)
         print('flow stain ended')
         fluidic_object.valve_select(12)
 
@@ -1578,9 +1590,8 @@ class cycif:
             start_time = time.time()
 
             # run auto focus and set new focus position
-            focus_position = self.kinetic_autofocus(experiment_directory, focus_z_position= focus_position, planes = 7)
-            core.set_position(focus_position)
-            time.sleep(0.3)
+            focus_position = self.kinetic_autofocus(experiment_directory, focus_z_position= focus_position, planes = 11)
+            print('focus position', focus_position)
 
             for channel in channels:
 
@@ -1594,6 +1605,10 @@ class cycif:
                     channel_index = 3
 
                 exp_time = exp_array[channel_index]
+
+                channel_offset = A488_to_channels_offset[channel_index]
+                core.set_position(focus_position + channel_offset)
+                time.sleep(0.3)
 
                 core.set_config("Color", channel)
                 core.set_exposure(exp_time)
@@ -1626,12 +1641,12 @@ class cycif:
         fluidic_object.valve_select(12)
         fluidic_object.flow(500)
         time.sleep(45)
-        fluidic_object.flow(0)
+        fluidic_object.flow(-3)
         print('wash completed')
 
         # acquire post wash images
 
-        os.chdir(experiment_directory + 'post_wash')
+        os.chdir(experiment_directory + r'/post_wash')
         for channel in channels:
 
             if channel == 'DAPI':
@@ -1644,6 +1659,9 @@ class cycif:
                 channel_index = 3
 
             exp_time = exp_array[channel_index]
+            channel_offset = A488_to_channels_offset[channel_index]
+            core.set_position(focus_position  + channel_offset)
+            time.sleep(0.3)
 
             core.set_config("Color", channel)
             core.set_exposure(exp_time)
@@ -2868,8 +2886,10 @@ class fluidics:
         pump = OB1_Add_Sens(Instr_ID, 1, 5, 1, 0, 7,
                             0)  # 16bit working range between 0-1000uL/min, also what are CustomSens_Voltage_5_to_25 and can I really choose any digital range?
 
+        Calib_path = r'C:\Users\CyCIF PC\Documents\GitHub\AutoCIF\Python_64_elveflow\calibration\1_12_24_cal.txt'
         Calib = (c_double * 1000)()
-        Elveflow_Calibration_Default(byref(Calib), 1000)
+        Elveflow_Calibration_Load(Calib_path.encode('ascii'), byref(Calib), 1000)
+        #Elveflow_Calibration_Default(byref(Calib), 1000)
         OB1_Start_Remote_Measurement(Instr_ID.value, byref(Calib), 1000)
         self.calibration_array = byref(Calib)
 
@@ -2920,6 +2940,8 @@ class fluidics:
             # print('valve', current_valve, 'deired valve', desired_valve)
             time.sleep(1)
 
+        time.sleep(1)
+
     def flow(self, flow_rate):
 
         set_channel = int(1)  # convert to int
@@ -2931,13 +2953,13 @@ class fluidics:
         if flow_rate == 0:
             # stop PI Loop
             PID_Set_Running_Remote(self.pump_ID, set_channel, 0)
-            #time.sleep(.2)
+            time.sleep(2)
 
             #set pressure to 0
 
             OB1_Set_Remote_Target(self.pump_ID, set_channel, set_target)
 
-            #time.sleep(2)
+            time.sleep(2)
 
             # start PI Loop
             PID_Set_Running_Remote(self.pump_ID, set_channel, 1)
@@ -2951,11 +2973,12 @@ class fluidics:
             data_reg = c_double()
             set_channel = int(1)  # convert to int
             set_channel = c_int32(set_channel)  # convert to c_int32
+            time.sleep(3)
             OB1_Get_Remote_Data(self.pump_ID, set_channel, byref(data_reg), byref(data_sens))
             current_flow_rate = data_sens.value
             current_pressure = int(data_reg.value)
-            # print('current flow rate', int(current_flow_rate))
-            time.sleep(3)
+            print('current flow rate', int(current_flow_rate))
+
 
             time_log = 0
             '''
