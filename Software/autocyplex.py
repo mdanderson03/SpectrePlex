@@ -783,6 +783,54 @@ class cycif:
 
         return image, exp_time
 
+    def exp_logbook(self, experiment_directory, cycle):
+        '''
+        Opens up numpy object for exp times and records in excel sheet
+        :param experiment_directory:
+        :param cycle:
+        :return:
+        '''
+
+        # import exp_calc_array
+        numpy_path = experiment_directory + '/' + 'np_arrays'
+        os.chdir(numpy_path)
+        exp_array = np.load('exp_array.npy', allow_pickle=False)
+
+        exp_path = experiment_directory + '/' + 'exposure_times'
+        os.chdir(exp_path)
+
+        # create or open workbook
+
+        if os.path.isfile('Exp.xlsx') == False:
+            wb = Workbook
+            ws = wb.active
+
+            # populate headers
+            ws.cell(row = 1, column = 1).value = 'Cycle #'
+            ws.cell(row=1, column=2).value = 'Exp Time DAPI'
+            #ws.cell(row=1, column=3).value = 'Average # DAPI'
+            ws.cell(row=1, column=4).value = 'Exp Time A488'
+            #ws.cell(row=1, column=5).value = 'Average # A488'
+            ws.cell(row=1, column=6).value = 'Exp Time A555'
+            #ws.cell(row=1, column=7).value = 'Average # A555'
+            ws.cell(row=1, column=8).value = 'Exp Time A647'
+            #ws.cell(row=1, column=9).value = 'Average # A647'
+
+        if os.path.isfile('Exp.xlsx') == True:
+            wb = load_workbook('Exp.xlsx')
+            ws = wb.active
+
+        # populate columns with times and cycle count
+        ws.cell(row=int(cycle - 1), column=1).value = cycle
+
+        ws.cell(row=int(cycle - 1), column=2).value = exp_array[0]
+        ws.cell(row=int(cycle - 1), column=4).value = exp_array[1]
+        ws.cell(row=int(cycle - 1), column=6).value = exp_array[2]
+        ws.cell(row=int(cycle - 1), column=8).value = exp_array[3]
+
+        wb.save('Exp.xlsx')
+
+
 
     ##############################################
 
@@ -1360,6 +1408,7 @@ class cycif:
         '''
         self.multi_channel_z_stack_capture(experiment_directory, cycle_number, stain_bleach,x_pixels=x_frame_size, slice_gap=2, channels=channels)
         # self.marker_excel_file_generation(experiment_directory, cycle_number)
+        self.exp_logbook(experiment_directory, cycle_number)
 
     def full_cycle(self, experiment_directory, cycle_number, offset_array, stain_valve, fluidics_object, z_slices, incub_val=45, x_frame_size=2960):
 
@@ -1751,6 +1800,7 @@ class cycif:
         self.folder_addon(experiment_directory, ['Quick_Tile'])
         self.folder_addon(experiment_directory, ['np_arrays'])
         self.folder_addon(experiment_directory, ['mcmicro'])
+        self.folder_addon(experiment_directory, ['exposure_times'])
         self.folder_addon(experiment_directory, channels)
 
         # folder layer two
