@@ -2205,6 +2205,7 @@ class cycif:
                 star_dist_im = io.imread(star_dist_filename)
 
                 tissue_binary_im = morphology.binary_dilation(star_dist_im, foot_print)
+                tissue_binary_im = tissue_binary_im.astype(np.uint8)
                 os.chdir(tissue_path)
                 tissue_binary_name = 'x' + str(x) + '_y_' + str(y) + '_tissue.tif'
                 io.imsave(tissue_binary_name, tissue_binary_im)
@@ -2240,7 +2241,7 @@ class cycif:
                 z_checker = 1
 
         # make object to hold all tissue binary maps
-        tissue_binary_stack = np.random.rand(z_slice_count, 2960, x_frame_size).astype('uint16')
+        tissue_binary_stack = np.random.rand(y_tile_count, x_tile_count, 2960, x_frame_size).astype('uint16')
         for x in range(0, x_tile_count):
             for y in range(0, y_tile_count):
                 os.chdir(tissue_path)
