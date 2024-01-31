@@ -49,9 +49,9 @@ from Elveflow64 import *
 # start_headless(mm_app_path, config_file, buffer_size_mb=50000)
 # client = mqtt.Client('autocyplex_server')
 # client.connect('10.3.141.1', 1883)
-
+magellan = Magellan()
 core = Core()
-#magellan = Magellan()
+
 
 global level
 level = []
@@ -802,7 +802,7 @@ class cycif:
         # create or open workbook
 
         if os.path.isfile('Exp.xlsx') == False:
-            wb = Workbook
+            wb = Workbook()
             ws = wb.active
 
             # populate headers
@@ -821,12 +821,12 @@ class cycif:
             ws = wb.active
 
         # populate columns with times and cycle count
-        ws.cell(row=int(cycle - 1), column=1).value = cycle
+        ws.cell(row=int(cycle + 2), column=1).value = cycle
 
-        ws.cell(row=int(cycle - 1), column=2).value = exp_array[0]
-        ws.cell(row=int(cycle - 1), column=4).value = exp_array[1]
-        ws.cell(row=int(cycle - 1), column=6).value = exp_array[2]
-        ws.cell(row=int(cycle - 1), column=8).value = exp_array[3]
+        ws.cell(row=int(cycle + 2), column=2).value = exp_array[0]
+        ws.cell(row=int(cycle + 2), column=4).value = exp_array[1]
+        ws.cell(row=int(cycle + 2), column=6).value = exp_array[2]
+        ws.cell(row=int(cycle + 2), column=8).value = exp_array[3]
 
         wb.save('Exp.xlsx')
 
@@ -1406,9 +1406,10 @@ class cycif:
             self.save_files(z_tile_stack, channel, cycle_number, experiment_directory, stain_bleach)
 
         '''
+        self.exp_logbook(experiment_directory, cycle_number)
         self.multi_channel_z_stack_capture(experiment_directory, cycle_number, stain_bleach,x_pixels=x_frame_size, slice_gap=2, channels=channels)
         # self.marker_excel_file_generation(experiment_directory, cycle_number)
-        self.exp_logbook(experiment_directory, cycle_number)
+
 
     def full_cycle(self, experiment_directory, cycle_number, offset_array, stain_valve, fluidics_object, z_slices, incub_val=45, x_frame_size=2960):
 
@@ -1416,7 +1417,7 @@ class cycif:
         # z_slices = 9
 
         if cycle_number == 0:
-            self.image_cycle_acquire(cycle_number, experiment_directory, z_slices, 'Bleach', offset_array, x_frame_size=x_frame_size, establish_fm_array=1, auto_focus_run=1,
+            self.image_cycle_acquire(cycle_number, experiment_directory, z_slices, 'Bleach', offset_array, x_frame_size=x_frame_size, establish_fm_array=1, auto_focus_run=0,
                                      auto_expose_run=0)
         else:
 
