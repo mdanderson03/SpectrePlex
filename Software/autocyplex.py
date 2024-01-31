@@ -1897,9 +1897,10 @@ class cycif:
             else:
                 cycle_start_search = 1
 
-        # cycle_end = len(os.listdir(dapi_im_path)) + 1
         cycle_end = 8
         cycle_start = 1
+
+        self.tissue_binary_generate(experiment_directory)
 
         for cycle_number in range(cycle_start, cycle_end):
             self.infocus(experiment_directory, cycle_number, x_pixels, 1, 1)
@@ -2166,12 +2167,55 @@ class cycif:
             cv2.imwrite(str(darkfield_name), optimizer.darkfield_fullsize.astype(np.float32))
             optimizer.write_images(output_directory, epsilon=epsilon)
 
-    def infocus(self, experiment_directory, cycle_number, x_frame_size, x_sub_section_count, y_sub_section_count):
+    def tissue_binary_generate(self, experiment_directory):
+        '''
+        Generates tissue binary maps from star dist binary maps
 
-        bin_values = [4]
+        :param experiment_directory:
+        :return:
+        '''
+
+        # load numpy arrays in
+        numpy_path = experiment_directory + '/' + 'np_arrays'
+        os.chdir(numpy_path)
+        full_array = np.load('fm_array.npy', allow_pickle=False)
+
+        numpy_x = full_array[0]
+        numpy_y = full_array[1]
+
+        y_tile_count = numpy_x.shape[0]
+        x_tile_count = numpy_y.shape[1]
+
+        star_dist_path = experiment_directory + '/Labelled_Nuc'
+        tissue_path = experiment_directory + '/Tissue_Binary'
+
+        try:
+            os.mkdir(tissue_path)
+        except:
+            os.chdir(experiment_directory)
+            os.mkdir('Tissue_Binary')
+
+        foot_print = morphology.disk(70, decomposition='sequence')
+
+        for x in range(0, x_tile_count):
+            for y in range(0, y_tile_count):
+
+                os.chdir(star_dist_path)
+                star_dist_filename =  'x' + str(x) + '_y_' + str(y) + '_c_DAPI.tif'
+                star_dist_im = io.imread(star_dist_filename)
+
+                tissue_binary_im = morphology.binary_dilation(star_dist_im, foot_print)
+                os.chdir(tissue_path)
+                tissue_binary_name = 'x' + str(x) + '_y_' + str(y) + '_tissue.tif'
+                io.imsave(tissue_binary_name, tissue_binary_im)
+
+    def infocus(self, experiment_directory, cycle_number, x_frame_size, x_sub_section_count = 1, y_sub_section_count = 1):
+
+        bin_values = [10]
         channels = ['DAPI', 'A488', 'A555', 'A647']
 
         dapi_im_path = experiment_directory + '/' + 'DAPI' '\Stain\cy_' + str(cycle_number) + '\Tiles'
+        tissue_path = experiment_directory + '/Tissue_Binary'
 
         # load numpy arrays in
         numpy_path = experiment_directory + '/' + 'np_arrays'
@@ -2194,6 +2238,15 @@ class cycif:
                 z_slice_count += 1
             else:
                 z_checker = 1
+
+        # make object to hold all tissue binary maps
+        tissue_binary_stack = np.random.rand(z_slice_count, 2960, x_frame_size).astype('uint16')
+        for x in range(0, x_tile_count):
+            for y in range(0, y_tile_count):
+                os.chdir(tissue_path)
+                file_name = tissue_binary_name = 'x' + str(x) + '_y_' + str(y) + '_tissue.tif'
+                image = tf.imread(file_name)
+                tissue_binary_stack[y][x] = image
 
         for channel in channels:
             # generate imstack of z slices for tile
@@ -2228,8 +2281,9 @@ class cycif:
 
                                 for b in range(0, number_bins):
                                     bin_value = int(bin_values[b])
+                                    score =  self.focus_score(sub_image, bin_value, tissue_binary_stack[y][x])
                                     #score = self.focus_score_post_processing(sub_image, bin_value)
-                                    score = 500
+                                    #score = 500
                                     brenner_sub_selector[z][b][y_sub][x_sub] = score
 
                     reconstruct_array = self.brenner_reconstruct_array(brenner_sub_selector, z_slice_count, number_bins)
