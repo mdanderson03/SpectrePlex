@@ -2190,7 +2190,7 @@ class cycif:
         tissue_path = experiment_directory + '/Tissue_Binary'
 
         try:
-            os.mkdir(tissue_path)
+            os.chdir(tissue_path)
         except:
             os.chdir(experiment_directory)
             os.mkdir('Tissue_Binary')
