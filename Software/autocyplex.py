@@ -5,7 +5,7 @@ import time
 from scipy.optimize import curve_fit
 import paho.mqtt.client as mqtt
 import matplotlib.pyplot as plt
-from skimage import io, measure, filters
+from skimage import io, measure, filters, morphology
 import skimage
 import os
 import math
