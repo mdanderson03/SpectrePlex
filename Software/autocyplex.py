@@ -1448,7 +1448,7 @@ class cycif:
                                      auto_expose_run=0)
             time.sleep(10)
 
-        # self.post_acquisition_processor(experiment_directory, x_frame_size)
+        self.post_acquisition_processor(experiment_directory, x_frame_size)
 
     ######Kinetics and its functions#####################################################
 
@@ -2995,8 +2995,8 @@ class fluidics:
 
         Calib_path = r'C:\Users\CyCIF PC\Documents\GitHub\AutoCIF\Python_64_elveflow\calibration\1_12_24_cal.txt'
         Calib = (c_double * 1000)()
-        Elveflow_Calibration_Load(Calib_path.encode('ascii'), byref(Calib), 1000)
-        #Elveflow_Calibration_Default(byref(Calib), 1000)
+        #Elveflow_Calibration_Load(Calib_path.encode('ascii'), byref(Calib), 1000)
+        Elveflow_Calibration_Default(byref(Calib), 1000)
         OB1_Start_Remote_Measurement(Instr_ID.value, byref(Calib), 1000)
         self.calibration_array = byref(Calib)
 
