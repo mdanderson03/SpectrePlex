@@ -2281,9 +2281,9 @@ class cycif:
 
                                 for b in range(0, number_bins):
                                     bin_value = int(bin_values[b])
-                                    score =  self.focus_score(sub_image, bin_value, tissue_binary_stack[y][x])
+                                    #score =  self.focus_score(sub_image, bin_value, tissue_binary_stack[y][x])
                                     #score = self.focus_score_post_processing(sub_image, bin_value)
-                                    #score = 500
+                                    score = 500
                                     brenner_sub_selector[z][b][y_sub][x_sub] = score
 
                     reconstruct_array = self.brenner_reconstruct_array(brenner_sub_selector, z_slice_count, number_bins)
@@ -2311,7 +2311,8 @@ class cycif:
                 for b in range(0, number_bins):
                     sub_scores = brenner_sub_selector[0:z_slice_count, b, y, x]
                     max_score = np.max(sub_scores)
-                    max_index = np.where(sub_scores == max_score)[0][0]
+                    #max_index = np.where(sub_scores == max_score)[0][0]
+                    max_index = 3
                     # temp_bin_max_indicies[b] = max_index
                 # sub_section_index_mode = stats.mode(temp_bin_max_indicies)[0][0]
                 # reconstruct_array[y][x] = sub_section_index_mode
