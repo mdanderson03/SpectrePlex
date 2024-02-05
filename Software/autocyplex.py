@@ -29,7 +29,7 @@ from pystackreg import StackReg
 from pybasic import shading_correction
 from path import Path
 from csbdeep.utils import normalize
-from stardist.models import StarDist2D
+#from stardist.models import StarDist2D
 import cv2
 from ctypes import *
 # from GUI_layout import *
@@ -2995,8 +2995,8 @@ class fluidics:
 
         Calib_path = r'C:\Users\CyCIF PC\Documents\GitHub\AutoCIF\Python_64_elveflow\calibration\1_12_24_cal.txt'
         Calib = (c_double * 1000)()
-        #Elveflow_Calibration_Load(Calib_path.encode('ascii'), byref(Calib), 1000)
-        Elveflow_Calibration_Default(byref(Calib), 1000)
+        Elveflow_Calibration_Load(Calib_path.encode('ascii'), byref(Calib), 1000)
+        #Elveflow_Calibration_Default(byref(Calib), 1000)
         OB1_Start_Remote_Measurement(Instr_ID.value, byref(Calib), 1000)
         self.calibration_array = byref(Calib)
 
@@ -3215,7 +3215,7 @@ class fluidics:
             self.valve_select(bleach_valve)
             self.flow(500)
             time.sleep(70)
-            self.flow(0)
+            self.flow(-3)
             # time.sleep(bleach_time*60)
             self.valve_select(pbs_valve)
 
@@ -3224,7 +3224,7 @@ class fluidics:
 
             self.flow(500)
             time.sleep(70)
-            self.flow(0)
+            self.flow(-3)
             time.sleep(5)
 
         elif action_type == 'Stain':
@@ -3239,7 +3239,7 @@ class fluidics:
             self.valve_select(stain_valve)
             self.flow(500)
             time.sleep(stain_flow_time)
-            self.flow(0)
+            self.flow(-3)
             self.valve_select(pbs_valve)
 
             for x in range(0, stain_inc_time):
@@ -3254,7 +3254,7 @@ class fluidics:
 
             self.flow(500)
             time.sleep(70)
-            self.flow(0)
+            self.flow(-3)
 
 
         elif action_type == "Wash":

@@ -7,15 +7,6 @@ from autocyplex import *
 
 pump = fluidics(6, 3)
 
-print('start')
-pump.flow(500)
-time.sleep(10)
-print('stop')
-pump.flow(0)
-time.sleep(10)
-print('no meter flow')
-pump.flow(500)
-time.sleep(10)
-print('stop')
-pump.flow(0)
-time.sleep(5)
+
+pump.liquid_action('Stain', stain_valve= 1, incub_val= 15)
+pump.liquid_action('Bleach')
