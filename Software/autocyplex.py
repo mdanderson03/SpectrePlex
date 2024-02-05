@@ -3081,10 +3081,11 @@ class fluidics:
             set_channel = int(1)  # convert to int
             set_channel = c_int32(set_channel)  # convert to c_int32
             time.sleep(3)
-            OB1_Get_Remote_Data(self.pump_ID, set_channel, byref(data_reg), byref(data_sens))
+            error = OB1_Get_Remote_Data(self.pump_ID, set_channel, byref(data_reg), byref(data_sens))
             current_flow_rate = data_sens.value
             current_pressure = int(data_reg.value)
             print('current flow rate', int(current_flow_rate))
+            print('error: ', error)
 
 
             time_log = 0

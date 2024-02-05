@@ -4,8 +4,8 @@
 
 import sys
 from email.header import UTF8
-sys.path.append('D:/dev/SDK/DLL64/DLL64')#add the path of the library here
-sys.path.append('D:/dev/SDK/Python_64')#add the path of the LoadElveflow.py
+sys.path.append('C:\Users\CyCIF PC\Documents\GitHub\AutoCIF\Python_64_elveflow\DLL64')#add the path of the library here
+sys.path.append('C:\Users\CyCIF PC\Documents\GitHub\AutoCIF\Python_64_elveflow')#add the path of the LoadElveflow.py
 
 from ctypes import *
 
