@@ -476,6 +476,7 @@ class cycif:
             self.tile_pattern(xyz_points, experiment_directory)
             self.fm_channel_initial(experiment_directory, off_array, z_slices)
             self.establish_exp_arrays(experiment_directory)
+            self.tissue_region_identifier(experiment_directory)
 
             if x_frame_size != 5056:
                 self.x_overlap_adjuster(x_frame_size, experiment_directory)
@@ -594,6 +595,7 @@ class cycif:
         #find tile counts
         x_tiles = np.shape(fm_array[0])[1]
         y_tiles = np.shape(fm_array[0])[0]
+        tissue_fm = fm_array[10]
         #define z index to be used (middle of stack)
         z = int(fm_array[3][0][0]/2)
         #make psuedo stack to hold images in
@@ -617,13 +619,18 @@ class cycif:
             for x in range(0, x_tiles):
                 for y in range(0, y_tiles):
 
+                    if tissue_fm[y][x] == 1:
 
-                    # acquire image and adjust exp to have unstaurated image. Takes new image is exp changes
-                    image = self.image_capture(experiment_directory, channel, exp_time, x,y,z)
-                    image, new_exp_time = self.exp_bound_solver(image, exp_time, 0.999)
-                    #add to stack and update exp used
-                    image_stack[y][x] = image[::, start_frame: end_frame]
-                    exp_calc_array[channel_index][0][y][x] = new_exp_time
+
+                        # acquire image and adjust exp to have unstaurated image. Takes new image is exp changes
+                        image = self.image_capture(experiment_directory, channel, exp_time, x,y,z)
+                        image, new_exp_time = self.exp_bound_solver(image, exp_time, 0.999)
+                        #add to stack and update exp used
+                        image_stack[y][x] = image[::, start_frame: end_frame]
+                        exp_calc_array[channel_index][0][y][x] = new_exp_time
+
+                    if tissue_fm[y][x] == 0:
+                        pass
 
             #find intensities and projected exp to acheive target_percentage
             self.image_exp_scorer(experiment_directory, image_stack, channel, percentage_cut_off, target_percentage)
@@ -680,9 +687,11 @@ class cycif:
         numpy_path = experiment_directory + '/' + 'np_arrays'
         os.chdir(numpy_path)
         exp_calc_array = np.load('exp_calc_array.npy', allow_pickle=False)
+        fm_array == np.load('fm_array.npy', allow_pickle=False)
 
         x_tiles = np.shape(exp_calc_array[0][0])[1]
         y_tiles = np.shape(exp_calc_array[0][0])[0]
+        tissue_fm = fm_array[10]
 
         # find desired intensity (highest)
         desired_int = 65000 * target_percentage
@@ -698,14 +707,19 @@ class cycif:
 
         for y in range(0, y_tiles):
             for x in range(0, x_tiles):
-                score = self.image_percentile_level(image_stack[y][x],
-                                               cut_off_threshold=percentage_cut_off) - 300  # 300 is offset for camera
-                exp_calc_array[channel_index][1][y][x] = score
 
-                original_exp_time = exp_calc_array[channel_index][0][y][x]
-                score_per_millisecond_exp = score / original_exp_time
-                projected_exp_time = int(desired_int / score_per_millisecond_exp)
-                exp_calc_array[channel_index][2][y][x] = projected_exp_time
+                if tissue_fm[y][x] ==  1:
+                    score = self.image_percentile_level(image_stack[y][x],
+                                                   cut_off_threshold=percentage_cut_off)
+                    exp_calc_array[channel_index][1][y][x] = score
+
+                    original_exp_time = exp_calc_array[channel_index][0][y][x]
+                    score_per_millisecond_exp = score / original_exp_time
+                    projected_exp_time = int(desired_int / score_per_millisecond_exp)
+                    exp_calc_array[channel_index][2][y][x] = projected_exp_time
+
+                if tissue_fm[y][x] == 0:
+                    exp_calc_array[channel_index][2][y][x] = 5000
 
         os.chdir(numpy_path)
         np.save('exp_calc_array.npy', exp_calc_array)
@@ -932,7 +946,7 @@ class cycif:
         dummy_channel = np.expand_dims(dummy_channel, axis=0)
         channel_count = np.shape(fm_array)[0]
 
-        while channel_count < 10:
+        while channel_count < 11:
             fm_array = np.append(fm_array, dummy_channel, axis=0)
             channel_count = np.shape(fm_array)[0]
 
@@ -942,11 +956,14 @@ class cycif:
         y_tiles = int(np.shape(fm_array[0])[0])
         x_tiles = int(np.shape(fm_array[0])[1])
         z_slice_array = np.full((y_tiles, x_tiles), z_slices)
+        tissue_all_ones_array = np.full((y_tiles, x_tiles), 1)
 
         fm_array[3] = z_slice_array
         fm_array[5] = z_slice_array
         fm_array[7] = z_slice_array
         fm_array[9] = z_slice_array
+
+        fm_array[10] = tissue_all_ones_array
 
         fm_array[2] = fm_array[2] + int(((z_slice_array[0][0] - 1) * slice_gap) / 2)
         fm_array[4] = fm_array[4] + int(((z_slice_array[0][0] - 1) * slice_gap) / 2)
@@ -1051,6 +1068,47 @@ class cycif:
 
         return xyz
 
+    def tissue_region_identifier(self, experiment_directory):
+        '''
+        Looks at tissue binary images and updates fm object to encode information
+        :return:
+        '''
+
+        # load in fm array
+        numpy_path = experiment_directory + '/' + 'np_arrays'
+        os.chdir(numpy_path)
+        file_name = 'fm_array.npy'
+        fm_array = np.load(file_name, allow_pickle=False)
+
+        # Find pixels in each dimensions
+        x_tiles = np.shape(fm_array[0])[1]
+        y_tiles = np.shape(fm_array[0])[0]
+
+        #make tissue binary images
+        self.tissue_binary_generate(experiment_directory)
+        tissue_path = experiment_directory + '/Tissue_Binary'
+        os.chdir(tissue_path)
+
+        tissue_status = 1
+
+        for x in range(0, x_tiles):
+            for y in range(0, y_tiles):
+
+                tissue_binary_name = 'x' + str(x) + '_y_' + str(y) + '_tissue.tif'
+                im = io.imread(tissue_binary_name)
+                sum = np.sum(im)
+
+                if sum > 0:
+                    tissue_status = 1
+                if sum == 0:
+                    tissue_status = 0
+
+                fm_array[10][y][x] = tissue_status
+
+        os.chdir(numpy_path)
+        np.save(file_name, fm_array)
+
+
     #recursize autofocusfunctions#####################################
 
     def highest_index(self, score_array):
@@ -1139,6 +1197,7 @@ class cycif:
 
         numpy_x = fm_array[0]
         numpy_y = fm_array[1]
+        tissue_fm = fm_array[10]
 
         y_tile_count = numpy_x.shape[0]
         x_tile_count = numpy_y.shape[1]
@@ -1157,29 +1216,34 @@ class cycif:
         # iterate through tiles and find index of slice most in focus
         for x in range(0, x_tile_count):
             for y in range(0, y_tile_count):
-                for z in range(0, z_count):
-                    # load in binary image mask
-                    os.chdir(labelled_path)
-                    file_name = 'x' + str(x) + '_y_' + str(y) + '_c_DAPI.tif'
-                    labels = io.imread(file_name)
-                    # load in z slice
-                    os.chdir(dapi_im_path)
-                    file_name = 'z_' + str(z) + '_x' + str(x) + '_y_' + str(y) + '_c_DAPI.tif'
-                    img = io.imread(file_name)
-                    # apply mask to image and find brenner score
-                    score = self.focus_score(img, step_size, labels)
-                    score_array[z] = score
-                # find highest score slice index and find shift amount
-                focus_index = self.highest_index(score_array)
-                print('cycle',cycle,'x', x, 'y', y)
-                #plt.scatter(x_axis, score_array)
-                #plt.show()
-                center_focus_index_difference = int(focus_index - z_middle)
-                print(center_focus_index_difference)
-                new_fm_z_position = center_focus_index_difference * slice_gap
-                # update focus map for all channels
-                fm_array[2][y][x] = fm_array[2][y][x] + new_fm_z_position
 
+                if tissue_fm[y][x] == 1:
+
+                    for z in range(0, z_count):
+                        # load in binary image mask
+                        os.chdir(labelled_path)
+                        file_name = 'x' + str(x) + '_y_' + str(y) + '_c_DAPI.tif'
+                        labels = io.imread(file_name)
+                        # load in z slice
+                        os.chdir(dapi_im_path)
+                        file_name = 'z_' + str(z) + '_x' + str(x) + '_y_' + str(y) + '_c_DAPI.tif'
+                        img = io.imread(file_name)
+                        # apply mask to image and find brenner score
+                        score = self.focus_score(img, step_size, labels)
+                        score_array[z] = score
+                    # find highest score slice index and find shift amount
+                    focus_index = self.highest_index(score_array)
+                    print('cycle',cycle,'x', x, 'y', y)
+                    #plt.scatter(x_axis, score_array)
+                    #plt.show()
+                    center_focus_index_difference = int(focus_index - z_middle)
+                    print(center_focus_index_difference)
+                    new_fm_z_position = center_focus_index_difference * slice_gap
+                    # update focus map for all channels
+                    fm_array[2][y][x] = fm_array[2][y][x] + new_fm_z_position
+
+                if tissue_fm[y][x] == 0:
+                    pass
 
         # save updated focus array
         numpy_path = experiment_directory + '/' + 'np_arrays'
@@ -1247,6 +1311,7 @@ class cycif:
         # determine attributes like tile counts,z slices and channel counts
         numpy_x = full_array[0]
         numpy_y = full_array[1]
+        tissue_fm = full_array[10]
 
         side_pixel_count = int(5056 - x_pixels)
 
@@ -1270,111 +1335,121 @@ class cycif:
             if y % 2 != 0:
                 for x in range(x_tile_count - 1, -1, -1):
 
-                    core.set_xy_position(numpy_x[y][x], numpy_y[y][x])
-                    #time.sleep(1)
+                    if tissue_fm[y][x] == 1:
 
-                    for channel in channels:
+                        core.set_xy_position(numpy_x[y][x], numpy_y[y][x])
+                        #time.sleep(1)
 
-                        # determine the proper indecies to use for focus map z positions and exp array
-                        if channel == 'DAPI':
-                            channel_index = 2
-                            tif_stack_c_index = 0
-                            zc_index = 0
-                        if channel == 'A488':
-                            channel_index = 4
-                            tif_stack_c_index = 1
-                            zc_index = 1
-                        if channel == 'A555':
-                            channel_index = 6
-                            tif_stack_c_index = 2
-                            zc_index = 2
-                        if channel == 'A647':
-                            channel_index = 8
-                            tif_stack_c_index = 3
-                            zc_index = 3
+                        for channel in channels:
 
-                        numpy_z = full_array[channel_index]
-                        exp_time = int(exp_time_array[tif_stack_c_index])
-                        core.set_config("Color", channel)
-                        core.set_exposure(exp_time)
+                            # determine the proper indecies to use for focus map z positions and exp array
+                            if channel == 'DAPI':
+                                channel_index = 2
+                                tif_stack_c_index = 0
+                                zc_index = 0
+                            if channel == 'A488':
+                                channel_index = 4
+                                tif_stack_c_index = 1
+                                zc_index = 1
+                            if channel == 'A555':
+                                channel_index = 6
+                                tif_stack_c_index = 2
+                                zc_index = 2
+                            if channel == 'A647':
+                                channel_index = 8
+                                tif_stack_c_index = 3
+                                zc_index = 3
 
-                        z_end = int(numpy_z[y][x])
-                        z_start = int(z_end - z_slices * slice_gap)
+                            numpy_z = full_array[channel_index]
+                            exp_time = int(exp_time_array[tif_stack_c_index])
+                            core.set_config("Color", channel)
+                            core.set_exposure(exp_time)
 
-                        z_counter = 0
+                            z_end = int(numpy_z[y][x])
+                            z_start = int(z_end - z_slices * slice_gap)
 
-                        for z in range(z_start, z_end, slice_gap):
-                            core.set_position(z)
-                            time.sleep(0.3)
-                            core.snap_image()
-                            tagged_image = core.get_tagged_image()
-                            pixels = np.reshape(tagged_image.pix,
-                                                newshape=[tagged_image.tags["Height"], tagged_image.tags["Width"]])
-                            zc_tif_stack[zc_index][z_counter] = pixels[::, side_pixel_count:side_pixel_count + x_pixels]
+                            z_counter = 0
 
-                            # core.pop_next_tagged_image()
-                            image_number_counter += 1
-                            z_counter += 1
+                            for z in range(z_start, z_end, slice_gap):
+                                core.set_position(z)
+                                time.sleep(0.3)
+                                core.snap_image()
+                                tagged_image = core.get_tagged_image()
+                                pixels = np.reshape(tagged_image.pix,
+                                                    newshape=[tagged_image.tags["Height"], tagged_image.tags["Width"]])
+                                zc_tif_stack[zc_index][z_counter] = pixels[::, side_pixel_count:side_pixel_count + x_pixels]
 
-                    # save zc stack
-                    self.zc_save(zc_tif_stack, channels, x, y, cycle_number, x_pixels, experiment_directory,
-                                 Stain_or_Bleach)
+                                # core.pop_next_tagged_image()
+                                image_number_counter += 1
+                                z_counter += 1
+
+                        # save zc stack
+                        self.zc_save(zc_tif_stack, channels, x, y, cycle_number, x_pixels, experiment_directory,
+                                     Stain_or_Bleach)
+
+                    if tissue_fm[y][x] == 0:
+                        pass
 
 
             elif y % 2 == 0:
                 for x in range(0, x_tile_count):
 
-                    #print('x', numpy_x[y][x], 'y', numpy_y[y][x])
+                    if tissue_fm[y][x] == 1:
 
-                    core.set_xy_position(numpy_x[y][x], numpy_y[y][x])
-                    #time.sleep(1)
+                        #print('x', numpy_x[y][x], 'y', numpy_y[y][x])
 
-                    for channel in channels:
+                        core.set_xy_position(numpy_x[y][x], numpy_y[y][x])
+                        #time.sleep(1)
 
-                        # determine the proper indecies to use for focus map z positions and exp array
-                        if channel == 'DAPI':
-                            channel_index = 2
-                            tif_stack_c_index = 0
-                            zc_index = 0
-                        if channel == 'A488':
-                            channel_index = 4
-                            tif_stack_c_index = 1
-                            zc_index = 1
-                        if channel == 'A555':
-                            channel_index = 6
-                            tif_stack_c_index = 2
-                            zc_index = 2
-                        if channel == 'A647':
-                            channel_index = 8
-                            tif_stack_c_index = 3
-                            zc_index = 3
+                        for channel in channels:
 
-                        numpy_z = full_array[channel_index]
-                        exp_time = int(exp_time_array[tif_stack_c_index])
-                        core.set_config("Color", channel)
-                        core.set_exposure(exp_time)
+                            # determine the proper indecies to use for focus map z positions and exp array
+                            if channel == 'DAPI':
+                                channel_index = 2
+                                tif_stack_c_index = 0
+                                zc_index = 0
+                            if channel == 'A488':
+                                channel_index = 4
+                                tif_stack_c_index = 1
+                                zc_index = 1
+                            if channel == 'A555':
+                                channel_index = 6
+                                tif_stack_c_index = 2
+                                zc_index = 2
+                            if channel == 'A647':
+                                channel_index = 8
+                                tif_stack_c_index = 3
+                                zc_index = 3
 
-                        z_end = int(numpy_z[y][x])
-                        z_start = int(z_end - z_slices * slice_gap)
-                        z_counter = 0
-                        #print('channel', channel, 'z_range', z_start, z_end)
+                            numpy_z = full_array[channel_index]
+                            exp_time = int(exp_time_array[tif_stack_c_index])
+                            core.set_config("Color", channel)
+                            core.set_exposure(exp_time)
 
-                        for z in range(z_start, z_end, slice_gap):
-                            core.set_position(z)
-                            time.sleep(0.3)
+                            z_end = int(numpy_z[y][x])
+                            z_start = int(z_end - z_slices * slice_gap)
+                            z_counter = 0
+                            #print('channel', channel, 'z_range', z_start, z_end)
 
-                            core.snap_image()
-                            tagged_image = core.get_tagged_image()
-                            pixels = np.reshape(tagged_image.pix,
-                                                newshape=[tagged_image.tags["Height"], tagged_image.tags["Width"]])
-                            zc_tif_stack[zc_index][z_counter] = pixels[::, side_pixel_count:side_pixel_count + x_pixels]
+                            for z in range(z_start, z_end, slice_gap):
+                                core.set_position(z)
+                                time.sleep(0.3)
 
-                            # core.pop_next_tagged_image()
-                            image_number_counter += 1
-                            z_counter += 1
+                                core.snap_image()
+                                tagged_image = core.get_tagged_image()
+                                pixels = np.reshape(tagged_image.pix,
+                                                    newshape=[tagged_image.tags["Height"], tagged_image.tags["Width"]])
+                                zc_tif_stack[zc_index][z_counter] = pixels[::, side_pixel_count:side_pixel_count + x_pixels]
 
-                    self.zc_save(zc_tif_stack, channels, x, y, cycle_number, x_pixels, experiment_directory,
-                                 Stain_or_Bleach)
+                                # core.pop_next_tagged_image()
+                                image_number_counter += 1
+                                z_counter += 1
+
+                        self.zc_save(zc_tif_stack, channels, x, y, cycle_number, x_pixels, experiment_directory,
+                                     Stain_or_Bleach)
+
+                    if tissue_fm[y][x] == 0:
+                        pass
 
         return
 
