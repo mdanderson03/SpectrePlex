@@ -3,7 +3,7 @@ from optparse import OptionParser
 microscope = cycif() # initialize cycif object
 pump = fluidics(6, 3)
 
-experiment_directory = r'E:\31-1-2024 multiplex'
+experiment_directory = r'E:\2_2_24 celiac multiplex'
 z_slices = 7
 x_frame_size = 2960
 offset_array = [0, -8, -7, -7]
@@ -36,6 +36,7 @@ offset_array = [0, -8, -7, -7]
 #print(microscope.kinetic_autofocus(experiment_directory, -87, 11))
 
 for cycle in range(0,8):
+
     microscope.full_cycle(experiment_directory, cycle, offset_array, cycle, pump, z_slices, incub_val=45)
 
 #microscope.post_acquisition_processor(experiment_directory, x_frame_size)
