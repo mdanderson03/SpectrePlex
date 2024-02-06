@@ -29,7 +29,7 @@ from pystackreg import StackReg
 from pybasic import shading_correction
 from path import Path
 from csbdeep.utils import normalize
-#from stardist.models import StarDist2D
+from stardist.models import StarDist2D
 import cv2
 from ctypes import *
 # from GUI_layout import *
@@ -1011,7 +1011,7 @@ class cycif:
 
         # generate new blank fm_array numpy array
 
-        new_fm_array = np.random.rand(10, y_tiles, new_x_tiles).astype('float64')
+        new_fm_array = np.random.rand(11, y_tiles, new_x_tiles).astype('float64')
 
         # Find border where x starts on the left (not center point, but x value for left most edge of left most tile
 
@@ -1034,8 +1034,8 @@ class cycif:
         for y in range(0, y_tiles):
             new_fm_array[1][y, 0:new_x_tiles] = fm_array[1][y][0]
 
-        # populate new_fm_array with dapi z values and everything else in planes 2-9
-        for slice in range(2, 10):
+        # populate new_fm_array with dapi z values and everything else in planes 2-10
+        for slice in range(2, 11):
             new_fm_array[slice, 0:y_tiles, 0:new_x_tiles] = fm_array[slice][0][0]
 
         np.save('fm_array.npy', new_fm_array)
@@ -1184,7 +1184,7 @@ class cycif:
         # make nuclear masks if cycle 0
 
         if cycle == 1:
-            self.generate_nuc_mask(experiment_directory)
+            #self.generate_nuc_mask(experiment_directory)
             self.tissue_region_identifier(experiment_directory)
         else:
             pass
