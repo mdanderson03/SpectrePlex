@@ -3057,73 +3057,20 @@ class fluidics:
         set_target = float(flow_rate)  # in uL/min for flow
         set_target = c_double(set_target)  # convert to c_double
 
-        if flow_rate == 0:
-            # stop PI Loop
-            PID_Set_Running_Remote(self.pump_ID, set_channel, 0)
-            time.sleep(2)
+        # OB1_Start_Remote_Measurement(self.pump_ID, self.calibration_array, 1000)
+        OB1_Set_Remote_Target(self.pump_ID, set_channel, set_target)
 
-            #set pressure to 0
+        data_sens = c_double()
+        data_reg = c_double()
+        set_channel = int(1)  # convert to int
+        set_channel = c_int32(set_channel)  # convert to c_int32
+        time.sleep(3)
+        error = OB1_Get_Remote_Data(self.pump_ID, set_channel, byref(data_reg), byref(data_sens))
+        current_flow_rate = data_sens.value
+        current_pressure = int(data_reg.value)
+        print('current flow rate', int(current_flow_rate))
+        print('error: ', error)
 
-            OB1_Set_Remote_Target(self.pump_ID, set_channel, set_target)
-
-            time.sleep(2)
-
-            # start PI Loop
-            PID_Set_Running_Remote(self.pump_ID, set_channel, 1)
-            #time.sleep(.2)
-            data_sens = c_double()
-            data_reg = c_double()
-            set_channel = int(1)  # convert to int
-            set_channel = c_int32(set_channel)  # convert to c_int32
-            time.sleep(1)
-            OB1_Get_Remote_Data(self.pump_ID, set_channel, byref(data_reg), byref(data_sens))
-            current_flow_rate = data_sens.value
-            current_pressure = int(data_reg.value)
-            print('current flow rate', int(current_flow_rate))
-
-
-        else:
-            # OB1_Start_Remote_Measurement(self.pump_ID, self.calibration_array, 1000)
-            OB1_Set_Remote_Target(self.pump_ID, set_channel, set_target)
-
-            data_sens = c_double()
-            data_reg = c_double()
-            set_channel = int(1)  # convert to int
-            set_channel = c_int32(set_channel)  # convert to c_int32
-            time.sleep(3)
-            error = OB1_Get_Remote_Data(self.pump_ID, set_channel, byref(data_reg), byref(data_sens))
-            current_flow_rate = data_sens.value
-            current_pressure = int(data_reg.value)
-            print('current flow rate', int(current_flow_rate))
-            print('error: ', error)
-
-
-
-
-            time_log = 0
-            '''
-    
-            while current_flow_rate < flow_rate * 0.95 or current_flow_rate > flow_rate * 1.05 and current_pressure > 0:
-    
-                data_sens = c_double()
-                data_reg = c_double()
-                set_channel = int(1)  # convert to int
-                set_channel = c_int32(set_channel)  # convert to c_int32
-                OB1_Get_Remote_Data(self.pump_ID, set_channel, byref(data_reg), byref(data_sens))
-                current_flow_rate = int(data_sens.value)
-                current_pressure = data_reg.value
-                #print('current flow rate', current_flow_rate)
-                time.sleep(1)
-                time_log += 1
-                if time_log > 10:
-                    OB1_Set_Remote_Target(self.pump_ID, set_channel, set_target)
-                    time_log = 0
-                else:
-                    pass
-    
-            '''
-
-        # OB1_Stop_Remote_Measurement(self.pump_ID)
 
     def ob1_end(self):
 
@@ -3265,7 +3212,7 @@ class fluidics:
             self.valve_select(pbs_valve)
             self.flow(500)
             time.sleep(70)
-            self.flow(0)
+            self.flow(-3)
 
 
         elif action_type == 'Nuc_Touchup':
