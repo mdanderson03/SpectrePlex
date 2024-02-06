@@ -476,7 +476,6 @@ class cycif:
             self.tile_pattern(xyz_points, experiment_directory)
             self.fm_channel_initial(experiment_directory, off_array, z_slices)
             self.establish_exp_arrays(experiment_directory)
-            self.tissue_region_identifier(experiment_directory)
 
             if x_frame_size != 5056:
                 self.x_overlap_adjuster(x_frame_size, experiment_directory)
@@ -1186,6 +1185,7 @@ class cycif:
 
         if cycle == 1:
             self.generate_nuc_mask(experiment_directory)
+            self.tissue_region_identifier(experiment_directory)
         else:
             pass
 
