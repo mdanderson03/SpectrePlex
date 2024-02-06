@@ -1184,7 +1184,7 @@ class cycif:
         # make nuclear masks if cycle 0
 
         if cycle == 1:
-            #self.generate_nuc_mask(experiment_directory)
+            self.generate_nuc_mask(experiment_directory)
             self.tissue_region_identifier(experiment_directory)
         else:
             pass
@@ -2327,6 +2327,14 @@ class cycif:
             cv2.imwrite(str(darkfield_name), optimizer.darkfield_fullsize.astype(np.float32))
             optimizer.write_images(output_directory, epsilon=epsilon)
 
+    def tissue_filter(self, image):
+
+        image = image.astype('bool')
+        image_2 = morphology.remove_small_objects(image, min_size=80000, connectivity=1)
+        image_2 = image_2.astype('int8')
+
+        return image_2
+
     def tissue_binary_generate(self, experiment_directory):
         '''
         Generates tissue binary maps from star dist binary maps
@@ -2366,9 +2374,10 @@ class cycif:
 
                 tissue_binary_im = morphology.binary_dilation(star_dist_im, foot_print)
                 tissue_binary_im = tissue_binary_im.astype(np.uint8)
+                filtered_image = self.tissue_filter(tissue_binary_im)
                 os.chdir(tissue_path)
                 tissue_binary_name = 'x' + str(x) + '_y_' + str(y) + '_tissue.tif'
-                io.imsave(tissue_binary_name, tissue_binary_im)
+                io.imsave(tissue_binary_name, filtered_image)
 
     def infocus(self, experiment_directory, cycle_number, x_frame_size, x_sub_section_count = 1, y_sub_section_count = 1):
 
