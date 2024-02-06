@@ -29,7 +29,7 @@ from pystackreg import StackReg
 from pybasic import shading_correction
 from path import Path
 from csbdeep.utils import normalize
-#from stardist.models import StarDist2D
+from stardist.models import StarDist2D
 import cv2
 from ctypes import *
 # from GUI_layout import *
@@ -3223,7 +3223,7 @@ class fluidics:
                 time.sleep(60)
 
             self.flow(500)
-            time.sleep(70)
+            time.sleep(80)
             self.flow(-3)
             time.sleep(5)
 
@@ -3252,9 +3252,12 @@ class fluidics:
             # else:
             #    pass
 
+            self.valve_select(pbs_valve)
+            time.sleep(30)
             self.flow(500)
-            time.sleep(70)
+            time.sleep(80)
             self.flow(-3)
+            time.sleep(5)
 
 
         elif action_type == "Wash":
