@@ -2106,6 +2106,91 @@ class cycif:
 
         return xml
 
+    def star_dist_stage_placement(self, experiment_directory, x_pixels):
+        '''
+        Goal to place images via rough stage coords in a larger image. WIll have nonsense borders
+        '''
+
+        star_dist_path = experiment_directory + r'\Labelled_Nuc'
+
+        # load in numpy matricies
+
+        numpy_path = experiment_directory + '/' + 'np_arrays'
+        os.chdir(numpy_path)
+        full_array = np.load('fm_array.npy', allow_pickle=False)
+
+        numpy_x = full_array[0]
+        numpy_y = full_array[1]
+
+        y_tile_count = numpy_x.shape[0]
+        x_tile_count = numpy_y.shape[1]
+
+        fov_x_pixels = x_pixels
+        fov_y_pixels = 2960
+        um_pixel = 0.20
+
+        # generate large numpy image with rand numbers. Big enough to hold all images + 10%
+
+        super_y = int(1.02 * (y_tile_count * fov_y_pixels))
+        super_x = int(1.02 * (x_tile_count * fov_x_pixels))
+        placed_image = np.random.rand(super_y, super_x).astype('uint16')
+
+        # transform numpy x and y coords into new shifted space that starts at zero and is in units of pixels and not um
+        numpy_x_pixels = numpy_x / um_pixel
+        numpy_y_pixels = numpy_y / um_pixel
+
+        y_displacement_vector = (2100 / um_pixel + fov_y_pixels / 2) * 1.02
+        x_displacement_vector = (-11385 / um_pixel + fov_x_pixels / 2) * 1.02
+
+        numpy_x_pixels = numpy_x_pixels + x_displacement_vector
+        numpy_x_pixels = np.ceil(numpy_x_pixels)
+        numpy_x_pixels = numpy_x_pixels.astype(int)
+
+        numpy_y_pixels = numpy_y_pixels + y_displacement_vector
+        numpy_y_pixels = np.ceil(numpy_y_pixels)
+        numpy_y_pixels = numpy_y_pixels.astype(int)
+
+        # load images into python
+
+        os.chdir(star_dist_path)
+
+        # place images into large array
+
+        for x in range(0, x_tile_count):
+            for y in range(0, y_tile_count):
+                filename = 'x' + str(x) + '_y_' + str(y) + '_c_DAPI.tif'
+                try:
+                    image = io.imread(filename)
+                except:
+                    image = cv2.imread(filename)[::,::,0]
+
+                # define subsection of large array that fits dimensions of single FOV
+                # x_center = numpy_x_pixels[y][x]
+                # y_center = numpy_y_pixels[y][x]
+                # x_start = int(x_center - fov_x_pixels / 2)
+                # x_end = int(x_center + fov_x_pixels / 2)
+                # y_start = int(y_center - fov_y_pixels / 2)
+                # y_end = int(y_center + fov_y_pixels / 2)
+
+                if x == 0 and y == 0:
+                    x_start = 0
+                    x_end = x_pixels
+                    y_start = 0
+                    y_end = 2960
+                else:
+
+                    x_start = int(x * fov_x_pixels * 0.9)
+                    x_end = x_start + x_pixels
+                    y_start = int(y * fov_y_pixels * 0.9)
+                    y_end = y_start + 2960
+
+                # placed_image[y_start:y_end, x_start:x_end] = placed_image[y_start:y_end, x_start:x_end] + image
+                placed_image[y_start:y_end, x_start:x_end] = image
+
+        # save output image
+        os.chdir(star_dist_path)
+        tf.imwrite('star_dist_placed.tif', placed_image)
+
     def stage_placement(self, experiment_directory, cycle_number, x_pixels):
         '''
         Goal to place images via rough stage coords in a larger image. WIll have nonsense borders
