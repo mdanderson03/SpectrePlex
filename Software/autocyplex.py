@@ -1448,7 +1448,7 @@ class cycif:
                                      auto_expose_run=0)
             time.sleep(10)
 
-        self.post_acquisition_processor(experiment_directory, x_frame_size)
+        # self.post_acquisition_processor(experiment_directory, x_frame_size)
 
     ######Kinetics and its functions#####################################################
 
@@ -2995,8 +2995,8 @@ class fluidics:
 
         Calib_path = r'C:\Users\CyCIF PC\Documents\GitHub\AutoCIF\Python_64_elveflow\calibration\1_12_24_cal.txt'
         Calib = (c_double * 1000)()
-        #Elveflow_Calibration_Load(Calib_path.encode('ascii'), byref(Calib), 1000)
-        Elveflow_Calibration_Default(byref(Calib), 1000)
+        Elveflow_Calibration_Load(Calib_path.encode('ascii'), byref(Calib), 1000)
+        #Elveflow_Calibration_Default(byref(Calib), 1000)
         OB1_Start_Remote_Measurement(Instr_ID.value, byref(Calib), 1000)
         self.calibration_array = byref(Calib)
 
@@ -3057,60 +3057,20 @@ class fluidics:
         set_target = float(flow_rate)  # in uL/min for flow
         set_target = c_double(set_target)  # convert to c_double
 
-        if flow_rate == 0:
-            # stop PI Loop
-            PID_Set_Running_Remote(self.pump_ID, set_channel, 0)
-            time.sleep(2)
+        # OB1_Start_Remote_Measurement(self.pump_ID, self.calibration_array, 1000)
+        OB1_Set_Remote_Target(self.pump_ID, set_channel, set_target)
 
-            #set pressure to 0
+        data_sens = c_double()
+        data_reg = c_double()
+        set_channel = int(1)  # convert to int
+        set_channel = c_int32(set_channel)  # convert to c_int32
+        time.sleep(3)
+        error = OB1_Get_Remote_Data(self.pump_ID, set_channel, byref(data_reg), byref(data_sens))
+        current_flow_rate = data_sens.value
+        current_pressure = int(data_reg.value)
+        print('current flow rate', int(current_flow_rate))
+        print('error: ', error)
 
-            OB1_Set_Remote_Target(self.pump_ID, set_channel, set_target)
-
-            time.sleep(2)
-
-            # start PI Loop
-            PID_Set_Running_Remote(self.pump_ID, set_channel, 1)
-            #time.sleep(.2)
-
-        else:
-            # OB1_Start_Remote_Measurement(self.pump_ID, self.calibration_array, 1000)
-            OB1_Set_Remote_Target(self.pump_ID, set_channel, set_target)
-
-            data_sens = c_double()
-            data_reg = c_double()
-            set_channel = int(1)  # convert to int
-            set_channel = c_int32(set_channel)  # convert to c_int32
-            time.sleep(3)
-            OB1_Get_Remote_Data(self.pump_ID, set_channel, byref(data_reg), byref(data_sens))
-            current_flow_rate = data_sens.value
-            current_pressure = int(data_reg.value)
-            print('current flow rate', int(current_flow_rate))
-
-
-            time_log = 0
-            '''
-    
-            while current_flow_rate < flow_rate * 0.95 or current_flow_rate > flow_rate * 1.05 and current_pressure > 0:
-    
-                data_sens = c_double()
-                data_reg = c_double()
-                set_channel = int(1)  # convert to int
-                set_channel = c_int32(set_channel)  # convert to c_int32
-                OB1_Get_Remote_Data(self.pump_ID, set_channel, byref(data_reg), byref(data_sens))
-                current_flow_rate = int(data_sens.value)
-                current_pressure = data_reg.value
-                #print('current flow rate', current_flow_rate)
-                time.sleep(1)
-                time_log += 1
-                if time_log > 10:
-                    OB1_Set_Remote_Target(self.pump_ID, set_channel, set_target)
-                    time_log = 0
-                else:
-                    pass
-    
-            '''
-
-        # OB1_Stop_Remote_Measurement(self.pump_ID)
 
     def ob1_end(self):
 
@@ -3202,7 +3162,7 @@ class fluidics:
             self.valve_select(bleach_valve)
             self.flow(500)
             time.sleep(70)
-            self.flow(0)
+            self.flow(-3)
             # time.sleep(bleach_time*60)
             self.valve_select(pbs_valve)
 
@@ -3210,8 +3170,8 @@ class fluidics:
                 time.sleep(60)
 
             self.flow(500)
-            time.sleep(70)
-            self.flow(0)
+            time.sleep(80)
+            self.flow(-3)
             time.sleep(5)
 
         elif action_type == 'Stain':
@@ -3226,7 +3186,7 @@ class fluidics:
             self.valve_select(stain_valve)
             self.flow(500)
             time.sleep(stain_flow_time)
-            self.flow(0)
+            self.flow(-3)
             self.valve_select(pbs_valve)
 
             for x in range(0, stain_inc_time):
@@ -3239,9 +3199,12 @@ class fluidics:
             # else:
             #    pass
 
+            self.valve_select(pbs_valve)
+            time.sleep(30)
             self.flow(500)
-            time.sleep(70)
-            self.flow(0)
+            time.sleep(80)
+            self.flow(-3)
+            time.sleep(5)
 
 
         elif action_type == "Wash":
@@ -3249,7 +3212,7 @@ class fluidics:
             self.valve_select(pbs_valve)
             self.flow(500)
             time.sleep(70)
-            self.flow(0)
+            self.flow(-3)
 
 
         elif action_type == 'Nuc_Touchup':

@@ -3,12 +3,9 @@
 #coding: utf8
 
 import sys
-
-sys.path.append(
-    r'C:\Users\CyCIF PC\Documents\GitHub\AutoCIF\Python_64_elveflow\DLL64')  # add the path of the library here
-sys.path.append(r'C:\Users\CyCIF PC\Documents\GitHub\AutoCIF\Python_64_elveflow')  # add the path of the LoadElveflow.py
-sys.path.append(r'C:\Users\mike\Documents\GitHub\AutoCIF\Python_64_elveflow\DLL64')  # add the path of the library here
-sys.path.append(r'C:\Users\mike\Documents\GitHub\AutoCIF\Python_64_elveflow')  # add the path of the LoadElveflow.py
+from email.header import UTF8
+sys.path.append('C:\Users\CyCIF PC\Documents\GitHub\AutoCIF\Python_64_elveflow\DLL64')#add the path of the library here
+sys.path.append('C:\Users\CyCIF PC\Documents\GitHub\AutoCIF\Python_64_elveflow')#add the path of the LoadElveflow.py
 
 from ctypes import *
 
@@ -17,19 +14,19 @@ from array import array
 from Elveflow64 import *
 
 
-#default
+#
 # Initialization of OB1 ( ! ! ! REMEMBER TO USE .encode('ascii') ! ! ! )
 #
 Instr_ID=c_int32()
 print("Instrument name and regulator types are hardcoded in the Python script")
-#see User Guide to determine regulator types and NIMAX to determine the instrument name
-error=OB1_Initialization('COM3'.encode('ascii'),0,0,0,0,byref(Instr_ID))
+#see User Guide to determine regulator types and NIMAX to determine the instrument name 
+error=OB1_Initialization('COM4'.encode('ascii'),0,0,0,0,byref(Instr_ID)) 
 #all functions will return error codes to help you to debug your code, for further information refer to User Guide
 print('error:%d' % error)
 print("OB1 ID: %d" % Instr_ID.value)
 
 #add one digital flow sensor with water calibration, all information to declare sensors are described in the User Guide
-error=OB1_Add_Sens(Instr_ID, 1, 5, 1, 0, 7,0)  # 16bit working range between 0-1000uL/min, also what are CustomSens_Voltage_5_to_25 and can I really choose any digital range?
+error=OB1_Add_Sens(Instr_ID, 1, 4, 1, 0, 7, 0)
 #(CustomSens_Voltage_5_to_25 only works with CustomSensors and OB1 from 2020 and after)
 print('error add digit flow sensor:%d' % error)
 
@@ -50,7 +47,7 @@ repeat=True
 while repeat==True:
     answer=input('select calibration type (default, load, new ) : ')
     #answer='default'#test purpose only
-    Calib_path= r'C:\\Users\\Public\\Desktop\\Calibration\\1_12_24_cal.txt'
+    Calib_path='C:\\Users\\Public\\Desktop\\Calibration\\Calib.txt'
     if answer=='default':
         error=Elveflow_Calibration_Default (byref(Calib),1000)
         #for i in range (0,1000):
