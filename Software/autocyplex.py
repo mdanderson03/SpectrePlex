@@ -3227,6 +3227,7 @@ class fluidics:
         print('current flow rate', int(current_flow_rate))
         print('error: ', error)
 
+
     def ob1_end(self):
 
         set_channel = int(1)  # convert to int
@@ -3325,7 +3326,7 @@ class fluidics:
                 time.sleep(60)
 
             self.flow(500)
-            time.sleep(70)
+            time.sleep(80)
             self.flow(-3)
             time.sleep(5)
 
@@ -3354,9 +3355,12 @@ class fluidics:
             # else:
             #    pass
 
+            self.valve_select(pbs_valve)
+            time.sleep(30)
             self.flow(500)
-            time.sleep(100)
+            time.sleep(80)
             self.flow(-3)
+            time.sleep(5)
 
 
         elif action_type == "Wash":
