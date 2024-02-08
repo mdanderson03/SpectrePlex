@@ -98,33 +98,60 @@ class fluidics:
         set_channel = int(1)  # convert to int
         set_channel = c_int32(set_channel)  # convert to c_int32
         time.sleep(3)
-        error = OB1_Get_Remote_Data(self.pump_ID, set_channel, byref(data_reg), byref(data_sens))
+        OB1_Get_Remote_Data(self.pump_ID, set_channel, byref(data_reg), byref(data_sens))
         current_flow_rate = data_sens.value
-        current_pressure = int(data_reg.value)
         print('current flow rate', int(current_flow_rate))
-        print('error: ', error)
 
+        if flow_rate <= 0 and current_flow_rate > 50:
+            print('ending communication with OB1')
+            self.ob1_end()
+            time.sleep(1)
+            print('starting communication with OB1')
+            self.ob1_start()
+            time.sleep(1)
+            print('setting target flow rate again')
+            OB1_Set_Remote_Target(self.pump_ID, set_channel, set_target)
+            OB1_Get_Remote_Data(self.pump_ID, set_channel, byref(data_reg), byref(data_sens))
+            current_flow_rate = data_sens.value
+            print('current flow rate', int(current_flow_rate))
+
+        if flow_rate > 400 and current_flow_rate < 0.1 * flow_rate:
+            print('ending communication with OB1')
+            self.ob1_end()
+            time.sleep(1)
+            print('starting communication with OB1')
+            self.ob1_start()
+            time.sleep(1)
+            print('setting target flow rate again')
+            OB1_Set_Remote_Target(self.pump_ID, set_channel, set_target)
+            OB1_Get_Remote_Data(self.pump_ID, set_channel, byref(data_reg), byref(data_sens))
+            current_flow_rate = data_sens.value
+            print('current flow rate', int(current_flow_rate))
+
+
+    def ob1_start(self):
+
+        # OB1 initialize
+        ob1_path = 'ASRL' + str(ob1_com_port) + '::INSTR'
+        Instr_ID = c_int32()
+        pump = OB1_Initialization(ob1_path.encode('ascii'), 0, 0, 0, 0, byref(Instr_ID))
+        pump = OB1_Add_Sens(Instr_ID, 1, 5, 1, 0, 7,
+                            0)  # 16bit working range between 0-1000uL/min, also what are CustomSens_Voltage_5_to_25 and can I really choose any digital range?
+
+        Calib_path = r'C:\Users\CyCIF PC\Documents\GitHub\AutoCIF\Python_64_elveflow\calibration\1_12_24_cal.txt'
+        Calib = (c_double * 1000)()
+        Elveflow_Calibration_Load(Calib_path.encode('ascii'), byref(Calib), 1000)
+        # Elveflow_Calibration_Default(byref(Calib), 1000)
+        OB1_Start_Remote_Measurement(Instr_ID.value, byref(Calib), 1000)
+        self.calibration_array = byref(Calib)
+
+        set_channel_regulator = int(1)  # convert to int
+        set_channel_regulator = c_int32(set_channel_regulator)  # convert to c_int32
+        set_channel_sensor = int(1)
+        set_channel_sensor = c_int32(set_channel_sensor)  # convert to c_int32
+        PID_Add_Remote(Instr_ID.value, set_channel_regulator, Instr_ID.value, set_channel_sensor, 0.9, 0.004, 1)
 
     def ob1_end(self):
-
-        set_channel = int(1)  # convert to int
-        set_channel = c_int32(set_channel)  # convert to c_int32
-
-        data_sens = c_double()
-        data_reg = c_double()
-
-        x = 0
-        self.flow(0)
-
-        while x == 0:
-            OB1_Get_Remote_Data(self.pump_ID, set_channel, byref(data_reg), byref(data_sens))
-            flow_rate = data_sens.value
-
-            if flow_rate < 10:
-                x = 1
-            if flow_rate > 10:
-                x = 0
-            time.sleep(1)
 
         OB1_Stop_Remote_Measurement(self.pump_ID)
         OB1_Destructor(self.pump_ID)
