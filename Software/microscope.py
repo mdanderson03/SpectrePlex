@@ -151,31 +151,112 @@ class cycif:
     ###########################################################
     # This section is the for the exposure functions.
     ###########################################################
-    def auto_exposure(self, experiment_directory, x_frame_size, percentage_cut_off = 0.999, target_percentage = 0.2 ):
+    def auto_exposure(self, experiment_directory, x_frame_size, percentage_cut_off = 0.99, target_percentage = 0.08 ):
 
         # load in data structures
         numpy_path = experiment_directory + '/' + 'np_arrays'
         os.chdir(numpy_path)
         file_name = 'fm_array.npy'
         exp_filename = 'exp_array.npy'
-        exp_calc_filename = 'exp_calc_array.npy'
         fm_array = np.load(file_name, allow_pickle=False)
         exp_array = np.load(exp_filename, allow_pickle=False)
-        exp_calc_array = np.load(exp_calc_filename, allow_pickle=False)
         channels = ['DAPI', 'A488', 'A555', 'A647']
+        number_channels = len(channels[0])
+        slice_gap = 2
 
         #find tile counts
         x_tiles = np.shape(fm_array[0])[1]
         y_tiles = np.shape(fm_array[0])[0]
         tissue_fm = fm_array[10]
-        #define z index to be used (middle of stack)
-        z = int(fm_array[3][0][0]/2)
-        #make psuedo stack to hold images in
-        image_stack = np.random.rand(y_tiles, x_tiles, 2960, x_frame_size)
 
+        #get XY arrays
+        numpy_x = full_array[0]
+        numpy_y = full_array[1]
+
+        #make psuedo stack to hold images in
+        exp_image_stack = np.random.rand(number_channels, y_tiles, x_tiles, 2960, x_frame_size)
+
+        #define pixel range in X dimension
         side_pixel_count = int((5056 - x_frame_size)/2)
         start_frame = side_pixel_count
         end_frame = side_pixel_count + x_frame_size
+
+        for x in range(0, x_tiles):
+            for y in range(0, y_tiles):
+
+                #import tissue binary image
+                tissue_path = experiment_directory + '/Tissue_Binary'
+                os.chdir(tissue_path)
+                tissue_binary_name = 'x' + str(x) + '_y_' + str(y) + '_tissue.tif'
+                tissue_bin_im = io.imread(tissue_binary_name)
+
+                if tissue_fm[y][x] == 1:
+
+                    for channel in channels:
+                        if channel == 'DAPI':
+                            channel_index = 0
+                        if channel == 'A488':
+                            channel_index = 1
+                        if channel == 'A555':
+                            channel_index = 2
+                        if channel == 'A647':
+                            channel_index = 3
+
+                        #exp time to use for snap shot image
+                        exp_time = exp_array[channel_index]
+
+                        #Go to XY location (mid stack)
+                        core.set_xy_position(numpy_x[y][x], numpy_y[y][x])
+                        time.sleep(0.3)
+
+                        #Go to Z location
+                        numpy_z = fm_array[channel_index*2 + 2]
+                        slice_count = fm_array[channel_index*2 + 3]
+                        z_range = slice_count * slice_gap
+                        center_z = int(numpy_z[y][x] - z_range/2)
+                        core.set_position(center_z)
+                        time.sleep(0.3)
+
+                        #set channel and exp time
+                        exp_time = int(exp_time_array[tif_stack_c_index])
+                        core.set_config("Color", channel)
+                        core.set_exposure(exp_time)
+
+                        #take reference image
+                        core.snap_image()
+                        tagged_image = core.get_tagged_image()
+                        pixels = np.reshape(tagged_image.pix,
+                                            newshape=[tagged_image.tags["Height"], tagged_image.tags["Width"]])
+                        pixels = pixels[::, side_pixel_count:side_pixel_count + x_pixels]
+
+                        #Determine if intensity is in bounds and take diff image if not. Record new exp time
+                        pixels, exp_time = self.exp_bound_solver(pixels)
+                        exp_array[channel_index] = exp_time
+
+                        #load in auto fluorescence image
+                        auto_fl_path = experiment_directory + '/' + str(channel) + '/Bleach/' + 'cy_0/' + 'Tiles'
+                        os.chdir(auto_fl_path)
+                        filename = 'z_' + str(center_z) + '_x' + str(x) + '_y_' + str(y) + '_c_' + str(channel) + '.tif'
+                        auto_fl_im = io.imread(filename)
+
+                        #find ideal constant and sub off auto_fl_im from snapped image
+                        factor = self.autof_factor_estimator(pixels, auto_fl_im)
+                        subbed_image = pixels - factor*auto_fl_path
+
+                        #multiply by tissue binary
+                        masked_subbed_image = subbed_image * tissue_bin_im
+
+                        #place subbed image into stack
+                        exp_image_stack[channel_index][y][x] = masked_subbed_image
+
+                if tissue_fm[y][x] == 0:
+                    pass
+
+        #save image array for analysis
+        numpy_path = experiment_directory + '/' + 'np_arrays'
+        os.chdir(numpy_path)
+        np.save('auto_exp_images.npy', exp_image_stack)
+
 
         for channel in channels:
             if channel == 'DAPI':
@@ -187,30 +268,68 @@ class cycif:
             if channel == 'A647':
                 channel_index = 3
 
-            exp_time = exp_array[channel_index]
-            for x in range(0, x_tiles):
-                for y in range(0, y_tiles):
+            # use Otsu's (or any other threshold method) to find well stained pixels
+            channel_pixels = exp_image_stack[channel_index]
+            non_zero_pixels = channel_pixels.ravel()[np.flatnonzero(channel_pixels)]
+            thresh = filters.threshold_otsu(non_zero_pixels)
 
-                    if tissue_fm[y][x] == 1:
+            #apply threshold and find brightest and dimmest pixels
+            non_zero_thresh_pixels = channel_pixels.ravel()[np.flatnonzero(channel_pixels > thresh)]
+            high_pixel, low_pixel = image_percentile_level(non_zero_thresh_pixels, cut_off_threshold= percentage_cut_off)
 
+            #find new exp factor
+            new_exp_factor = target_percentage * 65500 / low_pixel * exp_time[channel_index]
 
-                        # acquire image and adjust exp to have unstaurated image. Takes new image is exp changes
-                        image = self.image_capture(experiment_directory, channel, exp_time, x,y,z)
-                        image, new_exp_time = self.exp_bound_solver(image, exp_time, 0.999)
-                        #add to stack and update exp used
-                        image_stack[y][x] = image[::, start_frame: end_frame]
-                        exp_calc_array[channel_index][0][y][x] = new_exp_time
+            #add to exp_array
+            exp_array[channel_index] = new_exp_factor
 
-                    if tissue_fm[y][x] == 0:
-                        pass
+        #save new exp_array
+        numpy_path = experiment_directory + '/' + 'np_arrays'
+        os.chdir(numpy_path)
+        np.save('exp_array.npy', exp_array)
 
-            #find intensities and projected exp to acheive target_percentage
-            self.image_exp_scorer(experiment_directory, image_stack, channel, percentage_cut_off, target_percentage)
+    def autof_factor_estimator(self, image, autof_image, num_images=2):
+        top_range = 20
+        x_factor = top_range / num_images
 
-        #apply criteria to come to single number to be used for all tiles in image
-        self.calculate_exp_array(experiment_directory)
+        x_axis = np.linspace(0, top_range, num_images).astype('float32')
+        y_axis = np.linspace(0, top_range, num_images).astype('float32')
+        for x in range(0, num_images):
+            input_image = (image_chosen - x_factor * x * a488_im_auto) * tissue_binary
+            mean = absolute_mean(input_image)
+            y_axis[x] = mean
+            x_axis[x] = x * x_factor
 
-    def image_percentile_level(self, image, cut_off_threshold=0.999):
+        projected_min_point = min_factor(x_axis, y_axis)
+
+        return projected_min_point
+
+    def absolute_mean(self, image):
+        abs = np.absolute(image)
+        mean = np.mean(abs)
+
+        return mean
+
+    def min_factor(self, x_axis, y_axis):
+        sorted_list = np.sort(y_axis)
+        index_1 = np.where(y_axis == sorted_list[0])[0][0]
+        index_1 = x_axis[index_1]
+        index_2 = np.where(y_axis == sorted_list[1])[0][0]
+        index_2 = x_axis[index_2]
+        min_value_1 = sorted_list[0]
+        min_value_2 = sorted_list[1]
+
+        total_value = min_value_1 + min_value_2
+        rel_value_1 = total_value / min_value_1
+        rel_value_2 = total_value / min_value_2
+        total_rel_value = rel_value_1 + rel_value_2
+        normalized_rel_value_1 = rel_value_1 / total_rel_value
+        normalized_rel_value_2 = rel_value_2 / total_rel_value
+        projected_min_point = normalized_rel_value_1 * index_1 + normalized_rel_value_2 * index_2
+
+        return projected_min_point
+
+    def image_percentile_level(image, cut_off_threshold=0.99):
         '''
         Takes in image and cut off threshold and finds pixel value that exists at that threshold point.
 
@@ -221,80 +340,18 @@ class cycif:
         '''
 
         pixel_values = np.sort(image, axis=None)
+        indicies = np.nonzero(pixel_values)[0]
+        # thresh = filters.threshold_otsu(pixel_values[indicies])
+        # indicies = np.where(pixel_values > thresh)[0]
+        pixel_values = pixel_values[indicies]
+
         pixel_count = int(np.size(pixel_values))
         cut_off_index = int(pixel_count * cut_off_threshold)
+        min_cut_off_index = int(pixel_count - cut_off_index)
         tail_intensity = pixel_values[cut_off_index]
+        min_intensity = pixel_values[min_cut_off_index]
 
-        return tail_intensity
-
-    def image_exp_scorer(self, experiment_directory, image_stack, channel, percentage_cut_off, target_percentage):
-
-        # import exp_calc_array
-        numpy_path = experiment_directory + '/' + 'np_arrays'
-        os.chdir(numpy_path)
-        exp_calc_array = np.load('exp_calc_array.npy', allow_pickle=False)
-        fm_array == np.load('fm_array.npy', allow_pickle=False)
-
-        x_tiles = np.shape(exp_calc_array[0][0])[1]
-        y_tiles = np.shape(exp_calc_array[0][0])[0]
-        tissue_fm = fm_array[10]
-
-        # find desired intensity (highest)
-        desired_int = 65000 * target_percentage
-
-        if channel == 'DAPI':
-            channel_index = 0
-        if channel == 'A488':
-            channel_index = 1
-        if channel == 'A555':
-            channel_index = 2
-        if channel == 'A647':
-            channel_index = 3
-
-        for y in range(0, y_tiles):
-            for x in range(0, x_tiles):
-
-                if tissue_fm[y][x] ==  1:
-                    score = self.image_percentile_level(image_stack[y][x],
-                                                   cut_off_threshold=percentage_cut_off)
-                    exp_calc_array[channel_index][1][y][x] = score
-
-                    original_exp_time = exp_calc_array[channel_index][0][y][x]
-                    score_per_millisecond_exp = score / original_exp_time
-                    projected_exp_time = int(desired_int / score_per_millisecond_exp)
-                    exp_calc_array[channel_index][2][y][x] = projected_exp_time
-
-                if tissue_fm[y][x] == 0:
-                    exp_calc_array[channel_index][2][y][x] = 5000
-
-        os.chdir(numpy_path)
-        np.save('exp_calc_array.npy', exp_calc_array)
-
-    def calculate_exp_array(self, experiment_directory):
-
-        # import exp_calc_array
-        numpy_path = experiment_directory + '/' + 'np_arrays'
-        os.chdir(numpy_path)
-        exp_calc_array = np.load('exp_calc_array.npy', allow_pickle=False)
-        exp_array = np.load('exp_array.npy', allow_pickle=False)
-
-        for channel_index in range(1, 4):
-            # find lowest exp time
-            lowest_exp = np.min(exp_calc_array[channel_index, 2, ::, ::])
-
-            if lowest_exp < 2000:
-                exp_array[channel_index] = int(lowest_exp)
-            if lowest_exp > 2000:
-                exp_array[channel_index] = int(2000)
-            if lowest_exp < 50:
-                exp_array[channel_index] = int(50)
-
-
-
-            print('channel_index', channel_index, 'time', exp_array[channel_index])
-
-        exp_array[0] = 230
-        np.save('exp_array.npy', exp_array)
+        return tail_intensity, min_intensity
 
     def exp_bound_solver(self, image, exp_time, percentage_cutoff):
         '''
@@ -310,16 +367,16 @@ class cycif:
         max_time = 100
         trigger_state = 0
 
-        intensity = self.image_percentile_level(image, percentage_cutoff)
+        intensity, low_intensity = self.image_percentile_level(image, percentage_cutoff)
         #print(intensity)
 
-        while intensity > 45000:
-            exp_time = exp_time / 10
+        while intensity > 50000:
+            exp_time = exp_time / 3
             core.set_exposure(exp_time)
             core.snap_image()
             tagged_image = core.get_tagged_image()
             new_image = np.reshape(tagged_image.pix, newshape=[tagged_image.tags["Height"], tagged_image.tags["Width"]])
-            intensity = self.image_percentile_level(new_image, percentage_cutoff)
+            intensity, low_intensity = self.image_percentile_level(new_image, percentage_cutoff)
             trigger_state = 1
 
         if intensity < 1000 and exp_time < max_time:
