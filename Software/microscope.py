@@ -295,7 +295,7 @@ class cycif:
         x_axis = np.linspace(0, top_range, num_images).astype('float32')
         y_axis = np.linspace(0, top_range, num_images).astype('float32')
         for x in range(0, num_images):
-            input_image = (image_chosen - x_factor * x * a488_im_auto) * tissue_binary
+            input_image = (image - x_factor * x * autof_image)
             mean = absolute_mean(input_image)
             y_axis[x] = mean
             x_axis[x] = x * x_factor
