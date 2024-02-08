@@ -1,12 +1,21 @@
-from autocyplex import *
-from optparse import OptionParser
-microscope = cycif() # initialize cycif object
-pump = fluidics(6, 3)
+from pycromanager import Magellan
+#from autocyplex import *
+#from optparse import OptionParser
+#microscope = cycif() # initialize cycif object
+#pump = fluidics(6, 3)
+
+magellan = Magellan()
 
 experiment_directory = r'E:\tissue_identify'
 z_slices = 7
 x_frame_size = 2960
 offset_array = [0, -8, -7, -7]
+
+
+print('ran well')
+
+
+
 
 #microscope.full_cycle(experiment_directory, cycle, offset_array, cycle, pump, z_slices)
 
@@ -28,10 +37,6 @@ offset_array = [0, -8, -7, -7]
 #microscope.image_cycle_acquire(1, experiment_directory, z_slices, 'Stain', offset_array, x_frame_size=x_frame_size, establish_fm_array=0, auto_focus_run=1, auto_expose_run=0)
 
 
-pump.liquid_action('Stain', stain_valve=1, incub_val=5)
-pump.liquid_action('Wash')
-pump.liquid_action('Bleach')
-pump.liquid_action('Wash')
 
 
 #microscope.recursive_stardist_autofocus(experiment_directory, 1)

@@ -6,7 +6,6 @@ from skimage import io, filters, morphology
 import skimage
 import os
 import math
-
 from tifffile import imwrite
 import tifffile as tf
 from openpyxl import load_workbook, Workbook
