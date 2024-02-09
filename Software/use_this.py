@@ -1,6 +1,6 @@
 from autocyplex import *
 from optparse import OptionParser
-microscope = cycif() # initialize cycif object
+#microscope = cycif() # initialize cycif object
 pump = fluidics(6, 3)
 
 experiment_directory = r'E:\tissue_identify'
@@ -28,12 +28,7 @@ offset_array = [0, -8, -7, -7]
 #microscope.image_cycle_acquire(1, experiment_directory, z_slices, 'Stain', offset_array, x_frame_size=x_frame_size, establish_fm_array=0, auto_focus_run=1, auto_expose_run=0)
 
 
-pump.liquid_action('Stain', stain_valve=1, incub_val=5)
-pump.liquid_action('Wash')
-pump.liquid_action('Bleach')
-pump.liquid_action('Wash')
-
-
+pump.flow(-3)
 #microscope.recursive_stardist_autofocus(experiment_directory, 1)
 
 #microscope.antibody_kinetics(experiment_directory, 0.5, 90, 1, pump)
