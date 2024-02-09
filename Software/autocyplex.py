@@ -3147,7 +3147,7 @@ class fluidics:
 
         bleach_valve = 11
         pbs_valve = 12
-        bleach_time = 3  # minutes
+        bleach_time = 4  # minutes
         stain_flow_time = 45  # seconds
         if heater_state == 0:
             stain_inc_time = incub_val  # minutes
