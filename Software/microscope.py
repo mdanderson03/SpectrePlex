@@ -20,8 +20,8 @@ from csbdeep.utils import normalize
 from stardist.models import StarDist2D
 import cv2
 
-magellan = Magellan()
-core = Core()
+#magellan = Magellan()
+#core = Core()
 
 class cycif:
 
@@ -47,12 +47,15 @@ class cycif:
 
         # do Brenner score
 
+
         a = image[derivative_jump:, :]
         a = a.astype('float64')
+        a = np.nan_to_num(a, posinf=65000)
         b = image[:-derivative_jump, :]
         b = b.astype('float64')
+        b = np.nan_to_num(b, posinf=65000)
         c = (a - b)
-        c = c/1000 * c/1000
+        c = c / 1000 * c / 1000
         labels = labels[derivative_jump:, :]
         c = c * labels
         f_score_shadow = c.sum(dtype=np.float64)
@@ -75,10 +78,12 @@ class cycif:
 
         a = image[derivative_jump:, :]
         a = a.astype('float64')
+        a = np.nan_to_num(a, posinf=65000)
         b = image[:-derivative_jump, :]
         b = b.astype('float64')
+        b = np.nan_to_num(b, posinf=65000)
         c = (a - b)
-        c = c/1000 * c/1000
+        c = c / 1000 * c / 1000
         f_score_shadow = c.sum(dtype=np.float64) + 0.00001
 
         return f_score_shadow
@@ -295,11 +300,11 @@ class cycif:
         y_axis = np.linspace(0, top_range, num_images).astype('float32')
         for x in range(0, num_images):
             input_image = (image - x_factor * x * autof_image)
-            mean = absolute_mean(input_image)
+            mean = self.absolute_mean(input_image)
             y_axis[x] = mean
             x_axis[x] = x * x_factor
 
-        projected_min_point = min_factor(x_axis, y_axis)
+        projected_min_point = self.min_factor(x_axis, y_axis)
 
         return projected_min_point
 
@@ -1303,12 +1308,12 @@ class cycif:
                 cycle_start_search = 1
 
         cycle_end = 8
-        cycle_start = 1
+        cycle_start = 7
 
         self.tissue_binary_generate(experiment_directory)
 
         for cycle_number in range(cycle_start, cycle_end):
-            self.infocus(experiment_directory, cycle_number, x_pixels, 1, 1)
+            self.infocus(experiment_directory, cycle_number, x_pixels, 2, 2)
             self.background_sub(experiment_directory, cycle_number)
             self.illumination_flattening(experiment_directory, cycle_number)
             self.mcmicro_image_stack_generator(cycle_number, experiment_directory, x_pixels)
@@ -1388,8 +1393,8 @@ class cycif:
     def metadata_generator(self, experiment_directory, x_frame_size):
 
         new_ome = OME()
-        #ome = from_xml(r'C:\Users\mike\Documents\GitHub\AutoCIF/image.xml', parser='lxml')
-        ome = from_xml(r'C:\Users\CyCIF PC\Documents\GitHub\AutoCIF/image.xml', parser='lxml')
+        ome = from_xml(r'C:\Users\mike\Documents\GitHub\AutoCIF/image.xml', parser='lxml')
+        #ome = from_xml(r'C:\Users\CyCIF PC\Documents\GitHub\AutoCIF/image.xml', parser='lxml')
         ome = ome.images[0]
 
         numpy_path = experiment_directory + '/' + 'np_arrays'
@@ -1659,8 +1664,10 @@ class cycif:
 
     def infocus(self, experiment_directory, cycle_number, x_frame_size, x_sub_section_count = 1, y_sub_section_count = 1):
 
+        print('cycle', cycle_number)
         bin_values = [10]
         channels = ['DAPI', 'A488', 'A555', 'A647']
+        #channels = ['A488']
 
         dapi_im_path = experiment_directory + '/' + 'DAPI' '\Stain\cy_' + str(cycle_number) + '\Tiles'
         tissue_path = experiment_directory + '/Tissue_Binary'
@@ -1692,17 +1699,16 @@ class cycif:
         for x in range(0, x_tile_count):
             for y in range(0, y_tile_count):
                 os.chdir(tissue_path)
-                file_name = tissue_binary_name = 'x' + str(x) + '_y_' + str(y) + '_tissue.tif'
+                file_name = 'x' + str(x) + '_y_' + str(y) + '_tissue.tif'
                 image = tf.imread(file_name)
                 tissue_binary_stack[y][x] = image
 
         for channel in channels:
             # generate imstack of z slices for tile
-            # channel = 'DAPI'
             im_path = experiment_directory + '/' + channel + '\Stain\cy_' + str(cycle_number) + '\Tiles'
             os.chdir(im_path)
 
-            z_stack = np.random.rand(z_slice_count, 2960, x_frame_size).astype('uint16')
+            z_stack = np.random.rand(z_slice_count, 2960, x_frame_size).astype('float32')
             for x in range(0, x_tile_count):
                 for y in range(0, y_tile_count):
                     for z in range(0, z_slice_count):
@@ -1712,30 +1718,33 @@ class cycif:
                         image = tf.imread(file_name)
                         z_stack[z] = image
 
-                        # break into sub sections (2x3)
+                        # break into sub sections (2x2)
 
                     number_bins = len(bin_values)
                     brenner_sub_selector = np.random.rand(z_slice_count, number_bins, y_sub_section_count,
-                                                          x_sub_section_count).astype('longlong')
+                                                          x_sub_section_count)
                     for z in range(0, z_slice_count):
                         for y_sub in range(0, y_sub_section_count):
                             for x_sub in range(0, x_sub_section_count):
 
                                 y_end = int((y_sub + 1) * (2960 / y_sub_section_count))
                                 y_start = int(y_sub * (2960 / y_sub_section_count))
-                                x_end = int((x_sub + 1) * (5056 / x_sub_section_count))
-                                x_start = int(x_sub * (5056 / x_sub_section_count))
+                                x_end = int((x_sub + 1) * (x_frame_size / x_sub_section_count))
+                                x_start = int(x_sub * (x_frame_size / x_sub_section_count))
                                 sub_image = z_stack[z][y_start:y_end, x_start:x_end]
+
+                                sub_tissue_bin = tissue_binary_stack[y][x][y_start:y_end, x_start:x_end]
 
                                 for b in range(0, number_bins):
                                     bin_value = int(bin_values[b])
-                                    #score =  self.focus_score(sub_image, bin_value, tissue_binary_stack[y][x])
+                                    score =  self.focus_score(sub_image, bin_value, sub_tissue_bin)
                                     #score = self.focus_score_post_processing(sub_image, bin_value)
-                                    score = 500
+                                    #score = 500
                                     brenner_sub_selector[z][b][y_sub][x_sub] = score
 
+
                     reconstruct_array = self.brenner_reconstruct_array(brenner_sub_selector, z_slice_count, number_bins)
-                    reconstruct_array = skimage.filters.median(reconstruct_array)
+                    #reconstruct_array = skimage.filters.median(reconstruct_array)
                     self.image_reconstructor(experiment_directory, reconstruct_array, channel, cycle_number,
                                              x_frame_size, y, x)
 
@@ -1757,10 +1766,11 @@ class cycif:
         for y in range(0, y_sections):
             for x in range(0, x_sections):
                 for b in range(0, number_bins):
-                    sub_scores = brenner_sub_selector[0:z_slice_count, b, y, x]
+                    sub_scores = brenner_sub_selector[::, b, y, x]
                     max_score = np.max(sub_scores)
-                    #max_index = np.where(sub_scores == max_score)[0][0]
-                    max_index = 3
+                    max_index = np.where(sub_scores == max_score)[0][0]
+                    print(sub_scores, max_index)
+                    #max_index = 3
                     # temp_bin_max_indicies[b] = max_index
                 # sub_section_index_mode = stats.mode(temp_bin_max_indicies)[0][0]
                 # reconstruct_array[y][x] = sub_section_index_mode
@@ -1783,10 +1793,10 @@ class cycif:
             try:
                 os.mkdir('focused')
             except:
-                t = 5
+                pass
 
             # rebuilt image container
-            rebuilt_image = np.random.rand(2960, x_frame_size).astype('uint16')
+            rebuilt_image = np.random.rand(2960, x_frame_size).astype('float32')
 
             for y in range(0, y_sections):
                 for x in range(0, x_sections):
@@ -1797,8 +1807,8 @@ class cycif:
                     x_start = int(x * ((x_frame_size) / x_sections))
 
                     # find z for specific subsection
-                    #z_slice = reconstruct_array[y][x]
-                    z_slice = 5
+                    z_slice = reconstruct_array[y][x]
+                    #z_slice = 5
                     # load in image to extract for subsection
                     file_name = 'z_' + str(z_slice) + '_x' + str(x_tile_number) + '_y_' + str(
                         y_tile_number) + '_c_' + str(channel) + '.tif'
@@ -1855,6 +1865,8 @@ class cycif:
                     bleach_color_path = experiment_directory + channel + r'/Bleach/cy_' + str(cycle) + '\Tiles/focused'
                     os.chdir(bleach_color_path)
                     color_bleach = io.imread(filename)
+                    #coefficent = self.autof_factor_estimator(color_reg, color_bleach)
+                    #color_subbed = color_reg - coefficent * color_bleach
                     color_subbed = color_reg - color_bleach
                     color_subbed[color_subbed < 0] = 0
                     color_subbed = color_subbed.astype('float32')
