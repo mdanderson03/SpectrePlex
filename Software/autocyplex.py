@@ -3067,9 +3067,28 @@ class fluidics:
         time.sleep(3)
         error = OB1_Get_Remote_Data(self.pump_ID, set_channel, byref(data_reg), byref(data_sens))
         current_flow_rate = data_sens.value
-        current_pressure = int(data_reg.value)
-        print('current flow rate', int(current_flow_rate))
-        print('error: ', error)
+        print('current flow rate', int(current_flow_rate), 'expected flow rate', flow_rate)
+
+        if flow_rate <= 0 and current_flow_rate > 50:
+            print('resetting ob1')
+            error = OB1_Reset_Instr(self.pump_ID)
+            print(error)
+            OB1_Set_Remote_Target(self.pump_ID, set_channel, set_target)
+            time.sleep(3)
+            OB1_Get_Remote_Data(self.pump_ID, set_channel, byref(data_reg), byref(data_sens))
+            current_flow_rate = data_sens.value
+            print('current flow rate', int(current_flow_rate), 'expected flow rate', flow_rate)
+
+
+        if flow_rate > 400 and current_flow_rate < 0.1 * flow_rate:
+            print('resetting ob1')
+            error = OB1_Reset_Instr(self.pump_ID)
+            print(error)
+            OB1_Set_Remote_Target(self.pump_ID, set_channel, set_target)
+            time.sleep(3)
+            OB1_Get_Remote_Data(self.pump_ID, set_channel, byref(data_reg), byref(data_sens))
+            current_flow_rate = data_sens.value
+            print('current flow rate', int(current_flow_rate), 'expected flow rate', flow_rate)
 
 
     def ob1_end(self):
