@@ -1625,6 +1625,11 @@ class cycif:
 
     def illumination_flattening(self, experiment_directory, cycle_number):
 
+        # load numpy arrays in
+        numpy_path = experiment_directory + '/' + 'np_arrays'
+        os.chdir(numpy_path)
+        full_array = np.load('fm_array.npy', allow_pickle=False)
+
         directory_start = experiment_directory + '//'
 
         for channel in range(0, 4):
@@ -1914,7 +1919,41 @@ class cycif:
                 image = zc_tif_stack[zc_index][z]
                 imwrite(file_name, image, photometric='minisblack')
 
+    def tissue_exist_array_generate(self):
 
+        tissue_path = experiment_directory + '/Tissue_Binary'
+
+        # load numpy arrays in
+        numpy_path = experiment_directory + '/' + 'np_arrays'
+        os.chdir(numpy_path)
+        full_array = np.load('fm_array.npy', allow_pickle=False)
+
+        numpy_x = full_array[0]
+        numpy_y = full_array[1]
+
+        y_tile_count = numpy_x.shape[0]
+        x_tile_count = numpy_y.shape[1]
+
+        # make object to hold all tissue binary maps
+        tissue_binary_stack = np.random.rand(y_tile_count, x_tile_count, 2960, 2960).astype('uint16')
+        for x in range(0, x_tile_count):
+            for y in range(0, y_tile_count):
+                os.chdir(tissue_path)
+                file_name = 'x' + str(x) + '_y_' + str(y) + '_tissue.tif'
+                image = imread(file_name)
+                tissue_binary_stack[y][x] = image
+
+        # make object that hold info as to if the image has tissue in it or not
+        tissue_or_not = np.random.rand(y_tile_count, x_tile_count).astype('uint16')
+        for x in range(0, x_tile_count):
+            for y in range(0, y_tile_count):
+                if tissue_binary_stack[y][x].sum() > 0:
+                    tissue_or_not[y][x] = 1
+                if tissue_binary_stack[y][x].sum() == 0:
+                    tissue_or_not[y][x] = 0
+
+        os.chdir(numpy_path)
+        np.save('tissue_exist.npy', tissue_or_not)
 
     ######Kinetics and its functions#####################################################
 
