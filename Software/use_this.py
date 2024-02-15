@@ -4,7 +4,7 @@ microscope = cycif() # initialize cycif object
 #pump = fluidics(6, 3)
 
 
-experiment_directory = r'D:\Images\AutoCyPlex\6-1-24 multiplex'
+experiment_directory = r'E:\9-2-2 test run multiplex'
 z_slices = 7
 x_frame_size = 2960
 offset_array = [0, -8, -7, -7]

@@ -1310,15 +1310,15 @@ class cycif:
         cycle_end = 8
         cycle_start = 1
 
-        self.tissue_binary_generate(experiment_directory)
-        self.tissue_exist_array_generate(experiment_directory)
+        #self.tissue_binary_generate(experiment_directory)
+        #self.tissue_exist_array_generate(experiment_directory)
 
         for cycle_number in range(cycle_start, cycle_end):
-            self.infocus(experiment_directory, cycle_number, x_pixels, 2, 2)
+            #self.infocus(experiment_directory, cycle_number, x_pixels, 2, 2)
             self.background_sub(experiment_directory, cycle_number)
-            self.illumination_flattening(experiment_directory, cycle_number)
-            self.mcmicro_image_stack_generator(cycle_number, experiment_directory, x_pixels)
-            self.stage_placement(experiment_directory, cycle_number, x_pixels)
+            #self.illumination_flattening(experiment_directory, cycle_number)
+            #self.mcmicro_image_stack_generator(cycle_number, experiment_directory, x_pixels)
+            #self.stage_placement(experiment_directory, cycle_number, x_pixels)
 
     def mcmicro_image_stack_generator(self, cycle_number, experiment_directory, x_frame_size):
 
@@ -1394,8 +1394,8 @@ class cycif:
     def metadata_generator(self, experiment_directory, x_frame_size):
 
         new_ome = OME()
-        ome = from_xml(r'C:\Users\mike\Documents\GitHub\AutoCIF/image.xml', parser='lxml')
-        #ome = from_xml(r'C:\Users\CyCIF PC\Documents\GitHub\AutoCIF/image.xml', parser='lxml')
+        #ome = from_xml(r'C:\Users\mike\Documents\GitHub\AutoCIF/image.xml', parser='lxml')
+        ome = from_xml(r'C:\Users\CyCIF PC\Documents\GitHub\AutoCIF/image.xml', parser='lxml')
         ome = ome.images[0]
 
         numpy_path = experiment_directory + '/' + 'np_arrays'
@@ -1644,6 +1644,8 @@ class cycif:
             if channel == 3:
                 channel_name = 'A647'
 
+            print('channel', channel_name, 'cycle', cycle_number)
+
             if channel == 0:
                 directory = directory_start + channel_name + '\Stain\cy_' + str(cycle_number) + r'\Tiles\focused'
             else:
@@ -1845,7 +1847,7 @@ class cycif:
         for y in range(0, y_tile_count):
             for x in range(0, x_tile_count):
 
-                if tissue_exist == 1:
+                if tissue_exist[y][x] == 1:
 
                     # load reference and "moved" image
                     ref_path = experiment_directory + 'DAPI\Bleach\cy_' + str(cycle) + '\Tiles/focused'
@@ -1876,7 +1878,7 @@ class cycif:
                         color_bleach = io.imread(filename)
                         #coefficent = self.autof_factor_estimator(color_reg, color_bleach)
                         #color_subbed = color_reg - coefficent * color_bleach
-                        color_subbed = color_reg - color_bleach
+                        color_subbed = color_im - color_bleach
                         color_subbed[color_subbed < 0] = 0
                         color_subbed = color_subbed.astype('float32')
 
