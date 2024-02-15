@@ -1,3 +1,4 @@
+import datetime
 import os
 
 import numpy as np
@@ -63,10 +64,9 @@ class fluidics:
         return
 
     def fluidics_logger(self, function_used_string, error_code, value_sr):
-
         experiment_directory = self.experiment_path
         filename = 'logger.xlsx'
-        logger_path = experiment_directory + 'fluidics data logger'
+        logger_path = experiment_directory + '/fluidics data logger'
         os.chdir(experiment_directory)
         try:
             os.mkdir('fluidics data logger')
@@ -92,10 +92,10 @@ class fluidics:
         row_select = current_max_row + 1
 
         #add in values
-        ws.cell(row=1, column=1).value = time.time()
-        ws.cell(row=1, column=2).value = function_used_string
-        ws.cell(row=1, column=3).value = error_code
-        ws.cell(row=1, column=4).value = value_sr
+        ws.cell(row=row_select, column=1).value = datetime.datetime.now()
+        ws.cell(row=row_select, column=2).value = function_used_string
+        ws.cell(row=row_select, column=3).value = error_code
+        ws.cell(row=row_select, column=4).value = value_sr
 
         wb.save(filename)
 
@@ -115,7 +115,7 @@ class fluidics:
         desired_valve = valve_number
         valve_number = c_int32(valve_number)
         error = MUX_DRI_Set_Valve(self.mux_ID, valve_number, 0)  # 0 is shortest path. clockwise and cc are also options
-        self.fluidics_logger(str(MUX_DRI_Set_Valve), error, valve_number)
+        self.fluidics_logger(str(MUX_DRI_Set_Valve), error, desired_valve)
 
         valve = c_int32(-1)
         error = MUX_DRI_Get_Valve(self.mux_ID, byref(valve))
