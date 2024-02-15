@@ -150,6 +150,13 @@ class fluidics:
         current_flow_rate = data_sens.value
         self.fluidics_logger(str(OB1_Get_Remote_Data), error, current_flow_rate)
 
+        if flow_rate > 400 and current_flow_rate < 0.1 * flow_rate:
+            print('fluid error, stopped script')
+            sys.exit()
+        if flow_rate < 40 and current_flow_rate > 100:
+            print('fluid error, stopped script')
+            sys.exit()
+
 
     def ob1_end(self):
 
