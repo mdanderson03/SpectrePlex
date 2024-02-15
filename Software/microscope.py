@@ -1308,9 +1308,10 @@ class cycif:
                 cycle_start_search = 1
 
         cycle_end = 8
-        cycle_start = 7
+        cycle_start = 1
 
         self.tissue_binary_generate(experiment_directory)
+        self.tissue_exist_array_generate(experiment_directory)
 
         for cycle_number in range(cycle_start, cycle_end):
             self.infocus(experiment_directory, cycle_number, x_pixels, 2, 2)
@@ -1834,6 +1835,7 @@ class cycif:
         os.chdir(numpy_path)
         file_name = 'fm_array.npy'
         fm_array = np.load(file_name, allow_pickle=False)
+        tissue_exist = np.load('tissue_exist.npy', allow_pickle=False)
 
         y_tile_count = np.shape(fm_array[0])[0]
         x_tile_count = np.shape(fm_array[0])[1]
@@ -1843,54 +1845,81 @@ class cycif:
         for y in range(0, y_tile_count):
             for x in range(0, x_tile_count):
 
-                # load reference and "moved" image
-                ref_path = experiment_directory + 'DAPI\Bleach\cy_' + str(cycle) + '\Tiles/focused'
-                os.chdir(ref_path)
-                ref_name = 'x' + str(x) + '_y_' + str(y) + '_c_DAPI.tif'
-                ref = io.imread(ref_name)
-                mov_path = experiment_directory + 'DAPI\Stain\cy_' + str(cycle) + '\Tiles/focused'
-                os.chdir(mov_path)
-                mov_name = 'x' + str(x) + '_y_' + str(y) + '_c_DAPI.tif'
-                mov = io.imread(mov_name)
+                if tissue_exist == 1:
 
-                # Translational transformation
-                sr = StackReg(StackReg.TRANSLATION)
-                out_tra = sr.register_transform(ref, mov)
+                    # load reference and "moved" image
+                    ref_path = experiment_directory + 'DAPI\Bleach\cy_' + str(cycle) + '\Tiles/focused'
+                    os.chdir(ref_path)
+                    ref_name = 'x' + str(x) + '_y_' + str(y) + '_c_DAPI.tif'
+                    ref = io.imread(ref_name)
+                    mov_path = experiment_directory + 'DAPI\Stain\cy_' + str(cycle) + '\Tiles/focused'
+                    os.chdir(mov_path)
+                    mov_name = 'x' + str(x) + '_y_' + str(y) + '_c_DAPI.tif'
+                    mov = io.imread(mov_name)
 
-                # apply translation to other color channels
+                    # Translational transformation
+                    sr = StackReg(StackReg.TRANSLATION)
+                    out_tra = sr.register_transform(ref, mov)
 
-                for channel in channels:
-                    stain_color_path = experiment_directory + channel + r'/Stain/cy_' + str(cycle) + '\Tiles/focused'
-                    os.chdir(stain_color_path)
-                    filename = 'x' + str(x) + '_y_' + str(y) + '_c_' + channel + '.tif'
-                    color_im = io.imread(filename)
-                    color_reg = sr.transform(color_im)
+                    # apply translation to other color channels
 
-                    # sub background color channels
-                    bleach_color_path = experiment_directory + channel + r'/Bleach/cy_' + str(cycle) + '\Tiles/focused'
-                    os.chdir(bleach_color_path)
-                    color_bleach = io.imread(filename)
-                    #coefficent = self.autof_factor_estimator(color_reg, color_bleach)
-                    #color_subbed = color_reg - coefficent * color_bleach
-                    color_subbed = color_reg - color_bleach
-                    color_subbed[color_subbed < 0] = 0
-                    color_subbed = color_subbed.astype('float32')
+                    for channel in channels:
+                        stain_color_path = experiment_directory + channel + r'/Stain/cy_' + str(cycle) + '\Tiles/focused'
+                        os.chdir(stain_color_path)
+                        filename = 'x' + str(x) + '_y_' + str(y) + '_c_' + channel + '.tif'
+                        color_im = io.imread(filename)
+                        color_reg = sr.transform(color_im)
 
-                    # save
+                        # sub background color channels
+                        bleach_color_path = experiment_directory + channel + r'/Bleach/cy_' + str(cycle) + '\Tiles/focused'
+                        os.chdir(bleach_color_path)
+                        color_bleach = io.imread(filename)
+                        #coefficent = self.autof_factor_estimator(color_reg, color_bleach)
+                        #color_subbed = color_reg - coefficent * color_bleach
+                        color_subbed = color_reg - color_bleach
+                        color_subbed[color_subbed < 0] = 0
+                        color_subbed = color_subbed.astype('float32')
 
-                    save_path = experiment_directory + channel + r'/Stain/cy_' + str(cycle) + '\Tiles/focused/background_subbed'
-                    try:
-                        os.chdir(save_path)
-                    except:
-                        os.mkdir(save_path)
-                        os.chdir(save_path)
+                        # save
 
-                    subbed_filename = 'x' + str(x) + '_y_' + str(y) + '_c_' + channel + '.tif'
-                    # bleach_filename ='x' + str(x) + '_y_' + str(y) + '_c_' + channel + '_bleach.tif'
-                    # reg_filename = 'x' + str(x) + '_y_' + str(y) + '_c_' + channel + '_registered.tif'
-                    tf.imwrite(subbed_filename, color_subbed)
-                    # io.imsave(bleach_filename, color_bleach)
-                    # io.imsave(reg_filename, color_reg)
+                        save_path = experiment_directory + channel + r'/Stain/cy_' + str(cycle) + '\Tiles/focused/background_subbed'
+                        try:
+                            os.chdir(save_path)
+                        except:
+                            os.mkdir(save_path)
+                            os.chdir(save_path)
+
+                        subbed_filename = 'x' + str(x) + '_y_' + str(y) + '_c_' + channel + '.tif'
+                        # bleach_filename ='x' + str(x) + '_y_' + str(y) + '_c_' + channel + '_bleach.tif'
+                        # reg_filename = 'x' + str(x) + '_y_' + str(y) + '_c_' + channel + '_registered.tif'
+                        tf.imwrite(subbed_filename, color_subbed)
+                        # io.imsave(bleach_filename, color_bleach)
+                        # io.imsave(reg_filename, color_reg)
+
+                else:
+
+                    for channel in channels:
+                        stain_color_path = experiment_directory + channel + r'/Stain/cy_' + str(cycle) + '\Tiles/focused'
+                        os.chdir(stain_color_path)
+                        filename = 'x' + str(x) + '_y_' + str(y) + '_c_' + channel + '.tif'
+                        color_im = io.imread(filename)
+
+                        # save
+
+                        save_path = experiment_directory + channel + r'/Stain/cy_' + str(
+                            cycle) + '\Tiles/focused/background_subbed'
+                        try:
+                            os.chdir(save_path)
+                        except:
+                            os.mkdir(save_path)
+                            os.chdir(save_path)
+
+                        subbed_filename = 'x' + str(x) + '_y_' + str(y) + '_c_' + channel + '.tif'
+                        # bleach_filename ='x' + str(x) + '_y_' + str(y) + '_c_' + channel + '_bleach.tif'
+                        # reg_filename = 'x' + str(x) + '_y_' + str(y) + '_c_' + channel + '_registered.tif'
+                        tf.imwrite(subbed_filename, color_im)
+                        # io.imsave(bleach_filename, color_bleach)
+                        # io.imsave(reg_filename, color_reg)
 
     def zc_save(self, zc_tif_stack, channels, x_tile, y_tile, cycle, x_pixels, experiment_directory, Stain_or_Bleach):
 
@@ -1919,7 +1948,7 @@ class cycif:
                 image = zc_tif_stack[zc_index][z]
                 imwrite(file_name, image, photometric='minisblack')
 
-    def tissue_exist_array_generate(self):
+    def tissue_exist_array_generate(self, experiment_directory):
 
         tissue_path = experiment_directory + '/Tissue_Binary'
 
@@ -1940,7 +1969,7 @@ class cycif:
             for y in range(0, y_tile_count):
                 os.chdir(tissue_path)
                 file_name = 'x' + str(x) + '_y_' + str(y) + '_tissue.tif'
-                image = imread(file_name)
+                image = io.imread(file_name)
                 tissue_binary_stack[y][x] = image
 
         # make object that hold info as to if the image has tissue in it or not
