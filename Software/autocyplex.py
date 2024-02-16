@@ -489,14 +489,14 @@ class cycif:
         if autofocus == 1 and auto_expose == 1:
             self.recursive_stardist_autofocus(experiment_directory, desired_cycle_count)
             self.establish_exp_arrays(experiment_directory)
-            self.auto_exposure(experiment_directory, x_frame_size, percentage_cut_off = 0.997, target_percentage = 0.3)
+            self.auto_exposure(experiment_directory, x_frame_size, percentage_cut_off = 0.9975, target_percentage = 0.2)
         if autofocus == 1 and auto_expose == 0:
             #self.DAPI_surface_autofocus(experiment_directory, 20, 2, x_frame_size)
             self.recursive_stardist_autofocus(experiment_directory, desired_cycle_count)
             #self.fm_channel_initial(experiment_directory, off_array, z_slices, 2)
         if autofocus == 0 and auto_expose == 1:
             self.establish_exp_arrays(experiment_directory)
-            self.auto_exposure(experiment_directory, x_frame_size, percentage_cut_off = 0.997, target_percentage = 0.3)
+            self.auto_exposure(experiment_directory, x_frame_size, percentage_cut_off = 0.9975, target_percentage = 0.2)
         else:
             pass
 
@@ -2984,7 +2984,7 @@ class arduino:
 
 class fluidics:
 
-    def __init__(self, mux_com_port, ob1_com_port):
+    def __init__(self, experiment_path, mux_com_port, ob1_com_port, flow_control = 1):
 
         # OB1 initialize
         ob1_path = 'ASRL' + str(ob1_com_port) + '::INSTR'
@@ -3000,11 +3000,15 @@ class fluidics:
         OB1_Start_Remote_Measurement(Instr_ID.value, byref(Calib), 1000)
         self.calibration_array = byref(Calib)
 
-        set_channel_regulator = int(1)  # convert to int
-        set_channel_regulator = c_int32(set_channel_regulator)  # convert to c_int32
-        set_channel_sensor = int(1)
-        set_channel_sensor = c_int32(set_channel_sensor)  # convert to c_int32
-        PID_Add_Remote(Instr_ID.value, set_channel_regulator, Instr_ID.value, set_channel_sensor, 0.9, 0.004, 1)
+        if flow_control == 1:
+
+            set_channel_regulator = int(1)  # convert to int
+            set_channel_regulator = c_int32(set_channel_regulator)  # convert to c_int32
+            set_channel_sensor = int(1)
+            set_channel_sensor = c_int32(set_channel_sensor)  # convert to c_int32
+            PID_Add_Remote(Instr_ID.value, set_channel_regulator, Instr_ID.value, set_channel_sensor, 0.9, 0.004, 1)
+        else:
+            pass
 
         # MUX intiialize
         path = 'ASRL' + str(mux_com_port) + '::INSTR'
@@ -3018,8 +3022,47 @@ class fluidics:
         # MUX_DRI_Send_Command(self.mux_ID, 0, answer, 40)
 
         self.pump_ID = Instr_ID.value
+        self.experiment_path = experiment_path
+        self.flow_control = flow_control
 
         return
+
+    def fluidics_logger(self, function_used_string, error_code, value_sr):
+        experiment_directory = self.experiment_path
+        filename = 'logger.xlsx'
+        logger_path = experiment_directory + '/fluidics data logger'
+        os.chdir(experiment_directory)
+        try:
+            os.mkdir('fluidics data logger')
+            os.chdir(logger_path)
+        except:
+            os.chdir(logger_path)
+
+
+        if os.path.isfile(filename) == True:
+            wb = load_workbook(filename)
+            ws = wb.active
+        elif os.path.isfile(filename) == False:
+            wb = Workbook()
+            ws = wb.active
+            #add headers
+            ws.cell(row = 1, column = 1).value = 'Time Stamp'
+            ws.cell(row=1, column=2).value = 'Function Used'
+            ws.cell(row=1, column=3).value = 'Error Code'
+            ws.cell(row=1, column=4).value = 'Value Sent/Recieved'
+
+        #determine row number (add to next line as a logged event)
+        current_max_row = ws.max_row
+        row_select = current_max_row + 1
+
+        #add in values
+        ws.cell(row=row_select, column=1).value = datetime.now()
+        ws.cell(row=row_select, column=2).value = function_used_string
+        ws.cell(row=row_select, column=3).value = error_code
+        ws.cell(row=row_select, column=4).value = value_sr
+
+        wb.save(filename)
+
 
     def mux_end(self):
 
@@ -3035,19 +3078,19 @@ class fluidics:
 
         desired_valve = valve_number
         valve_number = c_int32(valve_number)
-        MUX_DRI_Set_Valve(self.mux_ID, valve_number, 0)  # 0 is shortest path. clockwise and cc are also options
+        error = MUX_DRI_Set_Valve(self.mux_ID, valve_number, 0)  # 0 is shortest path. clockwise and cc are also options
+        self.fluidics_logger(str(MUX_DRI_Set_Valve), error, desired_valve)
 
         valve = c_int32(-1)
-        MUX_DRI_Get_Valve(self.mux_ID, byref(valve))
+        error = MUX_DRI_Get_Valve(self.mux_ID, byref(valve))
         current_valve = int(valve.value)
+        self.fluidics_logger(str(MUX_DRI_Get_Valve), error, current_valve)
 
         while current_valve != desired_valve:
             MUX_DRI_Get_Valve(self.mux_ID, byref(valve))
             current_valve = int(valve.value)
-            # print('valve', current_valve, 'deired valve', desired_valve)
+            self.fluidics_logger(str(MUX_DRI_Get_Valve), error, current_valve)
             time.sleep(1)
-
-        time.sleep(1)
 
     def flow(self, flow_rate):
 
@@ -3058,7 +3101,9 @@ class fluidics:
         set_target = c_double(set_target)  # convert to c_double
 
         # OB1_Start_Remote_Measurement(self.pump_ID, self.calibration_array, 1000)
-        OB1_Set_Remote_Target(self.pump_ID, set_channel, set_target)
+        error = OB1_Set_Remote_Target(self.pump_ID, set_channel, set_target)
+
+        self.fluidics_logger(str(OB1_Set_Remote_Target), error, flow_rate)
 
         data_sens = c_double()
         data_reg = c_double()
@@ -3067,28 +3112,14 @@ class fluidics:
         time.sleep(3)
         error = OB1_Get_Remote_Data(self.pump_ID, set_channel, byref(data_reg), byref(data_sens))
         current_flow_rate = data_sens.value
-        print('current flow rate', int(current_flow_rate), 'expected flow rate', flow_rate)
-
-        if flow_rate <= 0 and current_flow_rate > 50:
-            print('resetting ob1')
-            error = OB1_Reset_Instr(self.pump_ID)
-            print(error)
-            OB1_Set_Remote_Target(self.pump_ID, set_channel, set_target)
-            time.sleep(3)
-            OB1_Get_Remote_Data(self.pump_ID, set_channel, byref(data_reg), byref(data_sens))
-            current_flow_rate = data_sens.value
-            print('current flow rate', int(current_flow_rate), 'expected flow rate', flow_rate)
-
+        self.fluidics_logger(str(OB1_Get_Remote_Data), error, current_flow_rate)
 
         if flow_rate > 400 and current_flow_rate < 0.1 * flow_rate:
-            print('resetting ob1')
-            error = OB1_Reset_Instr(self.pump_ID)
-            print(error)
-            OB1_Set_Remote_Target(self.pump_ID, set_channel, set_target)
-            time.sleep(3)
-            OB1_Get_Remote_Data(self.pump_ID, set_channel, byref(data_reg), byref(data_sens))
-            current_flow_rate = data_sens.value
-            print('current flow rate', int(current_flow_rate), 'expected flow rate', flow_rate)
+            print('fluid error, stopped script')
+            sys.exit()
+        if flow_rate < 40 and current_flow_rate > 100:
+            print('fluid error, stopped script')
+            sys.exit()
 
 
     def ob1_end(self):
@@ -3176,21 +3207,33 @@ class fluidics:
         nuc_flow_time = 45  # seconds
         nuc_inc_time = 3  # minutes
 
+        flow_rate = 500
+        flow_rate_stop = -3
+
+        flow_control = self.flow_control
+
+        if flow_control != 1:
+            flow_rate = 1100
+            flow_rate_stop = 0
+        else:
+            pass
+
+
         if action_type == 'Bleach':
 
             self.valve_select(bleach_valve)
-            self.flow(500)
+            self.flow(flow_rate)
             time.sleep(70)
-            self.flow(-3)
+            self.flow(flow_rate_stop)
             # time.sleep(bleach_time*60)
             self.valve_select(pbs_valve)
 
             for x in range(0, bleach_time):
                 time.sleep(60)
 
-            self.flow(500)
+            self.flow(flow_rate)
             time.sleep(80)
-            self.flow(-3)
+            self.flow(flow_rate_stop)
             time.sleep(5)
 
         elif action_type == 'Stain':
@@ -3203,9 +3246,9 @@ class fluidics:
 
             time.sleep(4)
             self.valve_select(stain_valve)
-            self.flow(500)
+            self.flow(flow_rate)
             time.sleep(stain_flow_time)
-            self.flow(-3)
+            self.flow(flow_rate_stop)
             self.valve_select(pbs_valve)
 
             for x in range(0, stain_inc_time):
@@ -3220,18 +3263,18 @@ class fluidics:
 
             self.valve_select(pbs_valve)
             time.sleep(30)
-            self.flow(500)
+            self.flow(flow_rate)
             time.sleep(80)
-            self.flow(-3)
+            self.flow(flow_rate_stop)
             time.sleep(5)
 
 
         elif action_type == "Wash":
 
             self.valve_select(pbs_valve)
-            self.flow(500)
+            self.flow(flow_rate)
             time.sleep(70)
-            self.flow(-3)
+            self.flow(flow_rate_stop)
 
 
         elif action_type == 'Nuc_Touchup':
@@ -3258,7 +3301,6 @@ class fluidics:
             self.valve_select(pbs_valve)
             self.flow(0)
             time.sleep(10)
-
 
 
 
