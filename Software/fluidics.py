@@ -149,13 +149,16 @@ class fluidics:
         set_channel = c_int32(set_channel)  # convert to c_int32
         time.sleep(3)
         error = OB1_Get_Remote_Data(self.pump_ID, set_channel, byref(data_reg), byref(data_sens))
-        #current_flow_rate = data_sens.value
-        current_flow_rate = data_reg.value
+
+        if self.flow_control == 1:
+            current_flow_rate = data_sens.value
+        else:
+            current_flow_rate = data_reg.value
+
         self.fluidics_logger(str(OB1_Get_Remote_Data), error, current_flow_rate)
 
-        '''
 
-        if flow_rate > 400 and current_flow_rate < 0.1 * flow_rate:
+        if flow_rate > 400 and current_flow_rate < 0.1 * flow_rate and self.flow_control == 1:
             print('restarting PID loop')
             #stop and restart PID loop
             error = PID_Set_Running_Remote(self.pump_ID, set_channel, 0)
@@ -166,7 +169,8 @@ class fluidics:
             error = OB1_Set_Remote_Target(self.pump_ID, set_channel, set_target)
             self.fluidics_logger(str(OB1_Set_Remote_Target), error, flow_rate)
 
-        if flow_rate < 40 and current_flow_rate > 100:
+
+        if flow_rate < 40 and current_flow_rate > 100 and self.flow_control == 1:
             print('restarting PID loop')
             #stop and restart PID loop
             error = PID_Set_Running_Remote(self.pump_ID, set_channel, 0)
@@ -191,7 +195,7 @@ class fluidics:
             print('fluid error, stopped script')
             sys.exit()
             
-        '''
+
 
 
     def ob1_end(self):
