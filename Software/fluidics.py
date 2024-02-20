@@ -31,8 +31,8 @@ class fluidics:
 
         Calib_path = r'C:\Users\CyCIF PC\Documents\GitHub\AutoCIF\Python_64_elveflow\calibration\1_12_24_cal.txt'
         Calib = (c_double * 1000)()
-        Elveflow_Calibration_Load(Calib_path.encode('ascii'), byref(Calib), 1000)
-        #Elveflow_Calibration_Default(byref(Calib), 1000)
+        #Elveflow_Calibration_Load(Calib_path.encode('ascii'), byref(Calib), 1000)
+        Elveflow_Calibration_Default(byref(Calib), 1000)
 
         if flow_control == 1:
 
@@ -149,8 +149,11 @@ class fluidics:
         set_channel = c_int32(set_channel)  # convert to c_int32
         time.sleep(3)
         error = OB1_Get_Remote_Data(self.pump_ID, set_channel, byref(data_reg), byref(data_sens))
-        current_flow_rate = data_sens.value
+        #current_flow_rate = data_sens.value
+        current_flow_rate = data_reg.value
         self.fluidics_logger(str(OB1_Get_Remote_Data), error, current_flow_rate)
+
+        '''
 
         if flow_rate > 400 and current_flow_rate < 0.1 * flow_rate:
             print('restarting PID loop')
@@ -187,15 +190,19 @@ class fluidics:
         if flow_rate < 40 and current_flow_rate > 100:
             print('fluid error, stopped script')
             sys.exit()
+            
+        '''
 
 
     def ob1_end(self):
 
+        set_channel = int(1)
+        set_channel= c_int32(set_channel)  # convert to c_int32
         error = PID_Set_Running_Remote(self.pump_ID, set_channel, 0)
         self.fluidics_logger(str(PID_Set_Running_Remote), error, 0)
 
-        error = OB1_Stop_Remote_measurement(self.pump_ID)
-        self.fluidics_logger(str(OB1_Stop_Remote_measurement), error, 0)
+        error = OB1_Stop_Remote_Measurement(self.pump_ID)
+        self.fluidics_logger(str(OB1_Stop_Remote_Measurement), error, 0)
 
         OB1_Destructor(self.pump_ID)
         self.fluidics_logger(str(OB1_Destructor), error, 0)

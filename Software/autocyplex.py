@@ -1,4 +1,4 @@
-#from microscope import *
+from microscope import *
 from fluidics import *
 #from arduino import *
 
