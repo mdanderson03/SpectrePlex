@@ -233,7 +233,7 @@ class cycif:
         numpy_path = experiment_directory + '/' + 'np_arrays'
         os.chdir(numpy_path)
         exp_calc_array = np.load('exp_calc_array.npy', allow_pickle=False)
-        fm_array == np.load('fm_array.npy', allow_pickle=False)
+        fm_array = np.load('fm_array.npy', allow_pickle=False)
 
         x_tiles = np.shape(exp_calc_array[0][0])[1]
         y_tiles = np.shape(exp_calc_array[0][0])[0]
