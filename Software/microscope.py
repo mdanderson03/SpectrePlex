@@ -187,8 +187,11 @@ class cycif:
         start_frame = side_pixel_count
         end_frame = side_pixel_count + x_frame_size
 
-        for x in range(1, 2):
-            for y in range(1, 2):
+        start = time.time()
+
+        for x in range(0, x_tiles):
+            for y in range(0, y_tiles):
+                print('x', x, 'y', y)
 
                 #import tissue binary image
                 tissue_path = experiment_directory + '/Tissue_Binary'
@@ -246,10 +249,14 @@ class cycif:
                         auto_fl_im = io.imread(filename)
 
                         #find ideal constant and sub off auto_fl_im from snapped image
-                        factor = self.autof_factor_estimator(pixels, auto_fl_im)
-                        subbed_image = pixels - factor*auto_fl_im
-                        subbed_image[subbed_image < 0] = 0
-                        subbed_image = np.nan_to_num(subbed_image, posinf= 65500)
+
+                        if channel_index == 0:
+                            subbed_image = pixels
+                        else:
+                            factor = self.autof_factor_estimator(pixels, auto_fl_im)
+                            subbed_image = pixels - factor*auto_fl_im
+                            subbed_image[subbed_image < 0] = 0
+                            subbed_image = np.nan_to_num(subbed_image, posinf= 65500)
 
                         #multiply by tissue binary
                         masked_subbed_image = subbed_image * tissue_bin_im
@@ -297,9 +304,17 @@ class cycif:
             exp_array[channel_index] = new_exp_factor
 
         #save new exp_array
+        finish = time.time()
+
+        print('auto_exp time', finish - start)
+
+
         numpy_path = experiment_directory + '/' + 'np_arrays'
         os.chdir(numpy_path)
         print(exp_array)
+        avg_exp_time = (exp_array[0] + exp_array[1] + exp_array[2] + exp_array[3])/4
+        total_exp= 7*4*avg_exp_time * 8
+        print('time exposing', total_exp)
         np.save('exp_array.npy', exp_array)
 
     def autof_factor_estimator(self, image, autof_image, num_images=2):
@@ -1024,7 +1039,7 @@ class cycif:
                     if tissue_fm[y][x] == 1:
 
                         core.set_xy_position(numpy_x[y][x], numpy_y[y][x])
-                        #time.sleep(1)
+                        time.sleep(.3)
 
                         for channel in channels:
 
@@ -1058,7 +1073,7 @@ class cycif:
 
                             for z in range(z_start, z_end, slice_gap):
                                 core.set_position(z)
-                                time.sleep(0.3)
+                                #time.sleep(0.1)
                                 core.snap_image()
                                 tagged_image = core.get_tagged_image()
                                 pixels = np.reshape(tagged_image.pix,
@@ -1085,7 +1100,7 @@ class cycif:
                         #print('x', numpy_x[y][x], 'y', numpy_y[y][x])
 
                         core.set_xy_position(numpy_x[y][x], numpy_y[y][x])
-                        #time.sleep(1)
+                        time.sleep(.3)
 
                         for channel in channels:
 
@@ -1119,7 +1134,7 @@ class cycif:
 
                             for z in range(z_start, z_end, slice_gap):
                                 core.set_position(z)
-                                time.sleep(0.3)
+                                #time.sleep(0.1)
 
                                 core.snap_image()
                                 tagged_image = core.get_tagged_image()
