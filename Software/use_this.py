@@ -1,15 +1,19 @@
+import datetime
+
 from autocyplex import *
-#from optparse import OptionParser
+from optparse import OptionParser
 microscope = cycif() # initialize cycif object
-#pump = fluidics(6, 3)
+experiment_directory = r'E:\tissue_testing'
 
-
-experiment_directory = r'E:\9-2-2 test run multiplex'
 z_slices = 7
 x_frame_size = 2960
 offset_array = [0, -8, -7, -7]
 
-microscope.post_acquisition_processor(experiment_directory, x_frame_size)
+
+
+
+microscope.image_cycle_acquire(1, experiment_directory, z_slices, 'Stain', offset_array, x_frame_size=x_frame_size, establish_fm_array=0, auto_focus_run=0,auto_expose_run=1)
+
 
 
 

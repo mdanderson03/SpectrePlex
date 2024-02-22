@@ -18,10 +18,11 @@ from pybasic import shading_correction
 from path import Path
 from csbdeep.utils import normalize
 from stardist.models import StarDist2D
+from matplotlib import pyplot as plt
 import cv2
 
-#magellan = Magellan()
-#core = Core()
+magellan = Magellan()
+core = Core()
 
 class cycif:
 
@@ -116,14 +117,14 @@ class cycif:
         if autofocus == 1 and auto_expose == 1:
             self.recursive_stardist_autofocus(experiment_directory, desired_cycle_count)
             self.establish_exp_arrays(experiment_directory)
-            self.auto_exposure(experiment_directory, x_frame_size, percentage_cut_off = 0.997, target_percentage = 0.3)
+            self.auto_exposure(experiment_directory, x_frame_size, percentage_cut_off = 0.997, target_percentage = 0.1)
         if autofocus == 1 and auto_expose == 0:
             #self.DAPI_surface_autofocus(experiment_directory, 20, 2, x_frame_size)
             self.recursive_stardist_autofocus(experiment_directory, desired_cycle_count)
             #self.fm_channel_initial(experiment_directory, off_array, z_slices, 2)
         if autofocus == 0 and auto_expose == 1:
             self.establish_exp_arrays(experiment_directory)
-            self.auto_exposure(experiment_directory, x_frame_size, percentage_cut_off = 0.997, target_percentage = 0.3)
+            self.auto_exposure(experiment_directory, x_frame_size, percentage_cut_off = 0.997, target_percentage = 0.1)
         else:
             pass
 
@@ -174,19 +175,20 @@ class cycif:
         tissue_fm = fm_array[10]
 
         #get XY arrays
-        numpy_x = full_array[0]
-        numpy_y = full_array[1]
+        numpy_x = fm_array[0]
+        numpy_y = fm_array[1]
 
         #make psuedo stack to hold images in
-        exp_image_stack = np.random.rand(number_channels, y_tiles, x_tiles, 2960, x_frame_size)
+        #exp_image_stack = np.random.rand(number_channels, y_tiles, x_tiles, 2960, x_frame_size)
+        exp_image_stack = np.zeros((number_channels, y_tiles, x_tiles, 2960, x_frame_size))
 
         #define pixel range in X dimension
         side_pixel_count = int((5056 - x_frame_size)/2)
         start_frame = side_pixel_count
         end_frame = side_pixel_count + x_frame_size
 
-        for x in range(0, x_tiles):
-            for y in range(0, y_tiles):
+        for x in range(1, 2):
+            for y in range(1, 2):
 
                 #import tissue binary image
                 tissue_path = experiment_directory + '/Tissue_Binary'
@@ -215,14 +217,14 @@ class cycif:
 
                         #Go to Z location
                         numpy_z = fm_array[channel_index*2 + 2]
-                        slice_count = fm_array[channel_index*2 + 3]
+                        slice_count = fm_array[channel_index*2 + 3][y][x]
                         z_range = slice_count * slice_gap
                         center_z = int(numpy_z[y][x] - z_range/2)
                         core.set_position(center_z)
                         time.sleep(0.3)
 
                         #set channel and exp time
-                        exp_time = int(exp_time_array[tif_stack_c_index])
+                        exp_time = int(exp_array[channel_index])
                         core.set_config("Color", channel)
                         core.set_exposure(exp_time)
 
@@ -231,21 +233,23 @@ class cycif:
                         tagged_image = core.get_tagged_image()
                         pixels = np.reshape(tagged_image.pix,
                                             newshape=[tagged_image.tags["Height"], tagged_image.tags["Width"]])
-                        pixels = pixels[::, side_pixel_count:side_pixel_count + x_pixels]
+                        pixels = pixels[::, side_pixel_count:side_pixel_count + x_frame_size]
 
                         #Determine if intensity is in bounds and take diff image if not. Record new exp time
-                        pixels, exp_time = self.exp_bound_solver(pixels)
+                        pixels, exp_time = self.exp_bound_solver(pixels, exp_time, 0.99)
                         exp_array[channel_index] = exp_time
 
                         #load in auto fluorescence image
                         auto_fl_path = experiment_directory + '/' + str(channel) + '/Bleach/' + 'cy_0/' + 'Tiles'
                         os.chdir(auto_fl_path)
-                        filename = 'z_' + str(center_z) + '_x' + str(x) + '_y_' + str(y) + '_c_' + str(channel) + '.tif'
+                        filename = 'z_' + str(int(slice_count/2)) + '_x' + str(x) + '_y_' + str(y) + '_c_' + str(channel) + '.tif'
                         auto_fl_im = io.imread(filename)
 
                         #find ideal constant and sub off auto_fl_im from snapped image
                         factor = self.autof_factor_estimator(pixels, auto_fl_im)
-                        subbed_image = pixels - factor*auto_fl_path
+                        subbed_image = pixels - factor*auto_fl_im
+                        subbed_image[subbed_image < 0] = 0
+                        subbed_image = np.nan_to_num(subbed_image, posinf= 65500)
 
                         #multiply by tissue binary
                         masked_subbed_image = subbed_image * tissue_bin_im
@@ -279,10 +283,15 @@ class cycif:
 
             #apply threshold and find brightest and dimmest pixels
             non_zero_thresh_pixels = channel_pixels.ravel()[np.flatnonzero(channel_pixels > thresh)]
-            high_pixel, low_pixel = image_percentile_level(non_zero_thresh_pixels, cut_off_threshold= percentage_cut_off)
+            high_pixel, low_pixel = self.image_percentile_level(non_zero_thresh_pixels, cut_off_threshold= percentage_cut_off)
 
             #find new exp factor
-            new_exp_factor = target_percentage * 65500 / low_pixel * exp_time[channel_index]
+            new_exp_factor = target_percentage * 65500 / low_pixel * exp_array[channel_index]
+
+            if new_exp_factor > 2000:
+                new_exp_factor = 2000
+            if new_exp_factor < 50:
+                new_exp_factor = 50
 
             #add to exp_array
             exp_array[channel_index] = new_exp_factor
@@ -290,11 +299,18 @@ class cycif:
         #save new exp_array
         numpy_path = experiment_directory + '/' + 'np_arrays'
         os.chdir(numpy_path)
+        print(exp_array)
         np.save('exp_array.npy', exp_array)
 
     def autof_factor_estimator(self, image, autof_image, num_images=2):
         top_range = 20
         x_factor = top_range / num_images
+
+        image = np.nan_to_num(image, posinf= 65500)
+        autof_image = np.nan_to_num(autof_image, posinf= 65500)
+
+        image = image.astype('float32')
+        autof_image = autof_image.astype('float32')
 
         x_axis = np.linspace(0, top_range, num_images).astype('float32')
         y_axis = np.linspace(0, top_range, num_images).astype('float32')
@@ -333,7 +349,7 @@ class cycif:
 
         return projected_min_point
 
-    def image_percentile_level(image, cut_off_threshold=0.99):
+    def image_percentile_level(self, image, cut_off_threshold=0.99):
         '''
         Takes in image and cut off threshold and finds pixel value that exists at that threshold point.
 
@@ -369,7 +385,10 @@ class cycif:
 
         target_intensity = 65535 * 0.05
         max_time = 100
+        min_time = 30
         trigger_state = 0
+
+        x_frame_size = np.shape(image)[1]
 
         intensity, low_intensity = self.image_percentile_level(image, percentage_cutoff)
         #print(intensity)
@@ -380,7 +399,7 @@ class cycif:
             core.snap_image()
             tagged_image = core.get_tagged_image()
             new_image = np.reshape(tagged_image.pix, newshape=[tagged_image.tags["Height"], tagged_image.tags["Width"]])
-            intensity, low_intensity = self.image_percentile_level(new_image, percentage_cutoff)
+            intensity, low_intensity = self.image_percentile_level(new_image, cut_off_threshold=percentage_cutoff)
             trigger_state = 1
 
         if intensity < 1000 and exp_time < max_time:
@@ -390,17 +409,24 @@ class cycif:
             scale_factor = target_intensity / (intensity - 300)
             if scale_factor * exp_time > max_time:
                 exp_time = max_time
+            if scale_factor < min_time:
+                scale_factor = min_time
             else:
                 exp_time = int(exp_time * scale_factor)
 
         if trigger_state == 1:
 
+            #gather new image
             core.set_exposure(exp_time)
             core.snap_image()
             tagged_image = core.get_tagged_image()
             image = np.reshape(tagged_image.pix, newshape=[tagged_image.tags["Height"], tagged_image.tags["Width"]])
+            #crop image to equal first image
+            side_pixel_count = int((5056 - x_frame_size)/2)
+            image = image[::, side_pixel_count:side_pixel_count + x_frame_size]
         else:
             pass
+
 
         return image, exp_time
 
