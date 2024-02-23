@@ -282,7 +282,7 @@ class fluidics:
             plt.plot(time_points, flow_points, 'o', color='black')
             plt.show()
 
-    def liquid_action(self, action_type, stain_valve=0, incub_val=45, heater_state=0):
+    def liquid_action(self, action_type, stain_valve=0, incub_val=5, heater_state=0):
 
         bleach_valve = 11
         pbs_valve = 12
