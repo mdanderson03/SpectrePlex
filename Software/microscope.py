@@ -21,8 +21,8 @@ from stardist.models import StarDist2D
 from matplotlib import pyplot as plt
 import cv2
 
-magellan = Magellan()
-core = Core()
+#magellan = Magellan()
+#core = Core()
 
 class cycif:
 
@@ -1339,7 +1339,7 @@ class cycif:
         mcmicro_path = experiment_directory + r'\mcmicro\raw'
         cycle_start = 1
         cycle_start_search = 0
-
+        '''
         os.chdir(mcmicro_path)
         while cycle_start_search == 0:
             file_name = str(experiment_directory.split("\\")[-1]) + '-cycle-0' + str(cycle_start) + '.ome.tif'
@@ -1347,7 +1347,7 @@ class cycif:
                 cycle_start += 1
             else:
                 cycle_start_search = 1
-
+        '''
         cycle_end = 8
         cycle_start = 1
 
