@@ -295,8 +295,8 @@ class cycif:
             #find new exp factor
             new_exp_factor = target_percentage * 65500 / low_pixel * exp_array[channel_index]
 
-            if new_exp_factor > 2000:
-                new_exp_factor = 2000
+            if new_exp_factor > 200:
+                new_exp_factor = 200
             if new_exp_factor < 50:
                 new_exp_factor = 50
 
