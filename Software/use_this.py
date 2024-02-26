@@ -3,7 +3,7 @@ import datetime
 from autocyplex import *
 from optparse import OptionParser
 microscope = cycif() # initialize cycif object
-experiment_directory = r'D:\Images\AutoCyPlex\12-12-23_real_test'
+experiment_directory = r'E:\23-2-24 celiac multiplex'
 #pump = fluidics(experiment_directory, 6, 3, flow_control=1)
 
 z_slices = 7
