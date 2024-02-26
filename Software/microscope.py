@@ -1725,6 +1725,16 @@ class cycif:
                 os.chdir(quick_tile_path + '/' + channel)
                 tf.imwrite(channel + '_cy_' + str(cycle_number) + '_' + type + '_placed.tif', placed_image)
 
+    def subtract_background(self, image, radius=50, light_bg=False):
+
+        str_el = morphology.disk(radius)  # you can also use 'ball' here to get a slightly smoother result at the cost of increased computing time
+        if light_bg:
+            new_image = morphology.black_tophat(image, str_el)
+        else:
+            new_image = morphology.white_tophat(image, str_el)
+
+        return new_image
+
     def illumination_flattening(self, experiment_directory, cycle_number):
 
         # load numpy arrays in
@@ -1750,7 +1760,7 @@ class cycif:
             if channel == 0:
                 directory = directory_start + channel_name + '\Stain\cy_' + str(cycle_number) + r'\Tiles\focused'
             else:
-                directory = directory_start + channel_name + '\Stain\cy_' + str(cycle_number) + r'\Tiles\focused\background_subbed'
+                directory = directory_start + channel_name + '\Stain\cy_' + str(cycle_number) + r'\Tiles\focused\background_subbed_rolling'
             output_directory = directory_start + channel_name + '\Stain\cy_' + str(
                 cycle_number) + r'\Tiles\focused_basic_corrected'
 
@@ -1957,6 +1967,8 @@ class cycif:
 
                 if tissue_exist[y][x] == 1:
 
+                    '''
+
                     # load reference and "moved" image
                     ref_path = experiment_directory + 'DAPI\Bleach\cy_' + str(cycle) + '\Tiles/focused'
                     os.chdir(ref_path)
@@ -1993,10 +2005,20 @@ class cycif:
                         color_subbed = color_reg - color_bleach
                         color_subbed[color_subbed < 0] = 0
                         color_subbed = color_subbed.astype('float32')
+                    
+                    '''
+                    for channel in channels:
+                        stain_color_path = experiment_directory + channel + r'/Stain/cy_' + str(cycle) + '\Tiles/focused'
+                        os.chdir(stain_color_path)
+                        filename = 'x' + str(x) + '_y_' + str(y) + '_c_' + channel + '.tif'
+                        color_im = io.imread(filename)
+                        color_im = np.nan_to_num(color_im, posinf= 65500)
+
+                        color_subbed = self.subtract_background(color_im)
 
                         # save
 
-                        save_path = experiment_directory + channel + r'/Stain/cy_' + str(cycle) + '\Tiles/focused/background_subbed'
+                        save_path = experiment_directory + channel + r'/Stain/cy_' + str(cycle) + '\Tiles/focused/background_subbed_rolling'
                         try:
                             os.chdir(save_path)
                         except:
