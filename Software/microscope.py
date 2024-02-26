@@ -1727,6 +1727,7 @@ class cycif:
         numpy_path = experiment_directory + '/' + 'np_arrays'
         os.chdir(numpy_path)
         full_array = np.load('fm_array.npy', allow_pickle=False)
+        tissue_exist = np.load('tissue_exist.npy', allow_pickle=False)
 
         numpy_x = full_array[0]
         numpy_y = full_array[1]
@@ -1749,10 +1750,13 @@ class cycif:
         tissue_binary_stack = np.random.rand(y_tile_count, x_tile_count, 2960, x_frame_size).astype('uint16')
         for x in range(0, x_tile_count):
             for y in range(0, y_tile_count):
-                os.chdir(tissue_path)
-                file_name = 'x' + str(x) + '_y_' + str(y) + '_tissue.tif'
-                image = tf.imread(file_name)
-                tissue_binary_stack[y][x] = image
+                if tissue_exist[y][x] == 1:
+                    os.chdir(tissue_path)
+                    file_name = 'x' + str(x) + '_y_' + str(y) + '_tissue.tif'
+                    image = tf.imread(file_name)
+                    tissue_binary_stack[y][x] = image
+                else:
+                    pass
 
         for channel in channels:
             # generate imstack of z slices for tile
@@ -1762,42 +1766,45 @@ class cycif:
             z_stack = np.random.rand(z_slice_count, 2960, x_frame_size).astype('float32')
             for x in range(0, x_tile_count):
                 for y in range(0, y_tile_count):
-                    for z in range(0, z_slice_count):
-                        im_path = experiment_directory + '/' + channel + '\Stain\cy_' + str(cycle_number) + '\Tiles'
-                        os.chdir(im_path)
-                        file_name = 'z_' + str(z) + '_x' + str(x) + '_y_' + str(y) + '_c_' + str(channel) + '.tif'
-                        image = tf.imread(file_name)
-                        z_stack[z] = image
+                    if tissue_exist[y][x] == 1:
+                        for z in range(0, z_slice_count):
+                            im_path = experiment_directory + '/' + channel + '\Stain\cy_' + str(cycle_number) + '\Tiles'
+                            os.chdir(im_path)
+                            file_name = 'z_' + str(z) + '_x' + str(x) + '_y_' + str(y) + '_c_' + str(channel) + '.tif'
+                            image = tf.imread(file_name)
+                            z_stack[z] = image
 
-                        # break into sub sections (2x2)
+                            # break into sub sections (2x2)
 
-                    number_bins = len(bin_values)
-                    brenner_sub_selector = np.random.rand(z_slice_count, number_bins, y_sub_section_count,
-                                                          x_sub_section_count)
-                    for z in range(0, z_slice_count):
-                        for y_sub in range(0, y_sub_section_count):
-                            for x_sub in range(0, x_sub_section_count):
+                        number_bins = len(bin_values)
+                        brenner_sub_selector = np.random.rand(z_slice_count, number_bins, y_sub_section_count,
+                                                              x_sub_section_count)
+                        for z in range(0, z_slice_count):
+                            for y_sub in range(0, y_sub_section_count):
+                                for x_sub in range(0, x_sub_section_count):
 
-                                y_end = int((y_sub + 1) * (2960 / y_sub_section_count))
-                                y_start = int(y_sub * (2960 / y_sub_section_count))
-                                x_end = int((x_sub + 1) * (x_frame_size / x_sub_section_count))
-                                x_start = int(x_sub * (x_frame_size / x_sub_section_count))
-                                sub_image = z_stack[z][y_start:y_end, x_start:x_end]
+                                    y_end = int((y_sub + 1) * (2960 / y_sub_section_count))
+                                    y_start = int(y_sub * (2960 / y_sub_section_count))
+                                    x_end = int((x_sub + 1) * (x_frame_size / x_sub_section_count))
+                                    x_start = int(x_sub * (x_frame_size / x_sub_section_count))
+                                    sub_image = z_stack[z][y_start:y_end, x_start:x_end]
 
-                                sub_tissue_bin = tissue_binary_stack[y][x][y_start:y_end, x_start:x_end]
+                                    sub_tissue_bin = tissue_binary_stack[y][x][y_start:y_end, x_start:x_end]
 
-                                for b in range(0, number_bins):
-                                    bin_value = int(bin_values[b])
-                                    score =  self.focus_score(sub_image, bin_value, sub_tissue_bin)
-                                    #score = self.focus_score_post_processing(sub_image, bin_value)
-                                    #score = 500
-                                    brenner_sub_selector[z][b][y_sub][x_sub] = score
+                                    for b in range(0, number_bins):
+                                        bin_value = int(bin_values[b])
+                                        score =  self.focus_score(sub_image, bin_value, sub_tissue_bin)
+                                        #score = self.focus_score_post_processing(sub_image, bin_value)
+                                        #score = 500
+                                        brenner_sub_selector[z][b][y_sub][x_sub] = score
 
-
-                    reconstruct_array = self.brenner_reconstruct_array(brenner_sub_selector, z_slice_count, number_bins)
-                    #reconstruct_array = skimage.filters.median(reconstruct_array)
-                    self.image_reconstructor(experiment_directory, reconstruct_array, channel, cycle_number,
+                        reconstruct_array = self.brenner_reconstruct_array(brenner_sub_selector, z_slice_count, number_bins)
+                        #reconstruct_array = skimage.filters.median(reconstruct_array)
+                        self.image_reconstructor(experiment_directory, reconstruct_array, channel, cycle_number,
                                              x_frame_size, y, x)
+
+                    else:
+                        pass
 
     def brenner_reconstruct_array(self, brenner_sub_selector, z_slice_count, number_bins):
         '''
@@ -1915,12 +1922,14 @@ class cycif:
                         os.chdir(stain_color_path)
                         filename = 'x' + str(x) + '_y_' + str(y) + '_c_' + channel + '.tif'
                         color_im = io.imread(filename)
+                        color_im = np.nan_to_num(color_im, posinf= 65500)
                         color_reg = sr.transform(color_im)
 
                         # sub background color channels
                         bleach_color_path = experiment_directory + channel + r'/Bleach/cy_' + str(cycle) + '\Tiles/focused'
                         os.chdir(bleach_color_path)
                         color_bleach = io.imread(filename)
+                        color_bleach = np.nan_to_num(color_bleach, posinf=65500)
                         #coefficent = self.autof_factor_estimator(color_reg, color_bleach)
                         #color_subbed = color_reg - coefficent * color_bleach
                         color_subbed = color_reg - color_bleach
