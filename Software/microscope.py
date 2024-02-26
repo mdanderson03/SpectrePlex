@@ -1078,6 +1078,7 @@ class cycif:
                                 tagged_image = core.get_tagged_image()
                                 pixels = np.reshape(tagged_image.pix,
                                                     newshape=[tagged_image.tags["Height"], tagged_image.tags["Width"]])
+                                pixels = np.nan_to_num(pixels, posinf= 65500)
                                 zc_tif_stack[zc_index][z_counter] = pixels[::, side_pixel_count:side_pixel_count + x_pixels]
 
                                 # core.pop_next_tagged_image()
@@ -1140,6 +1141,7 @@ class cycif:
                                 tagged_image = core.get_tagged_image()
                                 pixels = np.reshape(tagged_image.pix,
                                                     newshape=[tagged_image.tags["Height"], tagged_image.tags["Width"]])
+                                pixels = np.nan_to_num(pixels, posinf=65500)
                                 zc_tif_stack[zc_index][z_counter] = pixels[::, side_pixel_count:side_pixel_count + x_pixels]
 
                                 # core.pop_next_tagged_image()
@@ -1895,10 +1897,12 @@ class cycif:
                     os.chdir(ref_path)
                     ref_name = 'x' + str(x) + '_y_' + str(y) + '_c_DAPI.tif'
                     ref = io.imread(ref_name)
+                    ref = np.nan_to_num(ref, posinf=65500)
                     mov_path = experiment_directory + 'DAPI\Stain\cy_' + str(cycle) + '\Tiles/focused'
                     os.chdir(mov_path)
                     mov_name = 'x' + str(x) + '_y_' + str(y) + '_c_DAPI.tif'
                     mov = io.imread(mov_name)
+                    mov = np.nan_to_num(mov, posinf=65500)
 
                     # Translational transformation
                     sr = StackReg(StackReg.TRANSLATION)
@@ -1919,7 +1923,7 @@ class cycif:
                         color_bleach = io.imread(filename)
                         #coefficent = self.autof_factor_estimator(color_reg, color_bleach)
                         #color_subbed = color_reg - coefficent * color_bleach
-                        color_subbed = color_im - color_bleach
+                        color_subbed = color_reg - color_bleach
                         color_subbed[color_subbed < 0] = 0
                         color_subbed = color_subbed.astype('float32')
 
