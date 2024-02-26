@@ -470,6 +470,7 @@ class cycif:
         numpy_path = experiment_directory + '/' + 'np_arrays'
         os.chdir(numpy_path)
         exp_array = np.load('exp_array.npy', allow_pickle=False)
+        fm_array = np.load('fm_array.npy', allow_pickle=False)
 
         exp_path = experiment_directory + '/' + 'exposure_times'
         os.chdir(exp_path)
@@ -483,13 +484,13 @@ class cycif:
             # populate headers
             ws.cell(row = 1, column = 1).value = 'Cycle #'
             ws.cell(row=1, column=2).value = 'Exp Time DAPI'
-            #ws.cell(row=1, column=3).value = 'Average # DAPI'
+            ws.cell(row=1, column=3).value = 'Average # DAPI'
             ws.cell(row=1, column=4).value = 'Exp Time A488'
-            #ws.cell(row=1, column=5).value = 'Average # A488'
+            ws.cell(row=1, column=5).value = 'Average # A488'
             ws.cell(row=1, column=6).value = 'Exp Time A555'
-            #ws.cell(row=1, column=7).value = 'Average # A555'
+            ws.cell(row=1, column=7).value = 'Average # A555'
             ws.cell(row=1, column=8).value = 'Exp Time A647'
-            #ws.cell(row=1, column=9).value = 'Average # A647'
+            ws.cell(row=1, column=9).value = 'Average # A647'
 
         if os.path.isfile('Exp.xlsx') == True:
             wb = load_workbook('Exp.xlsx')
@@ -502,6 +503,11 @@ class cycif:
         ws.cell(row=int(cycle + 2), column=4).value = exp_array[1]
         ws.cell(row=int(cycle + 2), column=6).value = exp_array[2]
         ws.cell(row=int(cycle + 2), column=8).value = exp_array[3]
+
+        ws.cell(row=int(cycle + 2), column=3).value = fm_array[11]
+        ws.cell(row=int(cycle + 2), column=5).value = fm_array[12]
+        ws.cell(row=int(cycle + 2), column=7).value = fm_array[13]
+        ws.cell(row=int(cycle + 2), column=9).value = fm_array[14]
 
         wb.save('Exp.xlsx')
     ##########################################################
