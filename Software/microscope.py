@@ -937,7 +937,7 @@ class cycif:
                     if tissue_fm[y][x] == 1:
 
                         core.set_xy_position(numpy_x[y][x], numpy_y[y][x])
-                        #time.sleep(1)
+                        time.sleep(.2)
 
                         for channel in channels:
 
@@ -971,11 +971,12 @@ class cycif:
 
                             for z in range(z_start, z_end, slice_gap):
                                 core.set_position(z)
-                                time.sleep(0.3)
+                                #time.sleep(0.3)
                                 core.snap_image()
                                 tagged_image = core.get_tagged_image()
                                 pixels = np.reshape(tagged_image.pix,
                                                     newshape=[tagged_image.tags["Height"], tagged_image.tags["Width"]])
+                                pixels = np.nan_to_num(pixels, posinf= 65500)
                                 zc_tif_stack[zc_index][z_counter] = pixels[::, side_pixel_count:side_pixel_count + x_pixels]
 
                                 # core.pop_next_tagged_image()
@@ -1032,12 +1033,13 @@ class cycif:
 
                             for z in range(z_start, z_end, slice_gap):
                                 core.set_position(z)
-                                time.sleep(0.3)
+                                #time.sleep(0.3)
 
                                 core.snap_image()
                                 tagged_image = core.get_tagged_image()
                                 pixels = np.reshape(tagged_image.pix,
                                                     newshape=[tagged_image.tags["Height"], tagged_image.tags["Width"]])
+                                pixels = np.nan_to_num(pixels, posinf=65500)
                                 zc_tif_stack[zc_index][z_counter] = pixels[::, side_pixel_count:side_pixel_count + x_pixels]
 
                                 # core.pop_next_tagged_image()
