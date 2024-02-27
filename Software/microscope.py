@@ -1408,16 +1408,16 @@ class cycif:
             else:
                 cycle_start_search = 1
         '''
-        cycle_end = 2
-        cycle_start = 1
+        cycle_end = 8
+        cycle_start = 2
 
         #self.tissue_binary_generate(experiment_directory)
         #self.tissue_exist_array_generate(experiment_directory)
 
         for cycle_number in range(cycle_start, cycle_end):
             #self.infocus(experiment_directory, cycle_number, x_pixels, 2, 2)
-            self.background_sub(experiment_directory, cycle_number)
-            #self.illumination_flattening(experiment_directory, cycle_number)
+            #self.background_sub(experiment_directory, cycle_number)
+            self.illumination_flattening(experiment_directory, cycle_number)
             #self.mcmicro_image_stack_generator(cycle_number, experiment_directory, x_pixels)
             #self.stage_placement(experiment_directory, cycle_number, x_pixels)
 
@@ -1744,7 +1744,7 @@ class cycif:
 
         os.chdir(directory_path)
 
-        filenames = os.listdir(folder)
+        filenames = os.listdir(directory_path)
         for x in range(0, len(filenames)):
             im2 = io.imread(filenames[x])
             im2 = np.nan_to_num(im2, posinf=65500)
@@ -1775,7 +1775,7 @@ class cycif:
             if channel == 0:
                 directory = directory_start + channel_name + '\Stain\cy_' + str(cycle_number) + r'\Tiles\focused'
             else:
-                directory = directory_start + channel_name + '\Stain\cy_' + str(cycle_number) + r'\Tiles\focused\background_subbed_rolling'
+                directory = directory_start + channel_name + '\Stain\cy_' + str(cycle_number) + r'\Tiles\focused\background_subbed'
             output_directory = directory_start + channel_name + '\Stain\cy_' + str(
                 cycle_number) + r'\Tiles\focused_basic_corrected'
 
