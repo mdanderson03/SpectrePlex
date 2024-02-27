@@ -1426,14 +1426,17 @@ class cycif:
         numpy_path = experiment_directory + '/' + 'np_arrays'
         os.chdir(numpy_path)
         full_array = np.load('fm_array.npy', allow_pickle=False)
+        tissue_exist = np.load('tissue_exist.npy', allow_pickle=False)
+
 
         xml_metadata = self.metadata_generator(experiment_directory, x_frame_size)
 
         numpy_x = full_array[0]
         numpy_y = full_array[1]
+        numpy_tissue = full_array[10]
         y_tile_count = numpy_x.shape[0]
         x_tile_count = numpy_y.shape[1]
-        tile_count = int(x_tile_count * y_tile_count)
+        tile_count = int(numpy_tissue.sum())
 
         dapi_im_path = experiment_directory + '\DAPI\Stain\cy_' + str(
             cycle_number) + '\Tiles' + '/focused_basic_corrected'
@@ -1451,42 +1454,48 @@ class cycif:
         tile = 0
         for x in range(0, x_tile_count):
             for y in range(0, y_tile_count):
-                dapi_file_name = 'x' + str(x) + '_y_' + str(y) + '_c_DAPI.tif'
-                a488_file_name = 'x' + str(x) + '_y_' + str(y) + '_c_A488.tif'
-                a555_file_name = 'x' + str(x) + '_y_' + str(y) + '_c_A555.tif'
-                a647_file_name = 'x' + str(x) + '_y_' + str(y) + '_c_A647.tif'
 
-                base_count_number_stack = tile * 4
+                if tissue_exist[y][x] == 1:
 
-                os.chdir(dapi_im_path)
-                try:
-                    image = io.imread(dapi_file_name)
-                except:
-                    image = cv2.imread(dapi_file_name)[::, ::, 0]
-                mcmicro_stack[base_count_number_stack + 0] = image
+                    dapi_file_name = 'x' + str(x) + '_y_' + str(y) + '_c_DAPI.tif'
+                    a488_file_name = 'x' + str(x) + '_y_' + str(y) + '_c_A488.tif'
+                    a555_file_name = 'x' + str(x) + '_y_' + str(y) + '_c_A555.tif'
+                    a647_file_name = 'x' + str(x) + '_y_' + str(y) + '_c_A647.tif'
 
-                os.chdir(a488_im_path)
-                try:
-                    image = io.imread(a488_file_name)
-                except:
-                    image = cv2.imread(a488_file_name)[::, ::, 0]
-                mcmicro_stack[base_count_number_stack + 1] = image
+                    base_count_number_stack = tile * 4
 
-                os.chdir(a555_im_path)
-                try:
-                    image = io.imread(a555_file_name)
-                except:
-                    image = cv2.imread(a555_file_name)[::, ::, 0]
-                mcmicro_stack[base_count_number_stack + 2] = image
+                    os.chdir(dapi_im_path)
+                    try:
+                        image = io.imread(dapi_file_name)
+                    except:
+                        image = cv2.imread(dapi_file_name)[::, ::, 0]
+                    mcmicro_stack[base_count_number_stack + 0] = image
 
-                os.chdir(a647_im_path)
-                try:
-                    image = io.imread(a647_file_name)
-                except:
-                    image = cv2.imread(a647_file_name)[::, ::, 0]
-                mcmicro_stack[base_count_number_stack + 3] = image
+                    os.chdir(a488_im_path)
+                    try:
+                        image = io.imread(a488_file_name)
+                    except:
+                        image = cv2.imread(a488_file_name)[::, ::, 0]
+                    mcmicro_stack[base_count_number_stack + 1] = image
 
-                tile += 1
+                    os.chdir(a555_im_path)
+                    try:
+                        image = io.imread(a555_file_name)
+                    except:
+                        image = cv2.imread(a555_file_name)[::, ::, 0]
+                    mcmicro_stack[base_count_number_stack + 2] = image
+
+                    os.chdir(a647_im_path)
+                    try:
+                        image = io.imread(a647_file_name)
+                    except:
+                        image = cv2.imread(a647_file_name)[::, ::, 0]
+                    mcmicro_stack[base_count_number_stack + 3] = image
+
+                    tile += 1
+
+                else:
+                    pass
 
         os.chdir(mcmicro_path)
         mcmicro_file_name = str(experiment_directory.split("\\")[-1]) + '-cycle-0' + str(cycle_number) + '.ome.tif'
@@ -1502,12 +1511,14 @@ class cycif:
         numpy_path = experiment_directory + '/' + 'np_arrays'
         os.chdir(numpy_path)
         full_array = np.load('fm_array.npy', allow_pickle=False)
+        tissue_exist = np.load('tissue_exist.npy', allow_pickle=False)
 
         numpy_x = full_array[0]
         numpy_y = full_array[1]
+        numpy_tissue = full_array[10]
         y_tile_count = numpy_x.shape[0]
         x_tile_count = numpy_y.shape[1]
-        total_tile_count = x_tile_count * y_tile_count
+        total_tile_count = int(numpy_tissue.sum())
 
         y_gap = 532
         col_col_gap = 10
@@ -1531,13 +1542,18 @@ class cycif:
         for x in range(0, x_tile_count):
             for y in range(0, y_tile_count):
 
-                for p in range(0, 4):
-                    new_x = numpy_x[y][x] - 11000
-                    new_y = numpy_y[y][x] + 2300
-                    new_ome.images[tile_counter].pixels.planes[p].position_y = deepcopy(new_y)
-                    new_ome.images[tile_counter].pixels.planes[p].position_x = deepcopy(new_x)
-                    new_ome.images[tile_counter].pixels.tiff_data_blocks[p].ifd = (4 * tile_counter) + p
-                tile_counter += 1
+                if tissue_exist[y][x] == 1:
+
+                    for p in range(0, 4):
+                        new_x = numpy_x[y][x] - 11000
+                        new_y = numpy_y[y][x] + 2300
+                        new_ome.images[tile_counter].pixels.planes[p].position_y = deepcopy(new_y)
+                        new_ome.images[tile_counter].pixels.planes[p].position_x = deepcopy(new_x)
+                        new_ome.images[tile_counter].pixels.tiff_data_blocks[p].ifd = (4 * tile_counter) + p
+                    tile_counter += 1
+
+                else:
+                    pass
 
         xml = to_xml(new_ome)
 
