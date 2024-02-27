@@ -1408,15 +1408,15 @@ class cycif:
             else:
                 cycle_start_search = 1
         '''
-        cycle_end = 8
+        cycle_end = 2
         cycle_start = 1
 
-        self.tissue_binary_generate(experiment_directory)
-        self.tissue_exist_array_generate(experiment_directory)
+        #self.tissue_binary_generate(experiment_directory)
+        #self.tissue_exist_array_generate(experiment_directory)
 
         for cycle_number in range(cycle_start, cycle_end):
-            self.infocus(experiment_directory, cycle_number, x_pixels, 2, 2)
-            #self.background_sub(experiment_directory, cycle_number)
+            #self.infocus(experiment_directory, cycle_number, x_pixels, 2, 2)
+            self.background_sub(experiment_directory, cycle_number)
             #self.illumination_flattening(experiment_directory, cycle_number)
             #self.mcmicro_image_stack_generator(cycle_number, experiment_directory, x_pixels)
             #self.stage_placement(experiment_directory, cycle_number, x_pixels)
