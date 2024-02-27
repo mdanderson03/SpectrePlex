@@ -1656,6 +1656,7 @@ class cycif:
         numpy_path = experiment_directory + '/' + 'np_arrays'
         os.chdir(numpy_path)
         full_array = np.load('fm_array.npy', allow_pickle=False)
+        tissue_exist = np.load('tissue_exist.npy', allow_pickle=False)
 
         numpy_x = full_array[0]
         numpy_y = full_array[1]
@@ -1671,7 +1672,7 @@ class cycif:
 
         super_y = int(1.02 * (y_tile_count * fov_y_pixels))
         super_x = int(1.02 * (x_tile_count * fov_x_pixels))
-        placed_image = np.random.rand(super_y, super_x).astype('uint16')
+        placed_image = np.random.rand(super_y, super_x).astype('float32')
 
         # transform numpy x and y coords into new shifted space that starts at zero and is in units of pixels and not um
         numpy_x_pixels = numpy_x / um_pixel
@@ -1708,34 +1709,38 @@ class cycif:
 
                 for x in range(0, x_tile_count):
                     for y in range(0, y_tile_count):
-                        filename = 'x' + str(x) + '_y_' + str(y) + '_c_' + channel + '.tif'
-                        try:
-                            image = io.imread(filename)
-                        except:
-                            image = cv2.imread(filename)[::,::,0]
 
-                        # define subsection of large array that fits dimensions of single FOV
-                        # x_center = numpy_x_pixels[y][x]
-                        # y_center = numpy_y_pixels[y][x]
-                        # x_start = int(x_center - fov_x_pixels / 2)
-                        # x_end = int(x_center + fov_x_pixels / 2)
-                        # y_start = int(y_center - fov_y_pixels / 2)
-                        # y_end = int(y_center + fov_y_pixels / 2)
+                        if tissue_exist[y][x] == 1:
+                            filename = 'x' + str(x) + '_y_' + str(y) + '_c_' + channel + '.tif'
+                            try:
+                                image = io.imread(filename)
+                            except:
+                                image = cv2.imread(filename)[::,::,0]
 
-                        if x == 0 and y == 0:
-                            x_start = 0
-                            x_end = x_pixels
-                            y_start = 0
-                            y_end = 2960
+                            # define subsection of large array that fits dimensions of single FOV
+                            # x_center = numpy_x_pixels[y][x]
+                            # y_center = numpy_y_pixels[y][x]
+                            # x_start = int(x_center - fov_x_pixels / 2)
+                            # x_end = int(x_center + fov_x_pixels / 2)
+                            # y_start = int(y_center - fov_y_pixels / 2)
+                            # y_end = int(y_center + fov_y_pixels / 2)
+
+                            if x == 0 and y == 0:
+                                x_start = 0
+                                x_end = x_pixels
+                                y_start = 0
+                                y_end = 2960
+                            else:
+
+                                x_start = int(x * fov_x_pixels * 0.9)
+                                x_end = x_start + x_pixels
+                                y_start = int(y * fov_y_pixels * 0.9)
+                                y_end = y_start + 2960
+
+                            placed_image[y_start:y_end, x_start:x_end] = image
+
                         else:
-
-                            x_start = int(x * fov_x_pixels * 0.9)
-                            x_end = x_start + x_pixels
-                            y_start = int(y * fov_y_pixels * 0.9)
-                            y_end = y_start + 2960
-
-                        # placed_image[y_start:y_end, x_start:x_end] = placed_image[y_start:y_end, x_start:x_end] + image
-                        placed_image[y_start:y_end, x_start:x_end] = image
+                            pass
 
                 # save output image
                 os.chdir(quick_tile_path + '/' + channel)
