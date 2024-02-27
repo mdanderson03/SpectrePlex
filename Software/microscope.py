@@ -2,7 +2,7 @@ import ome_types
 from pycromanager import Core,Magellan
 import numpy as np
 import time
-from skimage import io, filters, morphology
+from skimage import io, filters, morphology, restoration
 import skimage
 import os
 import math
@@ -1385,7 +1385,7 @@ class cycif:
     #####################################################################################################
     ##########Saving/File Generation Methods#############################################################################
 
-    def post_acquisition_processor(self, experiment_directory, x_pixels):
+    def post_acquisition_processor(self, experiment_directory, x_pixels, rolling_ball = 1):
 
         mcmicro_path = experiment_directory + r'\mcmicro\raw'
         cycle_start = 1
@@ -1407,8 +1407,8 @@ class cycif:
 
         for cycle_number in range(cycle_start, cycle_end):
             self.infocus(experiment_directory, cycle_number, x_pixels, 2, 2)
-            self.background_sub(experiment_directory, cycle_number)
-            self.illumination_flattening(experiment_directory, cycle_number)
+            self.background_sub(experiment_directory, cycle_number, rolling_ball)
+            self.illumination_flattening(experiment_directory, cycle_number, rolling_ball)
             self.mcmicro_image_stack_generator(cycle_number, experiment_directory, x_pixels)
             self.stage_placement(experiment_directory, cycle_number, x_pixels)
 
@@ -1737,16 +1737,6 @@ class cycif:
                 os.chdir(quick_tile_path + '/' + channel)
                 tf.imwrite(channel + '_cy_' + str(cycle_number) + '_' + type + '_placed.tif', placed_image)
 
-    def subtract_background(self, image, radius=50, light_bg=False):
-
-        str_el = morphology.disk(radius)  # you can also use 'ball' here to get a slightly smoother result at the cost of increased computing time
-        if light_bg:
-            new_image = morphology.black_tophat(image, str_el)
-        else:
-            new_image = morphology.white_tophat(image, str_el)
-
-        return new_image
-
     def nan_folder_conversion(self, directory_path):
         '''
         goes through every image in a folder, loads in image and runs nan_to_num() on it.
@@ -1762,7 +1752,7 @@ class cycif:
             im2 = np.nan_to_num(im2, posinf=65500)
             io.imsave(filenames[x], im2)
 
-    def illumination_flattening(self, experiment_directory, cycle_number):
+    def illumination_flattening(self, experiment_directory, cycle_number, rolling_ball = 1):
 
         # load numpy arrays in
         numpy_path = experiment_directory + '/' + 'np_arrays'
@@ -1787,7 +1777,10 @@ class cycif:
             if channel == 0:
                 directory = directory_start + channel_name + '\Stain\cy_' + str(cycle_number) + r'\Tiles\focused'
             else:
-                directory = directory_start + channel_name + '\Stain\cy_' + str(cycle_number) + r'\Tiles\focused\background_subbed'
+                if rolling_ball != 1:
+                    directory = directory_start + channel_name + '\Stain\cy_' + str(cycle_number) + r'\Tiles\focused\background_subbed'
+                if rolling_ball == 1:
+                    directory = directory_start + channel_name + '\Stain\cy_' + str(cycle_number) + r'\Tiles\focused\background_subbed_rolling'
             output_directory = directory_start + channel_name + '\Stain\cy_' + str(
                 cycle_number) + r'\Tiles\focused_basic_corrected'
 
@@ -1977,7 +1970,7 @@ class cycif:
             filename = 'x' + str(x_tile_number) + '_y_' + str(y_tile_number) + '_c_' + str(channel) + '.tif'
             tf.imwrite(filename, rebuilt_image)
 
-    def background_sub(self, experiment_directory, cycle):
+    def background_sub(self, experiment_directory, cycle, rolling_ball = 1):
 
         experiment_directory = experiment_directory + '/'
 
@@ -1997,59 +1990,92 @@ class cycif:
 
                 if tissue_exist[y][x] == 1:
 
-                    # load reference and "moved" image
-                    ref_path = experiment_directory + 'DAPI\Bleach\cy_' + str(cycle) + '\Tiles/focused'
-                    os.chdir(ref_path)
-                    ref_name = 'x' + str(x) + '_y_' + str(y) + '_c_DAPI.tif'
-                    ref = io.imread(ref_name)
-                    ref = np.nan_to_num(ref, posinf=65500)
-                    mov_path = experiment_directory + 'DAPI\Stain\cy_' + str(cycle) + '\Tiles/focused'
-                    os.chdir(mov_path)
-                    mov_name = 'x' + str(x) + '_y_' + str(y) + '_c_DAPI.tif'
-                    mov = io.imread(mov_name)
-                    mov = np.nan_to_num(mov, posinf=65500)
+                    if rolling_ball != 0:
 
-                    # Translational transformation
-                    sr = StackReg(StackReg.TRANSLATION)
-                    out_tra = sr.register_transform(ref, mov)
+                        # load reference and "moved" image
+                        ref_path = experiment_directory + 'DAPI\Bleach\cy_' + str(cycle) + '\Tiles/focused'
+                        os.chdir(ref_path)
+                        ref_name = 'x' + str(x) + '_y_' + str(y) + '_c_DAPI.tif'
+                        ref = io.imread(ref_name)
+                        ref = np.nan_to_num(ref, posinf=65500)
+                        mov_path = experiment_directory + 'DAPI\Stain\cy_' + str(cycle) + '\Tiles/focused'
+                        os.chdir(mov_path)
+                        mov_name = 'x' + str(x) + '_y_' + str(y) + '_c_DAPI.tif'
+                        mov = io.imread(mov_name)
+                        mov = np.nan_to_num(mov, posinf=65500)
 
-                    # apply translation to other color channels
+                        # Translational transformation
+                        sr = StackReg(StackReg.TRANSLATION)
+                        out_tra = sr.register_transform(ref, mov)
 
-                    for channel in channels:
-                        stain_color_path = experiment_directory + channel + r'/Stain/cy_' + str(cycle) + '\Tiles/focused'
-                        os.chdir(stain_color_path)
-                        filename = 'x' + str(x) + '_y_' + str(y) + '_c_' + channel + '.tif'
-                        color_im = io.imread(filename)
-                        color_im = np.nan_to_num(color_im, posinf= 65500)
-                        color_reg = sr.transform(color_im)
+                        # apply translation to other color channels
 
-                        # sub background color channels
-                        bleach_color_path = experiment_directory + channel + r'/Bleach/cy_' + str(cycle) + '\Tiles/focused'
-                        os.chdir(bleach_color_path)
-                        color_bleach = io.imread(filename)
-                        color_bleach = np.nan_to_num(color_bleach, posinf=65500)
-                        #coefficent = self.autof_factor_estimator(color_reg, color_bleach)
-                        #color_subbed = color_reg - coefficent * color_bleach
-                        color_subbed = color_reg - color_bleach
-                        color_subbed[color_subbed < 0] = 0
-                        color_subbed = color_subbed.astype('float32')
-                        color_subbed = np.nan_to_num(color_subbed, posinf= 65500)
+                        for channel in channels:
+                            stain_color_path = experiment_directory + channel + r'/Stain/cy_' + str(cycle) + '\Tiles/focused'
+                            os.chdir(stain_color_path)
+                            filename = 'x' + str(x) + '_y_' + str(y) + '_c_' + channel + '.tif'
+                            color_im = io.imread(filename)
+                            color_im = np.nan_to_num(color_im, posinf= 65500)
+                            color_reg = sr.transform(color_im)
 
-                        # save
+                            # sub background color channels
+                            bleach_color_path = experiment_directory + channel + r'/Bleach/cy_' + str(cycle) + '\Tiles/focused'
+                            os.chdir(bleach_color_path)
+                            color_bleach = io.imread(filename)
+                            color_bleach = np.nan_to_num(color_bleach, posinf=65500)
+                            #coefficent = self.autof_factor_estimator(color_reg, color_bleach)
+                            #color_subbed = color_reg - coefficent * color_bleach
+                            color_subbed = color_reg - color_bleach
+                            color_subbed[color_subbed < 0] = 0
+                            color_subbed = color_subbed.astype('float32')
+                            color_subbed = np.nan_to_num(color_subbed, posinf= 65500)
 
-                        save_path = experiment_directory + channel + r'/Stain/cy_' + str(cycle) + '\Tiles/focused/background_subbed_rolling'
-                        try:
-                            os.chdir(save_path)
-                        except:
-                            os.mkdir(save_path)
-                            os.chdir(save_path)
+                            # save
 
-                        subbed_filename = 'x' + str(x) + '_y_' + str(y) + '_c_' + channel + '.tif'
-                        # bleach_filename ='x' + str(x) + '_y_' + str(y) + '_c_' + channel + '_bleach.tif'
-                        # reg_filename = 'x' + str(x) + '_y_' + str(y) + '_c_' + channel + '_registered.tif'
-                        tf.imwrite(subbed_filename, color_subbed)
-                        # io.imsave(bleach_filename, color_bleach)
-                        # io.imsave(reg_filename, color_reg)
+                            save_path = experiment_directory + channel + r'/Stain/cy_' + str(cycle) + '\Tiles/focused/background_subbed_rolling'
+                            try:
+                                os.chdir(save_path)
+                            except:
+                                os.mkdir(save_path)
+                                os.chdir(save_path)
+
+                            subbed_filename = 'x' + str(x) + '_y_' + str(y) + '_c_' + channel + '.tif'
+                            # bleach_filename ='x' + str(x) + '_y_' + str(y) + '_c_' + channel + '_bleach.tif'
+                            # reg_filename = 'x' + str(x) + '_y_' + str(y) + '_c_' + channel + '_registered.tif'
+                            tf.imwrite(subbed_filename, color_subbed)
+                            # io.imsave(bleach_filename, color_bleach)
+                            # io.imsave(reg_filename, color_reg)
+
+                    if rolling_ball == 1:
+
+                        for channel in channels:
+                            stain_color_path = experiment_directory + channel + r'/Stain/cy_' + str(
+                                cycle) + '\Tiles/focused'
+                            os.chdir(stain_color_path)
+                            filename = 'x' + str(x) + '_y_' + str(y) + '_c_' + channel + '.tif'
+                            color_im = io.imread(filename)
+                            color_im = np.nan_to_num(color_im, posinf=65500)
+
+                            # sub background color channels
+
+                            color_background = restoration.rolling_ball(color_im, radius=50)
+                            color_subbed = color_reg - color_background
+                            color_subbed[color_subbed < 0] = 0
+                            color_subbed = color_subbed.astype('float16')
+                            color_subbed = np.nan_to_num(color_subbed, posinf=65500)
+
+                            # save
+
+                            save_path = experiment_directory + channel + r'/Stain/cy_' + str(
+                                cycle) + '\Tiles/focused/background_subbed_rolling'
+                            try:
+                                os.chdir(save_path)
+                            except:
+                                os.mkdir(save_path)
+                                os.chdir(save_path)
+
+                            subbed_filename = 'x' + str(x) + '_y_' + str(y) + '_c_' + channel + '.tif''
+                            tf.imwrite(subbed_filename, color_subbed)
 
                 else:
 
