@@ -1735,6 +1735,21 @@ class cycif:
 
         return new_image
 
+    def nan_folder_conversion(self, directory_path):
+        '''
+        goes through every image in a folder, loads in image and runs nan_to_num() on it.
+        :param directory_path:
+        :return:
+        '''
+
+        os.chdir(directory_path)
+
+        filenames = os.listdir(folder)
+        for x in range(0, len(filenames)):
+            im2 = io.imread(filenames[x])
+            im2 = np.nan_to_num(im2, posinf=65500)
+            io.imsave(filenames[x], im2)
+
     def illumination_flattening(self, experiment_directory, cycle_number):
 
         # load numpy arrays in
@@ -1768,6 +1783,9 @@ class cycif:
                 os.mkdir(output_directory)
             except:
                 pass
+
+            #resave images without NaN or infinity values
+            self.nan_folder_conversion(directory)
 
             epsilon = 1e-06
             optimizer = shading_correction.BaSiC(directory)
@@ -1967,8 +1985,6 @@ class cycif:
 
                 if tissue_exist[y][x] == 1:
 
-                    '''
-
                     # load reference and "moved" image
                     ref_path = experiment_directory + 'DAPI\Bleach\cy_' + str(cycle) + '\Tiles/focused'
                     os.chdir(ref_path)
@@ -2005,16 +2021,7 @@ class cycif:
                         color_subbed = color_reg - color_bleach
                         color_subbed[color_subbed < 0] = 0
                         color_subbed = color_subbed.astype('float32')
-                    
-                    '''
-                    for channel in channels:
-                        stain_color_path = experiment_directory + channel + r'/Stain/cy_' + str(cycle) + '\Tiles/focused'
-                        os.chdir(stain_color_path)
-                        filename = 'x' + str(x) + '_y_' + str(y) + '_c_' + channel + '.tif'
-                        color_im = io.imread(filename)
-                        color_im = np.nan_to_num(color_im, posinf= 65500)
-
-                        color_subbed = self.subtract_background(color_im)
+                        color_subbed = np.nan_to_num(color_subbed, posinf= 65500)
 
                         # save
 
