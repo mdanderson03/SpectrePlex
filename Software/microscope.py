@@ -1306,24 +1306,15 @@ class cycif:
         ws.cell(row=1, column=9).value = 'remove'
 
         for row_number in range(2, (cycle_number) * 4 + 2):
-            cycle_number = 4 // (row_number - 2) + 1
+            cycle_number =  (row_number - 2)//4 + 1
             intercycle_channel_number = cycle_number * 4 + 1 - row_number
 
-            ws.cell(row=row_number, column=1).value = row_number
+            ws.cell(row=row_number, column=1).value = row_number - 1
             ws.cell(row=row_number, column=2).value = cycle_number
-            ws.cell(row=row_number, column=3).value = 'Marker_' + str(row_number)
+            ws.cell(row=row_number, column=3).value = 'Marker_' + str(row_number - 1)
             # ws.cell(row=row_number, column=4).value = filter_sets[intercycle_channel_number]
             # ws.cell(row=row_number, column=5).value = exciation_wavlengths[intercycle_channel_number]
             # ws.cell(row=row_number, column=6).value = emission_wavelengths[intercycle_channel_number]
-
-        row_start = (cycle_number - 1) * 4 + 2
-        row_end = row_start + 4
-
-        for row_number in range(row_start, row_end):
-            cycle_number = 4 // (row_number - 2) + 1
-            intercycle_channel_number = cycle_number * 4 + 1 - row_number
-
-            ws.cell(row=row_number, column=8).value = exp_array[row_number - 2]
 
         os.chdir(folder_path)
         wb.save(filename='markers.xlsx')
@@ -1415,9 +1406,9 @@ class cycif:
         #self.tissue_exist_array_generate(experiment_directory)
 
         for cycle_number in range(cycle_start, cycle_end):
-            #self.infocus(experiment_directory, cycle_number, x_pixels, 2, 2)
-            #self.background_sub(experiment_directory, cycle_number)
-            #self.illumination_flattening(experiment_directory, cycle_number)
+            self.infocus(experiment_directory, cycle_number, x_pixels, 2, 2)
+            self.background_sub(experiment_directory, cycle_number)
+            self.illumination_flattening(experiment_directory, cycle_number)
             self.mcmicro_image_stack_generator(cycle_number, experiment_directory, x_pixels)
             self.stage_placement(experiment_directory, cycle_number, x_pixels)
 
