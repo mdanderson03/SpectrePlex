@@ -304,7 +304,7 @@ class fluidics:
             stain_inc_time = 45  # minutes
         nuc_valve = 4
         nuc_flow_time = 45  # seconds
-        nuc_inc_time = 3  # minutes
+        nuc_inc_time = 4  # minutes
 
         flow_rate = 500
         flow_rate_stop = -3
@@ -331,7 +331,7 @@ class fluidics:
                 time.sleep(60)
 
             self.flow(flow_rate)
-            time.sleep(80)
+            time.sleep(150)
             self.flow(flow_rate_stop)
             time.sleep(5)
 
@@ -363,7 +363,7 @@ class fluidics:
             self.valve_select(pbs_valve)
             time.sleep(30)
             self.flow(flow_rate)
-            time.sleep(80)
+            time.sleep(150)
             self.flow(flow_rate_stop)
             time.sleep(5)
 
