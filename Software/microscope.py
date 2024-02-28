@@ -1400,13 +1400,13 @@ class cycif:
                 cycle_start_search = 1
         '''
         cycle_end = 8
-        cycle_start = 1
+        cycle_start = 2
 
         #self.tissue_binary_generate(experiment_directory)
         #self.tissue_exist_array_generate(experiment_directory)
 
         for cycle_number in range(cycle_start, cycle_end):
-            self.infocus(experiment_directory, cycle_number, x_pixels, 2, 2)
+            #self.infocus(experiment_directory, cycle_number, x_pixels, 2, 2)
             self.background_sub(experiment_directory, cycle_number, rolling_ball)
             self.illumination_flattening(experiment_directory, cycle_number, rolling_ball)
             self.mcmicro_image_stack_generator(cycle_number, experiment_directory, x_pixels)
@@ -2055,13 +2055,16 @@ class cycif:
                             filename = 'x' + str(x) + '_y_' + str(y) + '_c_' + channel + '.tif'
                             color_im = io.imread(filename)
                             color_im = np.nan_to_num(color_im, posinf=65500)
+                            color_im = color_im.astype('uint16')
 
                             # sub background color channels
 
-                            color_background = restoration.rolling_ball(color_im, radius=50)
-                            color_subbed = color_reg - color_background
+                            #color_background = restoration.rolling_ball(color_im, radius=10)
+                            foot = morphology.square(50)
+                            color_subbed = morphology.white_tophat(color_im, foot)
+                            #color_subbed = color_im - color_background
                             color_subbed[color_subbed < 0] = 0
-                            color_subbed = color_subbed.astype('float16')
+                            color_subbed = color_subbed.astype('uint16')
                             color_subbed = np.nan_to_num(color_subbed, posinf=65500)
 
                             # save
@@ -2074,33 +2077,11 @@ class cycif:
                                 os.mkdir(save_path)
                                 os.chdir(save_path)
 
-                            subbed_filename = 'x' + str(x) + '_y_' + str(y) + '_c_' + channel + '.tif''
+                            subbed_filename = 'x' + str(x) + '_y_' + str(y) + '_c_' + channel + '.tif'
                             tf.imwrite(subbed_filename, color_subbed)
 
                 else:
-
-                    for channel in channels:
-                        stain_color_path = experiment_directory + channel + r'/Stain/cy_' + str(cycle) + '\Tiles/focused'
-                        os.chdir(stain_color_path)
-                        filename = 'x' + str(x) + '_y_' + str(y) + '_c_' + channel + '.tif'
-                        color_im = io.imread(filename)
-
-                        # save
-
-                        save_path = experiment_directory + channel + r'/Stain/cy_' + str(
-                            cycle) + '\Tiles/focused/background_subbed'
-                        try:
-                            os.chdir(save_path)
-                        except:
-                            os.mkdir(save_path)
-                            os.chdir(save_path)
-
-                        subbed_filename = 'x' + str(x) + '_y_' + str(y) + '_c_' + channel + '.tif'
-                        # bleach_filename ='x' + str(x) + '_y_' + str(y) + '_c_' + channel + '_bleach.tif'
-                        # reg_filename = 'x' + str(x) + '_y_' + str(y) + '_c_' + channel + '_registered.tif'
-                        tf.imwrite(subbed_filename, color_im)
-                        # io.imsave(bleach_filename, color_bleach)
-                        # io.imsave(reg_filename, color_reg)
+                    pass
 
     def zc_save(self, zc_tif_stack, channels, x_tile, y_tile, cycle, x_pixels, experiment_directory, Stain_or_Bleach):
 

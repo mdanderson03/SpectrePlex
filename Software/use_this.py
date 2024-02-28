@@ -12,7 +12,7 @@ offset_array = [0, -8, -7, -7]
 
 
 
-microscope.marker_excel_file_generation(experiment_directory, 7)
+microscope.post_acquisition_processor(experiment_directory, x_frame_size)
 
 
 
