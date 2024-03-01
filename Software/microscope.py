@@ -21,8 +21,8 @@ from stardist.models import StarDist2D
 from matplotlib import pyplot as plt
 import cv2
 
-#magellan = Magellan()
-#core = Core()
+magellan = Magellan()
+core = Core()
 
 class cycif:
 
@@ -117,14 +117,14 @@ class cycif:
         if autofocus == 1 and auto_expose == 1:
             self.recursive_stardist_autofocus(experiment_directory, desired_cycle_count)
             self.establish_exp_arrays(experiment_directory)
-            self.auto_exposure(experiment_directory, x_frame_size, percentage_cut_off = 0.997, target_percentage = 0.1)
+            self.auto_exposure(experiment_directory, x_frame_size, percentage_cut_off = 0.99999, target_percentage = 0.1)
         if autofocus == 1 and auto_expose == 0:
             #self.DAPI_surface_autofocus(experiment_directory, 20, 2, x_frame_size)
             self.recursive_stardist_autofocus(experiment_directory, desired_cycle_count)
             #self.fm_channel_initial(experiment_directory, off_array, z_slices, 2)
         if autofocus == 0 and auto_expose == 1:
             self.establish_exp_arrays(experiment_directory)
-            self.auto_exposure(experiment_directory, x_frame_size, percentage_cut_off = 0.997, target_percentage = 0.1)
+            self.auto_exposure(experiment_directory, x_frame_size, percentage_cut_off = 0.99999, target_percentage = 0.1)
         else:
             pass
 
@@ -156,7 +156,7 @@ class cycif:
     ###########################################################
     # This section is the for the exposure functions.
     ###########################################################
-    def auto_exposure(self, experiment_directory, x_frame_size, percentage_cut_off = 0.99, target_percentage = 0.08 ):
+    def auto_exposure(self, experiment_directory, x_frame_size, percentage_cut_off = 0.999, target_percentage = 0.1 ):
 
         # load in data structures
         numpy_path = experiment_directory + '/' + 'np_arrays'
@@ -165,7 +165,7 @@ class cycif:
         exp_filename = 'exp_array.npy'
         fm_array = np.load(file_name, allow_pickle=False)
         exp_array = np.load(exp_filename, allow_pickle=False)
-        channels = ['DAPI', 'A488', 'A555', 'A647']
+        channels = ['A488', 'A555', 'A647']
         number_channels = len(channels[0])
         slice_gap = 2
 
@@ -237,9 +237,10 @@ class cycif:
                         pixels = np.reshape(tagged_image.pix,
                                             newshape=[tagged_image.tags["Height"], tagged_image.tags["Width"]])
                         pixels = pixels[::, side_pixel_count:side_pixel_count + x_frame_size]
+                        pixels = np.nan_to_num(pixels, posinf=65500)
 
                         #Determine if intensity is in bounds and take diff image if not. Record new exp time
-                        pixels, exp_time = self.exp_bound_solver(pixels, exp_time, 0.99)
+                        pixels, exp_time = self.exp_bound_solver(pixels, exp_time, 0.9999)
                         exp_array[channel_index] = exp_time
 
                         #load in auto fluorescence image
@@ -299,13 +300,13 @@ class cycif:
             #find new exp factor and frame count to average over
             new_exp_factor = target_percentage * 65500 / low_pixel * exp_array[channel_index]
 
-            if new_exp_factor > 200:
-                new_exp_factor = 2000
+            if new_exp_factor > 1000:
+                new_exp_factor = 1000
             if new_exp_factor < 50:
                 new_exp_factor = 50
 
             new_max_int_value = new_exp_factor/exp_array[channel_index] * high_pixel
-            ratio_new_int_2_max_int = new_max_int_value / (0.85 * 65500)
+            ratio_new_int_2_max_int = new_max_int_value / (0.6 * 65500)
             frame_count = math.ceil(ratio_new_int_2_max_int)
 
             #reduce exp time by frame_count factor ie. 2x200 = 1x400ms exposure
@@ -318,15 +319,12 @@ class cycif:
         #save new exp_array anmd fm_array
         finish = time.time()
 
-        print('auto_exp time', finish - start)
+        print('auto_exp time elapsed', finish - start)
 
-
+        exp_array[0] = 75
         numpy_path = experiment_directory + '/' + 'np_arrays'
         os.chdir(numpy_path)
         print(exp_array)
-        avg_exp_time = (exp_array[0] + exp_array[1] + exp_array[2] + exp_array[3])/4
-        total_exp= 7*4*avg_exp_time * 8
-        print('time exposing', total_exp)
         np.save('exp_array.npy', exp_array)
         np.save('fm_array.npy', fm_array)
 
@@ -452,6 +450,7 @@ class cycif:
             #crop image to equal first image
             side_pixel_count = int((5056 - x_frame_size)/2)
             image = image[::, side_pixel_count:side_pixel_count + x_frame_size]
+            image = np.nan_to_num(image, posinf=65500)
         else:
             pass
 
@@ -504,10 +503,10 @@ class cycif:
         ws.cell(row=int(cycle + 2), column=6).value = exp_array[2]
         ws.cell(row=int(cycle + 2), column=8).value = exp_array[3]
 
-        ws.cell(row=int(cycle + 2), column=3).value = fm_array[11]
-        ws.cell(row=int(cycle + 2), column=5).value = fm_array[12]
-        ws.cell(row=int(cycle + 2), column=7).value = fm_array[13]
-        ws.cell(row=int(cycle + 2), column=9).value = fm_array[14]
+        ws.cell(row=int(cycle + 2), column=3).value = fm_array[11][0][0]
+        ws.cell(row=int(cycle + 2), column=5).value = fm_array[12][0][0]
+        ws.cell(row=int(cycle + 2), column=7).value = fm_array[13][0][0]
+        ws.cell(row=int(cycle + 2), column=9).value = fm_array[14][0][0]
 
         wb.save('Exp.xlsx')
     ##########################################################
@@ -612,7 +611,7 @@ class cycif:
         dummy_channel = np.expand_dims(dummy_channel, axis=0)
         channel_count = np.shape(fm_array)[0]
 
-        while channel_count < 11:
+        while channel_count < 15:
             fm_array = np.append(fm_array, dummy_channel, axis=0)
             channel_count = np.shape(fm_array)[0]
 
@@ -661,6 +660,7 @@ class cycif:
         # Find pixels in each dimensions
         x_tiles = np.shape(fm_array[0])[1]
         y_tiles = np.shape(fm_array[0])[0]
+        fm_layers = np.shape(fm_array)[0]
 
         # find um/pixel in focus map
 
@@ -673,7 +673,8 @@ class cycif:
             y2 = fm_array[0][1][0]
             diff = y2 - y1
 
-        um_per_pixel = diff / 4550  # 4550 = 0.9 * 5056
+        #um_per_pixel = diff / 4550  # 4550 = 0.9 * 5056
+        um_per_pixel = 0.204
 
         # Find number tiles in adjusted grid
         x_range_pixels = (x_tiles - 0.2) * 5056
@@ -682,7 +683,7 @@ class cycif:
 
         # generate new blank fm_array numpy array
 
-        new_fm_array = np.random.rand(11, y_tiles, new_x_tiles).astype('float64')
+        new_fm_array = np.random.rand(fm_layers, y_tiles, new_x_tiles).astype('float64')
 
         # Find border where x starts on the left (not center point, but x value for left most edge of left most tile
 
@@ -706,7 +707,7 @@ class cycif:
             new_fm_array[1][y, 0:new_x_tiles] = fm_array[1][y][0]
 
         # populate new_fm_array with dapi z values and everything else in planes 2-10
-        for slice in range(2, 11):
+        for slice in range(2, fm_layers):
             new_fm_array[slice, 0:y_tiles, 0:new_x_tiles] = fm_array[slice][0][0]
 
         np.save('fm_array.npy', new_fm_array)
@@ -1006,7 +1007,7 @@ class cycif:
 
         return pixels
 
-    def core_capture(self, experiment_directory, channel):
+    def core_capture(self, experiment_directory, x_frame_size, channel):
         '''
         uses core capture to take images with parameters set by the focus map. Has thr ability to average over frames.
         Will not alter XYZ location, channel or exp time. Only captures and averages frames.
@@ -1020,6 +1021,8 @@ class cycif:
         numpy_path = experiment_directory + '/' + 'np_arrays'
         os.chdir(numpy_path)
         fm_array = np.load('fm_array.npy', allow_pickle=False)
+        side_pixel_count = int((5056 - x_frame_size)/2)
+
 
         # determine proper frame count to average
 
@@ -1036,7 +1039,7 @@ class cycif:
         frame_count = int(frame_count)
 
         # make array to hold images in
-        average_array = np.random.rand(frame_count, height_pixels, width_pixels).astype('float16')
+        average_array = np.random.rand(frame_count, 2960, x_frame_size).astype('float16')
 
         # acquire and populate array
         for x in range(0, frame_count):
@@ -1044,7 +1047,7 @@ class cycif:
                 tagged_image = core.get_tagged_image()
                 pixels = np.reshape(tagged_image.pix,newshape=[tagged_image.tags["Height"], tagged_image.tags["Width"]])
                 pixels = np.nan_to_num(pixels, posinf=65500)
-                average_array[x] = pixels
+                average_array[x] = pixels[::, side_pixel_count:side_pixel_count + x_frame_size]
 
         #find array average and return averaged image
         averaged_image = np.average(average_array, axis = 0)
@@ -1082,7 +1085,7 @@ class cycif:
         numpy_y = full_array[1]
         tissue_fm = full_array[10]
 
-        side_pixel_count = int(5056 - x_pixels)
+        side_pixel_count = int((5056 - x_pixels)/2)
 
         x_tile_count = np.unique(numpy_x).size
         y_tile_count = np.unique(numpy_y).size
@@ -1142,8 +1145,8 @@ class cycif:
                             for z in range(z_start, z_end, slice_gap):
                                 core.set_position(z)
                                 #time.sleep(0.1)
-                                pixels = self.core_capture(experiment_directory, channel)
-                                zc_tif_stack[zc_index][z_counter] = pixels[::, side_pixel_count:side_pixel_count + x_pixels]
+                                pixels = self.core_capture(experiment_directory,x_pixels, channel)
+                                zc_tif_stack[zc_index][z_counter] = pixels
 
                                 image_number_counter += 1
                                 z_counter += 1
@@ -1200,8 +1203,8 @@ class cycif:
                                 core.set_position(z)
                                 #time.sleep(0.1)
 
-                                pixels = self.core_capture(experiment_directory, channel)
-                                zc_tif_stack[zc_index][z_counter] = pixels[::, side_pixel_count:side_pixel_count + x_pixels]
+                                pixels = self.core_capture(experiment_directory, x_pixels, channel)
+                                zc_tif_stack[zc_index][z_counter] = pixels
 
                                 image_number_counter += 1
                                 z_counter += 1
@@ -1257,6 +1260,7 @@ class cycif:
         else:
 
             # print(status_str)
+            print('cycle', cycle_number)
             pump.liquid_action('Stain', incub_val=incub_val, stain_valve=stain_valve)  # nuc is valve=7, pbs valve=8, bleach valve=1 (action, stain_valve, heater state (off = 0, on = 1))
             # print(status_str)
             self.image_cycle_acquire(cycle_number, experiment_directory, z_slices, 'Stain', offset_array,x_frame_size=x_frame_size, establish_fm_array=0, auto_focus_run=1,
@@ -1406,8 +1410,8 @@ class cycif:
         #self.tissue_exist_array_generate(experiment_directory)
 
         for cycle_number in range(cycle_start, cycle_end):
-            #self.infocus(experiment_directory, cycle_number, x_pixels, 2, 2)
-            self.background_sub(experiment_directory, cycle_number, rolling_ball)
+            #self.infocus(experiment_directory, cycle_number, x_pixels, 1, 1)
+            #self.background_sub(experiment_directory, cycle_number, rolling_ball)
             self.illumination_flattening(experiment_directory, cycle_number, rolling_ball)
             self.mcmicro_image_stack_generator(cycle_number, experiment_directory, x_pixels)
             self.stage_placement(experiment_directory, cycle_number, x_pixels)
@@ -1424,10 +1428,10 @@ class cycif:
 
         numpy_x = full_array[0]
         numpy_y = full_array[1]
-        numpy_tissue = full_array[10]
+        #numpy_tissue = full_array[10]
         y_tile_count = numpy_x.shape[0]
         x_tile_count = numpy_y.shape[1]
-        tile_count = int(numpy_tissue.sum())
+        tile_count = int(tissue_exist.sum())
 
         dapi_im_path = experiment_directory + '\DAPI\Stain\cy_' + str(
             cycle_number) + '\Tiles' + '/focused_basic_corrected'
@@ -1506,10 +1510,10 @@ class cycif:
 
         numpy_x = full_array[0]
         numpy_y = full_array[1]
-        numpy_tissue = full_array[10]
+        #numpy_tissue = full_array[10]
         y_tile_count = numpy_x.shape[0]
         x_tile_count = numpy_y.shape[1]
-        total_tile_count = int(numpy_tissue.sum())
+        total_tile_count = int(tissue_exist.sum())
 
         y_gap = 532
         col_col_gap = 10
@@ -1985,12 +1989,13 @@ class cycif:
 
         channels = ['A488', 'A555', 'A647']
 
+
         for y in range(0, y_tile_count):
             for x in range(0, x_tile_count):
 
                 if tissue_exist[y][x] == 1:
 
-                    if rolling_ball != 0:
+                    if rolling_ball != 1:
 
                         # load reference and "moved" image
                         ref_path = experiment_directory + 'DAPI\Bleach\cy_' + str(cycle) + '\Tiles/focused'
@@ -2032,7 +2037,7 @@ class cycif:
 
                             # save
 
-                            save_path = experiment_directory + channel + r'/Stain/cy_' + str(cycle) + '\Tiles/focused/background_subbed_rolling'
+                            save_path = experiment_directory + channel + r'/Stain/cy_' + str(cycle) + '\Tiles/focused/background_subbed'
                             try:
                                 os.chdir(save_path)
                             except:

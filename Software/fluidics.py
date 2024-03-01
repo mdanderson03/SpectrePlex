@@ -282,12 +282,12 @@ class fluidics:
             plt.plot(time_points, flow_points, 'o', color='black')
             plt.show()
 
-    def liquid_action(self, action_type, stain_valve=0, incub_val=5, heater_state=0):
+    def liquid_action(self, action_type, stain_valve=0, incub_val=45, heater_state=0):
 
         bleach_valve = 11
         pbs_valve = 12
-        bleach_time = 3  # minutes
-        stain_flow_time = 45  # seconds
+        bleach_time = 5  # minutes
+        stain_flow_time = 47  # seconds
         if heater_state == 0:
             stain_inc_time = incub_val  # minutes
         if heater_state == 1:
@@ -320,19 +320,12 @@ class fluidics:
                 time.sleep(60)
 
             self.flow(flow_rate)
-            time.sleep(80)
+            time.sleep(100)
             self.flow(flow_rate_stop)
             time.sleep(5)
 
         elif action_type == 'Stain':
 
-            if heater_state == 1:
-                arduino.heater_state(1)
-                arduino.chamber('drain')
-            else:
-                pass
-
-            time.sleep(4)
             self.valve_select(stain_valve)
             self.flow(flow_rate)
             time.sleep(stain_flow_time)
@@ -349,12 +342,15 @@ class fluidics:
             # else:
             #    pass
 
+
+
             self.valve_select(pbs_valve)
-            time.sleep(30)
+            time.sleep(1)
             self.flow(flow_rate)
-            time.sleep(80)
+            time.sleep(150)
             self.flow(flow_rate_stop)
             time.sleep(5)
+
 
 
         elif action_type == "Wash":
