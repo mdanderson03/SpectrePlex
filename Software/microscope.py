@@ -300,17 +300,18 @@ class cycif:
             #find new exp factor and frame count to average over
             new_exp_factor = target_percentage * 65500 / low_pixel * exp_array[channel_index]
 
-            if new_exp_factor > 1000:
-                new_exp_factor = 1000
-            if new_exp_factor < 50:
-                new_exp_factor = 50
-
             new_max_int_value = new_exp_factor/exp_array[channel_index] * high_pixel
-            ratio_new_int_2_max_int = new_max_int_value / (0.6 * 65500)
+            ratio_new_int_2_max_int = new_max_int_value / (0.75 * 65500)
             frame_count = math.ceil(ratio_new_int_2_max_int)
+            total_exposure_time = frame_count * new_exp_factor
 
-            #reduce exp time by frame_count factor ie. 2x200 = 1x400ms exposure
-            new_exp_factor = new_exp_factor/frame_count
+            if new_exp_factor > 500:
+                new_exp_factor = 500
+                frame_count = math.ceil(total_exposure_time/new_exp_factor)
+
+            if new_exp_factor < 25:
+                new_exp_factor = 25
+                frame_count = math.ceil(total_exposure_time/new_exp_factor)
 
             #add to exp_array and fm_array
             exp_array[channel_index] = new_exp_factor
