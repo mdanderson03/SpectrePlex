@@ -303,6 +303,7 @@ class cycif:
             new_max_int_value = new_exp_factor/exp_array[channel_index] * high_pixel
             ratio_new_int_2_max_int = new_max_int_value / (0.75 * 65500)
             frame_count = math.ceil(ratio_new_int_2_max_int)
+            new_exp_factor = new_exp_factor/frame_count
             total_exposure_time = frame_count * new_exp_factor
 
             if new_exp_factor > 500:
