@@ -1410,8 +1410,8 @@ class cycif:
         #self.tissue_exist_array_generate(experiment_directory)
 
         for cycle_number in range(cycle_start, cycle_end):
-            #self.infocus(experiment_directory, cycle_number, x_pixels, 1, 1)
-            #self.background_sub(experiment_directory, cycle_number, rolling_ball)
+            self.infocus(experiment_directory, cycle_number, x_pixels, 2, 2)
+            self.background_sub(experiment_directory, cycle_number, rolling_ball)
             self.illumination_flattening(experiment_directory, cycle_number, rolling_ball)
             self.mcmicro_image_stack_generator(cycle_number, experiment_directory, x_pixels)
             self.stage_placement(experiment_directory, cycle_number, x_pixels)
@@ -1840,6 +1840,7 @@ class cycif:
                 z_slice_count += 1
             else:
                 z_checker = 1
+        z_slice_count = 7
 
         # make object to hold all tissue binary maps
         tissue_binary_stack = np.random.rand(y_tile_count, x_tile_count, 2960, x_frame_size).astype('uint16')

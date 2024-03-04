@@ -17,28 +17,29 @@ exp_filename = 'exp_array.npy'
 file_name = 'fm_array.npy'
 fm_array = np.load(file_name, allow_pickle=False)
 exp_array = np.load(exp_filename, allow_pickle=False)
-print(fm_array[0])
+print(exp_array)
 
-exp_array = [75, 50, 50, 100]
-#fm_array[12][::, ::] = 1
-fm_array[11][::, ::] = 1
+
+
 print('dapi frames', fm_array[11][0][0])
 print('a488 frames', fm_array[12][0][0])
 print('a555 frames', fm_array[13][0][0])
 print('a647 frames', fm_array[14][0][0])
-np.save('fm_array.npy', fm_array)
-np.save('exp_array.npy', exp_array)
+#np.save('fm_array.npy', fm_array)
+#np.save('exp_array.npy', exp_array)
+
 '''
 
 
+#microscope.image_cycle_acquire(1, experiment_directory, z_slices, 'Stain', offset_array, x_frame_size=x_frame_size, establish_fm_array=0, auto_focus_run=0, auto_expose_run=0)
+#pump.liquid_action('Bleach')
+#microscope.image_cycle_acquire(1, experiment_directory, z_slices, 'Bleach', offset_array, x_frame_size=x_frame_size, establish_fm_array=0, auto_focus_run=0, auto_expose_run=0)
 
+#for cycle in range(2, 8):
+#    microscope.full_cycle(experiment_directory, cycle, offset_array, cycle, pump, z_slices)
 
+#pump.liquid_action('Stain', stain_valve=1, incub_val=45)
 
-#cycle = 0
-#microscope.full_cycle(experiment_directory, cycle, offset_array, cycle, pump, z_slices)
-
-pump.liquid_action('Stain', stain_valve=1, incub_val=45)
-
-#microscope.establish_fm_array(experiment_directory, 0, z_slices, offset_array, initialize=1, x_frame_size=x_frame_size, autofocus=0, auto_expose=0)
+#microscope.establish_fm_array(experiment_directory, 1, z_slices, offset_array, initialize=0, x_frame_size=x_frame_size, autofocus=1, auto_expose=1)
 #microscope.image_cycle_acquire(1, experiment_directory, z_slices, 'Stain', offset_array, x_frame_size=x_frame_size, establish_fm_array=0, auto_focus_run=0,auto_expose_run=1)
-#microscope.post_acquisition_processor(experiment_directory, x_frame_size, rolling_ball=0)
+microscope.post_acquisition_processor(experiment_directory, x_frame_size, rolling_ball=0)
