@@ -1406,10 +1406,10 @@ class cycif:
                 cycle_start_search = 1
         '''
         cycle_end = 8
-        cycle_start = 2
+        cycle_start = 1
 
-        #self.tissue_binary_generate(experiment_directory)
-        #self.tissue_exist_array_generate(experiment_directory)
+        self.tissue_binary_generate(experiment_directory)
+        self.tissue_exist_array_generate(experiment_directory)
 
         for cycle_number in range(cycle_start, cycle_end):
             self.infocus(experiment_directory, cycle_number, x_pixels, 2, 2)

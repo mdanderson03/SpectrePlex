@@ -3,7 +3,7 @@ import datetime
 from autocyplex import *
 from optparse import OptionParser
 microscope = cycif() # initialize cycif object
-experiment_directory = r'E:\1-3-24 celiac multiplex'
+experiment_directory = r'E:\4-3-24 celiac multiplex'
 pump = fluidics(experiment_directory, 6, 3, flow_control=1)
 
 z_slices = 7
@@ -35,11 +35,13 @@ print('a647 frames', fm_array[14][0][0])
 #pump.liquid_action('Bleach')
 #microscope.image_cycle_acquire(1, experiment_directory, z_slices, 'Bleach', offset_array, x_frame_size=x_frame_size, establish_fm_array=0, auto_focus_run=0, auto_expose_run=0)
 
-#for cycle in range(2, 8):
-#    microscope.full_cycle(experiment_directory, cycle, offset_array, cycle, pump, z_slices)
+for cycle in range(7, 8):
+    microscope.full_cycle(experiment_directory, cycle, offset_array, cycle, pump, z_slices)
+
+microscope.post_acquisition_processor(experiment_directory, x_frame_size, rolling_ball=0)
 
 #pump.liquid_action('Stain', stain_valve=1, incub_val=45)
 
 #microscope.establish_fm_array(experiment_directory, 1, z_slices, offset_array, initialize=0, x_frame_size=x_frame_size, autofocus=1, auto_expose=1)
 #microscope.image_cycle_acquire(1, experiment_directory, z_slices, 'Stain', offset_array, x_frame_size=x_frame_size, establish_fm_array=0, auto_focus_run=0,auto_expose_run=1)
-microscope.post_acquisition_processor(experiment_directory, x_frame_size, rolling_ball=0)
+# microscope.post_acquisition_processor(experiment_directory, x_frame_size, rolling_ball=0)
