@@ -179,25 +179,31 @@ class fluidics:
             current_flow_rate = data_sens.value
             self.fluidics_logger(str(OB1_Get_Remote_Data), error, current_flow_rate)
 
-            if flow_rate > 400 and current_flow_rate < 0.1 * flow_rate:
-                self.flow_control = 0
+            if self.flow_control == 1:
 
-                set_channel = int(1)
-                set_channel = c_int32(set_channel)  # convert to c_int32
-                error = PID_Set_Running_Remote(self.pump_ID, set_channel, 0) # turn off PID loop
-                self.fluidics_logger(str(PID_Set_Running_Remote), error, 0)
+                if set_target > 400 and current_flow_rate < 0.1 * set_target:
+                    self.flow_control = 0
 
-                run = 1 # restart flow function
+                    set_channel = int(1)
+                    set_channel = c_int32(set_channel)  # convert to c_int32
+                    error = PID_Set_Running_Remote(self.pump_ID, set_channel, 0) # turn off PID loop
+                    self.fluidics_logger(str(PID_Set_Running_Remote), error, 0)
 
-            if flow_rate < 40 and current_flow_rate > 100:
-                self.flow_control = 0
+                    run = 1 # restart flow function
 
-                set_channel = int(1)
-                set_channel = c_int32(set_channel)  # convert to c_int32
-                error = PID_Set_Running_Remote(self.pump_ID, set_channel, 0) # TURN OFF pid LOOP
-                self.fluidics_logger(str(PID_Set_Running_Remote), error, 0)
+                if set_target< 40 and current_flow_rate > 100:
+                    self.flow_control = 0
 
-                run = 1 # restart flow function
+                    set_channel = int(1)
+                    set_channel = c_int32(set_channel)  # convert to c_int32
+                    error = PID_Set_Running_Remote(self.pump_ID, set_channel, 0) # TURN OFF pid LOOP
+                    self.fluidics_logger(str(PID_Set_Running_Remote), error, 0)
+
+                    run = 1 # restart flow function
+
+            else:
+                pass
+
 
 
     def ob1_end(self):
