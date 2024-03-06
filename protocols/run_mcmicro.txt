@@ -1,0 +1,1 @@
+1. nextflow run labsyspharm/mcmicro --in ./exemplar-001

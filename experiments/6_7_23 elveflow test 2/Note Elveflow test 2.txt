@@ -1,0 +1,24 @@
+Note Elveflow test 2
+
+Used slide S-20-0003723  1-A-21
+
+All stains are 1:100 ratio diluted in intercept blocking buffer
+Pressure cooker sntigen retrieval via vanderbilt
+All flow rates are 500uL/min
+Stain flow times are 45 secdons
+m-CPBA was fresh
+
+
+Cycle 1
+
+1. Ezrin-488
+2. Gamma actin -647
+
+Cycle 2
+
+1. PCNA -488
+2. Na-K-ATPase -647
+
+Bleach time lapse of ezrin-488 was startyed kinda late, but most likely coencided with mCPBA just getting on sample. At frame 19, started flow of PBS. 
+
+*Major issue of bubbles coming into system. Must look at calc to make sure air can be theoretically removed. 

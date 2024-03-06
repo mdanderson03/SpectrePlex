@@ -1,0 +1,34 @@
+16-08-23 Full auto testing
+
+
+1. Made true 0.1% triton solution in pbs and permeabalized for 10 minutes on tissue
+2. blocking buffer for 30 minutes
+
+stain chart (all 1:100)
+
+cycle 1
+
+1. villin-488
+2. pdgf-555
+3. na-k-ATPase-647
+
+cycle 2
+
+1. PDAC-488
+2. CD45-555
+3. gamma-actin-647
+
+focus position cycle
+
+dapi = -5996.5
+1. -6004.0
+2. -6004.0
+3. -6005.0
+
+exp cycle
+
+dapi = 50
+1. 50
+2. 100
+3. 300
+

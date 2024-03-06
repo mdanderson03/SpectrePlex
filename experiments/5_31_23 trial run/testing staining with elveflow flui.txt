@@ -1,0 +1,16 @@
+testing staining with elveflow fluidic system
+
+slide sample = S-20-0003723   1-A-20
+
+cycle 1 = A647 Na/k ATPase, A555 PDF, A488 Ezrin  All 1:100 dilution
+Hoescht = 1:5k, 10 minute incubation to make really good stain.
+
+
+1. Get stain timelapse image. 1 image every minute. Use Alexa 488 channel for ezrin in cycle 1
+2. Gather auto image for cycle 1
+
+ 
+dapi = -671
+a488 = -680
+a555 = -680
+a647= -680
