@@ -898,19 +898,87 @@ def gauss_jordan_solver(self, three_point_array):
 
     return a, b, c, derivative
 
-    def highest_brenner_index_solver(self, image_stack):
+def highest_brenner_index_solver(self, image_stack):
 
-        slice_count = int(np.shape(image_stack)[0])
-        scores = np.random.rand(slice_count)
-        slice_array = np.random.rand(slice_count)
+    slice_count = int(np.shape(image_stack)[0])
+    scores = np.random.rand(slice_count)
+    slice_array = np.random.rand(slice_count)
 
-        for x in range(0, slice_count):
-            image = image_stack[x]
-            score = self.focus_score(image, 17)
-            scores[x] = score
-            slice_array[x] = x
+    for x in range(0, slice_count):
+        image = image_stack[x]
+        score = self.focus_score(image, 17)
+        scores[x] = score
+        slice_array[x] = x
 
-        highest_score = np.max(scores)
-        index = np.where(scores == highest_score)[0][0]
+    highest_score = np.max(scores)
+    index = np.where(scores == highest_score)[0][0]
 
-        return index
+    return index
+def image_exp_scorer(self, experiment_directory, image_stack, channel, percentage_cut_off, target_percentage):
+
+    # import exp_calc_array
+    numpy_path = experiment_directory + '/' + 'np_arrays'
+    os.chdir(numpy_path)
+    exp_calc_array = np.load('exp_calc_array.npy', allow_pickle=False)
+    fm_array == np.load('fm_array.npy', allow_pickle=False)
+
+    x_tiles = np.shape(exp_calc_array[0][0])[1]
+    y_tiles = np.shape(exp_calc_array[0][0])[0]
+    tissue_fm = fm_array[10]
+
+    # find desired intensity (highest)
+    desired_int = 65000 * target_percentage
+
+    if channel == 'DAPI':
+        channel_index = 0
+    if channel == 'A488':
+        channel_index = 1
+    if channel == 'A555':
+        channel_index = 2
+    if channel == 'A647':
+        channel_index = 3
+
+    for y in range(0, y_tiles):
+        for x in range(0, x_tiles):
+
+            if tissue_fm[y][x] ==  1:
+                score = self.image_percentile_level(image_stack[y][x],
+                                               cut_off_threshold=percentage_cut_off)
+                exp_calc_array[channel_index][1][y][x] = score
+
+                original_exp_time = exp_calc_array[channel_index][0][y][x]
+                score_per_millisecond_exp = score / original_exp_time
+                projected_exp_time = int(desired_int / score_per_millisecond_exp)
+                exp_calc_array[channel_index][2][y][x] = projected_exp_time
+
+            if tissue_fm[y][x] == 0:
+                exp_calc_array[channel_index][2][y][x] = 5000
+
+    os.chdir(numpy_path)
+    np.save('exp_calc_array.npy', exp_calc_array)
+
+def calculate_exp_array(self, experiment_directory):
+
+    # import exp_calc_array
+    numpy_path = experiment_directory + '/' + 'np_arrays'
+    os.chdir(numpy_path)
+    exp_calc_array = np.load('exp_calc_array.npy', allow_pickle=False)
+    exp_array = np.load('exp_array.npy', allow_pickle=False)
+
+    for channel_index in range(1, 4):
+        # find lowest exp time
+        lowest_exp = np.min(exp_calc_array[channel_index, 2, ::, ::])
+
+        if lowest_exp < 2000:
+            exp_array[channel_index] = int(lowest_exp)
+        if lowest_exp > 2000:
+            exp_array[channel_index] = int(2000)
+        if lowest_exp < 50:
+            exp_array[channel_index] = int(50)
+
+
+
+        print('channel_index', channel_index, 'time', exp_array[channel_index])
+
+    exp_array[0] = 230
+    np.save('exp_array.npy', exp_array)
