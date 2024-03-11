@@ -1815,7 +1815,7 @@ class cycif:
         print('cycle', cycle_number)
         bin_values = [10]
         channels = ['DAPI', 'A488', 'A555', 'A647']
-        #channels = ['A488']
+        #channels = ['A647']
 
         dapi_im_path = experiment_directory + '/' + 'DAPI' '\Stain\cy_' + str(cycle_number) + '\Tiles'
         tissue_path = experiment_directory + '/Tissue_Binary'
@@ -1842,7 +1842,7 @@ class cycif:
                 z_slice_count += 1
             else:
                 z_checker = 1
-        z_slice_count = 7
+        z_slice_count = 5
 
         # make object to hold all tissue binary maps
         tissue_binary_stack = np.random.rand(y_tile_count, x_tile_count, 2960, x_frame_size).astype('uint16')
@@ -1865,7 +1865,7 @@ class cycif:
             for x in range(0, x_tile_count):
                 for y in range(0, y_tile_count):
                     if tissue_exist[y][x] == 1:
-                        for z in range(0, z_slice_count):
+                        for z in range(1, z_slice_count - 1):
                             im_path = experiment_directory + '/' + channel + '\Stain\cy_' + str(cycle_number) + '\Tiles'
                             os.chdir(im_path)
                             file_name = 'z_' + str(z) + '_x' + str(x) + '_y_' + str(y) + '_c_' + str(channel) + '.tif'
@@ -1877,7 +1877,7 @@ class cycif:
                         number_bins = len(bin_values)
                         brenner_sub_selector = np.random.rand(z_slice_count, number_bins, y_sub_section_count,
                                                               x_sub_section_count)
-                        for z in range(0, z_slice_count):
+                        for z in range(1, z_slice_count - 1):
                             for y_sub in range(0, y_sub_section_count):
                                 for x_sub in range(0, x_sub_section_count):
 
@@ -1897,7 +1897,7 @@ class cycif:
                                         brenner_sub_selector[z][b][y_sub][x_sub] = score
 
                         reconstruct_array = self.brenner_reconstruct_array(brenner_sub_selector, z_slice_count, number_bins)
-                        #reconstruct_array = skimage.filters.median(reconstruct_array)
+                        reconstruct_array = skimage.filters.median(reconstruct_array)
                         self.image_reconstructor(experiment_directory, reconstruct_array, channel, cycle_number,
                                              x_frame_size, y, x)
 
@@ -2022,18 +2022,18 @@ class cycif:
                             stain_color_path = experiment_directory + channel + r'/Stain/cy_' + str(cycle) + '\Tiles/focused'
                             os.chdir(stain_color_path)
                             filename = 'x' + str(x) + '_y_' + str(y) + '_c_' + channel + '.tif'
-                            color_im = io.imread(filename)
+                            color_im = io.imread(filename) - 300
                             color_im = np.nan_to_num(color_im, posinf= 65500)
                             color_reg = sr.transform(color_im)
 
                             # sub background color channels
                             bleach_color_path = experiment_directory + channel + r'/Bleach/cy_' + str(cycle) + '\Tiles/focused'
                             os.chdir(bleach_color_path)
-                            color_bleach = io.imread(filename)
+                            color_bleach = io.imread(filename) - 300
                             color_bleach = np.nan_to_num(color_bleach, posinf=65500)
-                            #coefficent = self.autof_factor_estimator(color_reg, color_bleach)
-                            #color_subbed = color_reg - coefficent * color_bleach
-                            color_subbed = color_reg - color_bleach
+                            coefficent = self.autof_factor_estimator(color_reg, color_bleach)
+                            color_subbed = color_reg - coefficent * color_bleach
+                            #color_subbed = color_reg - color_bleach
                             color_subbed[color_subbed < 0] = 0
                             color_subbed = color_subbed.astype('float32')
                             color_subbed = np.nan_to_num(color_subbed, posinf= 65500)
