@@ -1405,7 +1405,7 @@ class cycif:
             else:
                 cycle_start_search = 1
         '''
-        cycle_end = 2
+        cycle_end = 8
         cycle_start = 1
 
         #self.tissue_binary_generate(experiment_directory)
@@ -1414,7 +1414,7 @@ class cycif:
         for cycle_number in range(cycle_start, cycle_end):
             #self.infocus(experiment_directory, cycle_number, x_pixels, 1, 1)
             #self.illumination_flattening(experiment_directory, cycle_number, rolling_ball)
-            #self.background_sub(experiment_directory, cycle_number, rolling_ball)
+            self.background_sub(experiment_directory, cycle_number, rolling_ball)
             self.brightness_uniformer(experiment_directory, cycle_number)
             self.mcmicro_image_stack_generator(cycle_number, experiment_directory, x_pixels)
             self.stage_placement(experiment_directory, cycle_number, x_pixels)
@@ -2049,9 +2049,9 @@ class cycif:
                             os.chdir(bleach_color_path)
                             color_bleach = io.imread(filename)
                             color_bleach = np.nan_to_num(color_bleach, posinf=65500)
-                            coefficent = self.autof_factor_estimator(color_reg, color_bleach)
-                            color_subbed = color_reg - coefficent * color_bleach
-                            #color_subbed = color_reg - color_bleach
+                            #coefficent = self.autof_factor_estimator(color_reg, color_bleach)
+                            #color_subbed = color_reg - coefficent * color_bleach
+                            color_subbed = color_reg - color_bleach
                             color_subbed[color_subbed < 0] = 0
                             color_subbed = color_subbed.astype('float32')
                             color_subbed = np.nan_to_num(color_subbed, posinf= 65500)
@@ -2156,6 +2156,8 @@ class cycif:
         normalized_bright_array[zero_pixel_indicies] = 60000
         #invert array to make it have correction factors
         inverted_norm_bright_array = 1/normalized_bright_array
+
+        print(inverted_norm_bright_array)
 
         for channel in channels:
 
