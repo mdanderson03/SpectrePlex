@@ -21,8 +21,8 @@ from stardist.models import StarDist2D
 from matplotlib import pyplot as plt
 import cv2
 
-magellan = Magellan()
-core = Core()
+#magellan = Magellan()
+#core = Core()
 
 class cycif:
 
@@ -1412,9 +1412,9 @@ class cycif:
         #self.tissue_exist_array_generate(experiment_directory)
 
         for cycle_number in range(cycle_start, cycle_end):
-            self.infocus(experiment_directory, cycle_number, x_pixels, 1, 1)
-            self.illumination_flattening(experiment_directory, cycle_number, rolling_ball)
-            self.background_sub(experiment_directory, cycle_number, rolling_ball)
+            #self.infocus(experiment_directory, cycle_number, x_pixels, 1, 1)
+            #self.illumination_flattening(experiment_directory, cycle_number, rolling_ball)
+            #self.background_sub(experiment_directory, cycle_number, rolling_ball)
             self.brightness_uniformer(experiment_directory, cycle_number)
             self.mcmicro_image_stack_generator(cycle_number, experiment_directory, x_pixels)
             self.stage_placement(experiment_directory, cycle_number, x_pixels)
