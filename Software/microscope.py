@@ -1405,8 +1405,8 @@ class cycif:
             else:
                 cycle_start_search = 1
         '''
-        cycle_end = 8
-        cycle_start = 2
+        cycle_end = 2
+        cycle_start = 1
 
         #self.tissue_binary_generate(experiment_directory)
         #self.tissue_exist_array_generate(experiment_directory)
@@ -1415,6 +1415,7 @@ class cycif:
             self.infocus(experiment_directory, cycle_number, x_pixels, 1, 1)
             self.illumination_flattening(experiment_directory, cycle_number, rolling_ball)
             self.background_sub(experiment_directory, cycle_number, rolling_ball)
+            self.brightness_uniformer(experiment_directory, cycle_number)
             self.mcmicro_image_stack_generator(cycle_number, experiment_directory, x_pixels)
             self.stage_placement(experiment_directory, cycle_number, x_pixels)
 
@@ -1436,13 +1437,13 @@ class cycif:
         tile_count = int(tissue_exist.sum())
 
         dapi_im_path = experiment_directory + '\DAPI\Stain\cy_' + str(
-            cycle_number) + '\Tiles' + '/focused_basic_corrected'
+            cycle_number) + '\Tiles' + '/focused_basic_brightness_corrected'
         a488_im_path = experiment_directory + '\A488\Stain\cy_' + str(
-            cycle_number) + '\Tiles' + '/flattened_background_subbed'
+            cycle_number) + '\Tiles' + '/flattened_brightness_background_subbed'
         a555_im_path = experiment_directory + '\A555\Stain\cy_' + str(
-            cycle_number) + '\Tiles' + '/flattened_background_subbed'
+            cycle_number) + '\Tiles' + '/flattened_brightness_background_subbed'
         a647_im_path = experiment_directory + '\A647\Stain\cy_' + str(
-            cycle_number) + '\Tiles' + '/flattened_background_subbed'
+            cycle_number) + '\Tiles' + '/flattened_brightness_background_subbed'
 
         mcmicro_path = experiment_directory + r'\mcmicro\raw'
 
@@ -1697,10 +1698,10 @@ class cycif:
                 if type == 'Stain':
                     if channel == 'DAPI':
                         im_path = experiment_directory + '/' + channel + "/" + type + '\cy_' + str(
-                            cycle_number) + '\Tiles' + '/focused_basic_corrected'
+                            cycle_number) + '\Tiles' + '/focused_basic_brightness_corrected'
                     else:
                         im_path = experiment_directory + '/' + channel + "/" + type + '\cy_' + str(
-                            cycle_number) + '\Tiles' + '/flattened_background_subbed'
+                            cycle_number) + '\Tiles' + '/flattened_brightness_background_subbed'
                 elif type == 'Bleach':
                     im_path = experiment_directory + '/' + channel + "/" + type + '\cy_' + str(
                         cycle_number) + '\Tiles' + '/focused_basic_corrected'
@@ -2107,6 +2108,80 @@ class cycif:
 
                 else:
                     pass
+
+    def brightness_uniformer(self, experiment_directory, cycle_number):
+        experiment_directory = experiment_directory + '/'
+        #import numpy focus map info
+        numpy_path = experiment_directory + '/' + 'np_arrays'
+        os.chdir(numpy_path)
+        file_name = 'fm_array.npy'
+        fm_array = np.load(file_name, allow_pickle=False)
+        #find number of tiles in xy grid
+        x_tiles = np.shape(fm_array[0])[1]
+        y_tiles = np.shape(fm_array[0])[0]
+        #paths to needed folders
+        dapi_file_path = experiment_directory + '/DAPI/Stain/cy_1/Tiles/focused_basic_corrected'
+        stardist_path = experiment_directory + '/Labelled_Nuc'
+        #make array to store brightness information in
+        bright_array = np.ones((y_tiles, x_tiles))
+        #channels to apply bright_array to
+        channels = ['DAPI', 'A488', 'A555', 'A647']
+
+        #populate bright_array
+        for y in range(0, y_tiles):
+            for x in range(0, x_tiles):
+                filename = 'x' + str(x) + '_y_' + str(y) + '_c_DAPI.tif'
+                os.chdir(dapi_file_path)
+                dapi_im = io.imread(filename)
+                os.chdir(stardist_path)
+                star_im = io.imread(filename)
+
+                multiplied_im = star_im * dapi_im
+                non_zero_indicies = np.nonzero(multiplied_im)
+                average_int = np.mean(multiplied_im[non_zero_indicies])
+
+                bright_array[y][x] = average_int
+
+        #alter bright_array
+        max_int = np.max(bright_array)
+        normalized_bright_array = bright_array/max_int
+        #add big numbers to cells that have values of zero to prevent infinity values upon inversion
+        zero_pixel_indicies = np.where(normalized_bright_array == 0)[0]
+        normalized_bright_array[zero_pixel_indicies] = 60000
+        #invert array to make it have correction factors
+        inverted_norm_bright_array = 1/normalized_bright_array
+
+        for channel in channels:
+
+            #determine path to images to be altered
+            if channel == 'DAPI':
+                folder_path = experiment_directory + '/' + channel + '/Stain/cy_' + str(cycle_number) + '/Tiles/focused_basic_corrected'
+            else:
+                folder_path = experiment_directory + '/' + channel + '/Stain/cy_' + str(cycle_number) + '/Tiles/flattened_background_subbed'
+
+            #make new folder and determine path to it
+            if channel == 'DAPI':
+                output_folder_path = experiment_directory + '/' + channel + '/Stain/cy_' + str(
+                    cycle_number) + '/Tiles/focused_basic_brightness_corrected'
+            else:
+                output_folder_path = experiment_directory + '/' + channel + '/Stain/cy_' + str(
+                    cycle_number) + '/Tiles/flattened_brightness_background_subbed'
+
+            try:
+                os.mkdir(output_folder_path)
+            except:
+                pass
+
+            #apply correction to each image
+            for y in range(0, y_tiles):
+                for x in range(0, x_tiles):
+
+                    filename = 'x' + str(x) + '_y_' + str(y) + '_c_' + channel + '.tif'
+                    os.chdir(folder_path)
+                    image = io.imread(filename)
+                    modded_imaged = image * inverted_norm_bright_array[y][x]
+                    os.chdir(output_folder_path)
+                    io.imsave(filename, modded_imaged)
 
     def zc_save(self, zc_tif_stack, channels, x_tile, y_tile, cycle, x_pixels, experiment_directory, Stain_or_Bleach):
 
