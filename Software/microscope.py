@@ -2110,6 +2110,9 @@ class cycif:
                     pass
 
     def brightness_uniformer(self, experiment_directory, cycle_number):
+
+        model = StarDist2D.from_pretrained('2D_versatile_fluo')
+
         experiment_directory = experiment_directory + '/'
         #import numpy focus map info
         numpy_path = experiment_directory + '/' + 'np_arrays'
@@ -2137,16 +2140,18 @@ class cycif:
                     filename = 'x' + str(x) + '_y_' + str(y) + '_c_DAPI.tif'
                     os.chdir(dapi_file_path)
                     dapi_im = io.imread(filename)
-                    os.chdir(stardist_path)
-                    star_im = io.imread(filename)
+                    star_im, _ = model.predict_instances(normalize(dapi_im))
+                    star_im[star_im > 0] = 1
+                    if x == 1 and y == 3:
+                        io.imsave('mask.tif', star_im)
 
-                    #multiplied_im = star_im * dapi_im
-                    thresh = filters.threshold_otsu(dapi_im)
-                    dapi_im[dapi_im < thresh] = 0
-                    #non_zero_indicies = np.nonzero(multiplied_im)
-                    non_zero_indicies = np.nonzero(dapi_im)
-                    #average_int = np.mean(multiplied_im[non_zero_indicies])
-                    average_int = np.mean(dapi_im[non_zero_indicies])
+                    multiplied_im = star_im * dapi_im
+                    #thresh = filters.threshold_otsu(dapi_im)
+                    #dapi_im[dapi_im < thresh] = 0
+                    non_zero_indicies = np.nonzero(multiplied_im)
+                    #non_zero_indicies = np.nonzero(dapi_im)
+                    average_int = np.mean(multiplied_im[non_zero_indicies])
+                    #average_int = np.mean(dapi_im[non_zero_indicies])
 
                     bright_array[y][x] = average_int
                 else:
@@ -2160,6 +2165,7 @@ class cycif:
         normalized_bright_array[zero_pixel_indicies] = 60000
         #invert array to make it have correction factors
         inverted_norm_bright_array = 1/normalized_bright_array
+        print(bright_array)
 
         for channel in channels:
 
