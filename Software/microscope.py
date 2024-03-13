@@ -2116,6 +2116,8 @@ class cycif:
         os.chdir(numpy_path)
         file_name = 'fm_array.npy'
         fm_array = np.load(file_name, allow_pickle=False)
+        tissue_exist = np.load('tissue_exist.npy', allow_pickle=False)
+
         #find number of tiles in xy grid
         x_tiles = np.shape(fm_array[0])[1]
         y_tiles = np.shape(fm_array[0])[0]
@@ -2130,17 +2132,21 @@ class cycif:
         #populate bright_array
         for y in range(0, y_tiles):
             for x in range(0, x_tiles):
-                filename = 'x' + str(x) + '_y_' + str(y) + '_c_DAPI.tif'
-                os.chdir(dapi_file_path)
-                dapi_im = io.imread(filename)
-                os.chdir(stardist_path)
-                star_im = io.imread(filename)
 
-                multiplied_im = star_im * dapi_im
-                non_zero_indicies = np.nonzero(multiplied_im)
-                average_int = np.mean(multiplied_im[non_zero_indicies])
+                if tissue_exist[y][x] == 1:
+                    filename = 'x' + str(x) + '_y_' + str(y) + '_c_DAPI.tif'
+                    os.chdir(dapi_file_path)
+                    dapi_im = io.imread(filename)
+                    os.chdir(stardist_path)
+                    star_im = io.imread(filename)
 
-                bright_array[y][x] = average_int
+                    multiplied_im = star_im * dapi_im
+                    non_zero_indicies = np.nonzero(multiplied_im)
+                    average_int = np.mean(multiplied_im[non_zero_indicies])
+
+                    bright_array[y][x] = average_int
+                else:
+                    pass
 
         #alter bright_array
         max_int = np.max(bright_array)
@@ -2176,12 +2182,16 @@ class cycif:
             for y in range(0, y_tiles):
                 for x in range(0, x_tiles):
 
-                    filename = 'x' + str(x) + '_y_' + str(y) + '_c_' + channel + '.tif'
-                    os.chdir(folder_path)
-                    image = io.imread(filename)
-                    modded_imaged = image * inverted_norm_bright_array[y][x]
-                    os.chdir(output_folder_path)
-                    io.imsave(filename, modded_imaged)
+                    if tissue_exist[y][x] == 1:
+
+                        filename = 'x' + str(x) + '_y_' + str(y) + '_c_' + channel + '.tif'
+                        os.chdir(folder_path)
+                        image = io.imread(filename)
+                        modded_imaged = image * inverted_norm_bright_array[y][x]
+                        os.chdir(output_folder_path)
+                        io.imsave(filename, modded_imaged)
+                    else:
+                        pass
 
     def zc_save(self, zc_tif_stack, channels, x_tile, y_tile, cycle, x_pixels, experiment_directory, Stain_or_Bleach):
 
