@@ -1405,14 +1405,14 @@ class cycif:
             else:
                 cycle_start_search = 1
         '''
-        cycle_end = 2
-        cycle_start = 1
+        cycle_end = 8
+        cycle_start = 2
 
         #self.tissue_binary_generate(experiment_directory)
         #self.tissue_exist_array_generate(experiment_directory)
 
         for cycle_number in range(cycle_start, cycle_end):
-            #self.infocus(experiment_directory, cycle_number, x_pixels, 2, 2)
+            self.infocus(experiment_directory, cycle_number, x_pixels, 1, 1)
             self.illumination_flattening(experiment_directory, cycle_number, rolling_ball)
             self.background_sub(experiment_directory, cycle_number, rolling_ball)
             self.mcmicro_image_stack_generator(cycle_number, experiment_directory, x_pixels)
@@ -1438,11 +1438,11 @@ class cycif:
         dapi_im_path = experiment_directory + '\DAPI\Stain\cy_' + str(
             cycle_number) + '\Tiles' + '/focused_basic_corrected'
         a488_im_path = experiment_directory + '\A488\Stain\cy_' + str(
-            cycle_number) + '\Tiles' + '/focused_basic_corrected'
+            cycle_number) + '\Tiles' + '/flattened_background_subbed'
         a555_im_path = experiment_directory + '\A555\Stain\cy_' + str(
-            cycle_number) + '\Tiles' + '/focused_basic_corrected'
+            cycle_number) + '\Tiles' + '/flattened_background_subbed'
         a647_im_path = experiment_directory + '\A647\Stain\cy_' + str(
-            cycle_number) + '\Tiles' + '/focused_basic_corrected'
+            cycle_number) + '\Tiles' + '/flattened_background_subbed'
 
         mcmicro_path = experiment_directory + r'\mcmicro\raw'
 
@@ -1695,11 +1695,15 @@ class cycif:
             for channel in channels:
 
                 if type == 'Stain':
-                    im_path = experiment_directory + '/' + channel + "/" + type + '\cy_' + str(
-                        cycle_number) + '\Tiles' + '/focused_basic_corrected'
+                    if channel == 'DAPI':
+                        im_path = experiment_directory + '/' + channel + "/" + type + '\cy_' + str(
+                            cycle_number) + '\Tiles' + '/focused_basic_corrected'
+                    else:
+                        im_path = experiment_directory + '/' + channel + "/" + type + '\cy_' + str(
+                            cycle_number) + '\Tiles' + '/flattened_background_subbed'
                 elif type == 'Bleach':
                     im_path = experiment_directory + '/' + channel + "/" + type + '\cy_' + str(
-                        cycle_number) + '\Tiles' + '/focused'
+                        cycle_number) + '\Tiles' + '/focused_basic_corrected'
                 os.chdir(im_path)
 
                 # place images into large array
@@ -1754,9 +1758,12 @@ class cycif:
 
         filenames = os.listdir(directory_path)
         for x in range(0, len(filenames)):
-            im2 = io.imread(filenames[x])
-            im2 = np.nan_to_num(im2, posinf=65500)
-            io.imsave(filenames[x], im2)
+            try:
+                im2 = io.imread(filenames[x])
+                im2 = np.nan_to_num(im2, posinf=65500)
+                io.imsave(filenames[x], im2)
+            except:
+                pass
 
     def illumination_flattening(self, experiment_directory, cycle_number, rolling_ball = 1):
 
@@ -1781,7 +1788,8 @@ class cycif:
             print('channel', channel_name, 'cycle', cycle_number)
 
             if channel == 0:
-                directory = directory_start + channel_name + '\Stain\cy_' + str(cycle_number) + r'\Tiles\focused'
+                stain_directory = directory_start + channel_name + '\Stain\cy_' + str(cycle_number) + r'\Tiles\focused'
+                bleach_directory = directory_start + channel_name + '\Bleach\cy_' + str(cycle_number) + r'\Tiles\focused'
             else:
                 if rolling_ball != 1:
                     stain_directory = directory_start + channel_name + '\Stain\cy_' + str(cycle_number) + r'\Tiles\focused'
@@ -1792,19 +1800,21 @@ class cycif:
             bleach_output_directory = directory_start + channel_name + '\Bleach\cy_' + str(cycle_number) + r'\Tiles\focused_basic_corrected'
 
             try:
-                os.mkdir(output_directory)
+                os.mkdir(stain_output_directory)
+                os.mkdir(bleach_output_directory)
             except:
                 pass
 
             #resave images without NaN or infinity values
-            #self.nan_folder_conversion(directory)
+            self.nan_folder_conversion(stain_directory)
+            self.nan_folder_conversion(bleach_directory)
 
             epsilon = 1e-06
             optimizer = shading_correction.BaSiC(stain_directory)
             optimizer.prepare()
             optimizer.run()
             # Save the estimated fields (only if the profiles were estimated)
-            directory = Path(output_directory)
+            directory = Path(stain_output_directory)
             flatfield_name = directory / "flatfield.tif"
             darkfield_name = directory / "darkfield.tif"
             cv2.imwrite(str(flatfield_name), optimizer.flatfield_fullsize.astype(np.float32))
@@ -1812,7 +1822,8 @@ class cycif:
             optimizer.write_images(stain_output_directory, epsilon=epsilon)
 
             # run same ff on bleached images
-            optimizer.input = bleach_directory
+            optimizer.directory = bleach_directory
+            optimizer._sniff_input()
             optimizer._load_images()
             optimizer.write_images(bleach_output_directory, epsilon=epsilon)
 
@@ -2033,13 +2044,13 @@ class cycif:
                             color_reg = sr.transform(color_im)
 
                             # sub background color channels
-                            bleach_color_path = experiment_directory + channel + r'/Bleach/cy_' + str(cycle) + '\Tiles/focused_basic_corrected'
+                            bleach_color_path = experiment_directory + channel + r'/Bleach/cy_' + str(1) + '\Tiles/focused_basic_corrected'
                             os.chdir(bleach_color_path)
                             color_bleach = io.imread(filename)
                             color_bleach = np.nan_to_num(color_bleach, posinf=65500)
-                            #coefficent = self.autof_factor_estimator(color_reg, color_bleach)
-                            #color_subbed = color_reg - coefficent * color_bleach
-                            color_subbed = color_reg - color_bleach
+                            coefficent = self.autof_factor_estimator(color_reg, color_bleach)
+                            color_subbed = color_reg - coefficent * color_bleach
+                            #color_subbed = color_reg - color_bleach
                             color_subbed[color_subbed < 0] = 0
                             color_subbed = color_subbed.astype('float32')
                             color_subbed = np.nan_to_num(color_subbed, posinf= 65500)
