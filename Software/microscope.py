@@ -21,8 +21,8 @@ from stardist.models import StarDist2D
 from matplotlib import pyplot as plt
 import cv2
 
-#magellan = Magellan()
-#core = Core()
+magellan = Magellan()
+core = Core()
 
 class cycif:
 
@@ -55,7 +55,7 @@ class cycif:
         b = image[:-derivative_jump, :]
         b = b.astype('float64')
         b = np.nan_to_num(b, posinf=65000)
-        c = (a - b)
+        c = (a - b)/((a+b)/2)
         c = c / 1000 * c / 1000
         labels = labels[derivative_jump:, :]
         c = c * labels
@@ -145,7 +145,7 @@ class cycif:
         x_tiles = np.shape(fm_array[0])[1]
 
         exp_calc_array = np.random.rand(4, 3, y_tiles, x_tiles)
-        exp_array = [100, 100, 100, 100]
+        exp_array = [50, 50, 50, 50]
         exp_calc_array[::, 0, ::, ::] = 100
 
         file_name = 'exp_calc_array.npy'
@@ -237,6 +237,7 @@ class cycif:
                         pixels = np.reshape(tagged_image.pix,
                                             newshape=[tagged_image.tags["Height"], tagged_image.tags["Width"]])
                         pixels = pixels[::, side_pixel_count:side_pixel_count + x_frame_size]
+                        pixels = pixels
                         pixels = np.nan_to_num(pixels, posinf=65500)
 
                         #Determine if intensity is in bounds and take diff image if not. Record new exp time
@@ -247,20 +248,23 @@ class cycif:
                         auto_fl_path = experiment_directory + '/' + str(channel) + '/Bleach/' + 'cy_0/' + 'Tiles'
                         os.chdir(auto_fl_path)
                         filename = 'z_' + str(int(slice_count/2)) + '_x' + str(x) + '_y_' + str(y) + '_c_' + str(channel) + '.tif'
-                        auto_fl_im = io.imread(filename)
+                        auto_fl_im = io.imread(filename).astype('float64')
 
                         #find ideal constant and sub off auto_fl_im from snapped image
 
                         if channel_index == 0:
                             subbed_image = pixels
                         else:
-                            factor = self.autof_factor_estimator(pixels, auto_fl_im)
-                            subbed_image = pixels - factor*auto_fl_im
-                            subbed_image[subbed_image < 0] = 0
-                            subbed_image = np.nan_to_num(subbed_image, posinf= 65500)
+                            pass
+                            #factor = self.autof_factor_estimator(pixels, auto_fl_im)
+                            #pixels = pixels.astype('float64')
+                            #subbed_image = pixels - factor*auto_fl_im
+                            #offset = np.mean(factor*auto_fl_im)
+                            #subbed_image[subbed_image < 0] = 0
+                            #subbed_image = np.nan_to_num(subbed_image, posinf= 65500)
 
                         #multiply by tissue binary
-                        masked_subbed_image = subbed_image * tissue_bin_im
+                        masked_subbed_image = pixels * tissue_bin_im
 
                         #place subbed image into stack
                         exp_image_stack[channel_index][y][x] = masked_subbed_image
@@ -289,7 +293,7 @@ class cycif:
                 frame_count_index = 14
 
             # use Otsu's (or any other threshold method) to find well stained pixels
-            channel_pixels = exp_image_stack[channel_index]
+            channel_pixels = np.nan_to_num(exp_image_stack[channel_index], posinf=65500)
             non_zero_pixels = channel_pixels.ravel()[np.flatnonzero(channel_pixels)]
             thresh = filters.threshold_otsu(non_zero_pixels)
 
@@ -301,8 +305,12 @@ class cycif:
             new_exp_factor = target_percentage * 65500 / low_pixel * exp_array[channel_index]
 
             new_max_int_value = new_exp_factor/exp_array[channel_index] * high_pixel
+            print('channel', channel, 'thresh', thresh, 'high', high_pixel, 'low', low_pixel, 'new exp', new_exp_factor, 'old exp', exp_array[channel_index])
             ratio_new_int_2_max_int = new_max_int_value / (0.75 * 65500)
-            frame_count = math.ceil(ratio_new_int_2_max_int)
+            try:
+                frame_count = math.ceil(ratio_new_int_2_max_int)
+            except:
+                frame_count = 1
             new_exp_factor = new_exp_factor/frame_count
             total_exposure_time = frame_count * new_exp_factor
 
@@ -323,7 +331,7 @@ class cycif:
 
         print('auto_exp time elapsed', finish - start)
 
-        exp_array[0] = 75
+        exp_array[0] = 50
         numpy_path = experiment_directory + '/' + 'np_arrays'
         os.chdir(numpy_path)
         print(exp_array)
@@ -331,17 +339,17 @@ class cycif:
         np.save('fm_array.npy', fm_array)
 
     def autof_factor_estimator(self, image, autof_image, num_images=2):
-        top_range = 20
+        top_range = 10
         x_factor = top_range / num_images
 
         image = np.nan_to_num(image, posinf= 65500)
         autof_image = np.nan_to_num(autof_image, posinf= 65500)
 
-        image = image.astype('float32')
-        autof_image = autof_image.astype('float32')
+        image = image.astype('float64')
+        autof_image = autof_image.astype('float64')
 
-        x_axis = np.linspace(0, top_range, num_images).astype('float32')
-        y_axis = np.linspace(0, top_range, num_images).astype('float32')
+        x_axis = np.linspace(0, top_range, num_images).astype('float64')
+        y_axis = np.linspace(0, top_range, num_images).astype('float64')
         for x in range(0, num_images):
             input_image = (image - x_factor * x * autof_image)
             mean = self.absolute_mean(input_image)
@@ -413,7 +421,7 @@ class cycif:
 
         target_intensity = 65535 * 0.05
         max_time = 100
-        min_time = 30
+        min_time = 15
         trigger_state = 0
 
         x_frame_size = np.shape(image)[1]
@@ -901,6 +909,7 @@ class cycif:
         :param cycle:
         :return:
         '''
+        model = StarDist2D.from_pretrained('2D_versatile_fluo')
 
         labelled_path = experiment_directory + '/Labelled_Nuc'
         if cycle == 1:
@@ -948,13 +957,16 @@ class cycif:
 
                     for z in range(0, z_count):
                         # load in binary image mask
-                        os.chdir(labelled_path)
-                        file_name = 'x' + str(x) + '_y_' + str(y) + '_c_DAPI.tif'
-                        labels = io.imread(file_name)
+                        #os.chdir(labelled_path)
+                        #file_name = 'x' + str(x) + '_y_' + str(y) + '_c_DAPI.tif'
+                        #labels = io.imread(file_name)
                         # load in z slice
                         os.chdir(dapi_im_path)
                         file_name = 'z_' + str(z) + '_x' + str(x) + '_y_' + str(y) + '_c_DAPI.tif'
                         img = io.imread(file_name)
+                        #apply stardist to image
+                        labels, _ = model.predict_instances(normalize(img))
+                        labels[labels > 0] = 1
                         # apply mask to image and find brenner score
                         score = self.focus_score(img, step_size, labels)
                         score_array[z] = score
@@ -1045,11 +1057,12 @@ class cycif:
 
         # acquire and populate array
         for x in range(0, frame_count):
-                core.snap_image()
-                tagged_image = core.get_tagged_image()
-                pixels = np.reshape(tagged_image.pix,newshape=[tagged_image.tags["Height"], tagged_image.tags["Width"]])
-                pixels = np.nan_to_num(pixels, posinf=65500)
-                average_array[x] = pixels[::, side_pixel_count:side_pixel_count + x_frame_size]
+            time.sleep(0.1)
+            core.snap_image()
+            tagged_image = core.get_tagged_image()
+            pixels = np.reshape(tagged_image.pix,newshape=[tagged_image.tags["Height"], tagged_image.tags["Width"]])
+            pixels = np.nan_to_num(pixels, posinf=65500)
+            average_array[x] = pixels[::, side_pixel_count:side_pixel_count + x_frame_size]
 
         #find array average and return averaged image
         averaged_image = np.average(average_array, axis = 0)
@@ -1146,7 +1159,7 @@ class cycif:
 
                             for z in range(z_start, z_end, slice_gap):
                                 core.set_position(z)
-                                #time.sleep(0.1)
+                                time.sleep(0.1)
                                 pixels = self.core_capture(experiment_directory,x_pixels, channel)
                                 zc_tif_stack[zc_index][z_counter] = pixels
 
@@ -1169,7 +1182,7 @@ class cycif:
                         #print('x', numpy_x[y][x], 'y', numpy_y[y][x])
 
                         core.set_xy_position(numpy_x[y][x], numpy_y[y][x])
-                        time.sleep(.3)
+                        time.sleep(.5)
 
                         for channel in channels:
 
@@ -1203,7 +1216,7 @@ class cycif:
 
                             for z in range(z_start, z_end, slice_gap):
                                 core.set_position(z)
-                                #time.sleep(0.1)
+                                time.sleep(0.1)
 
                                 pixels = self.core_capture(experiment_directory, x_pixels, channel)
                                 zc_tif_stack[zc_index][z_counter] = pixels
@@ -1405,19 +1418,19 @@ class cycif:
             else:
                 cycle_start_search = 1
         '''
-        cycle_end = 2
+        cycle_end = 8
         cycle_start = 1
 
-        #self.tissue_binary_generate(experiment_directory)
-        #self.tissue_exist_array_generate(experiment_directory)
+        self.tissue_binary_generate(experiment_directory)
+        self.tissue_exist_array_generate(experiment_directory)
 
         for cycle_number in range(cycle_start, cycle_end):
-            #self.infocus(experiment_directory, cycle_number, x_pixels, 1, 1)
-            #self.illumination_flattening(experiment_directory, cycle_number, rolling_ball)
-            #self.background_sub(experiment_directory, cycle_number, rolling_ball)
+            self.infocus(experiment_directory, cycle_number, x_pixels, 1, 1)
+            self.illumination_flattening(experiment_directory, cycle_number, rolling_ball)
+            self.background_sub(experiment_directory, cycle_number, rolling_ball)
             self.brightness_uniformer(experiment_directory, cycle_number)
-            #self.mcmicro_image_stack_generator(cycle_number, experiment_directory, x_pixels)
-            #self.stage_placement(experiment_directory, cycle_number, x_pixels)
+            self.mcmicro_image_stack_generator(cycle_number, experiment_directory, x_pixels)
+            self.stage_placement(experiment_directory, cycle_number, x_pixels)
 
     def mcmicro_image_stack_generator(self, cycle_number, experiment_directory, x_frame_size):
 
@@ -1439,11 +1452,11 @@ class cycif:
         dapi_im_path = experiment_directory + '\DAPI\Stain\cy_' + str(
             cycle_number) + '\Tiles' + '/focused_basic_brightness_corrected'
         a488_im_path = experiment_directory + '\A488\Stain\cy_' + str(
-            cycle_number) + '\Tiles' + '/flattened_brightness_background_subbed'
+            cycle_number) + '\Tiles' + '/flattened_background_subbed'
         a555_im_path = experiment_directory + '\A555\Stain\cy_' + str(
-            cycle_number) + '\Tiles' + '/flattened_brightness_background_subbed'
+            cycle_number) + '\Tiles' + '/flattened_background_subbed'
         a647_im_path = experiment_directory + '\A647\Stain\cy_' + str(
-            cycle_number) + '\Tiles' + '/flattened_brightness_background_subbed'
+            cycle_number) + '\Tiles' + '/flattened_background_subbed'
 
         mcmicro_path = experiment_directory + r'\mcmicro\raw'
 
@@ -1467,6 +1480,8 @@ class cycif:
                         image = io.imread(dapi_file_name)
                     except:
                         image = cv2.imread(dapi_file_name)[::, ::, 0]
+
+                    image[image > 65500] = 65500
                     mcmicro_stack[base_count_number_stack + 0] = image
 
                     os.chdir(a488_im_path)
@@ -1474,6 +1489,8 @@ class cycif:
                         image = io.imread(a488_file_name)
                     except:
                         image = cv2.imread(a488_file_name)[::, ::, 0]
+
+                    image[image > 65500] = 65500
                     mcmicro_stack[base_count_number_stack + 1] = image
 
                     os.chdir(a555_im_path)
@@ -1481,6 +1498,8 @@ class cycif:
                         image = io.imread(a555_file_name)
                     except:
                         image = cv2.imread(a555_file_name)[::, ::, 0]
+
+                    image[image > 65500] = 65500
                     mcmicro_stack[base_count_number_stack + 2] = image
 
                     os.chdir(a647_im_path)
@@ -1488,6 +1507,8 @@ class cycif:
                         image = io.imread(a647_file_name)
                     except:
                         image = cv2.imread(a647_file_name)[::, ::, 0]
+
+                    image[image > 65500] = 65500
                     mcmicro_stack[base_count_number_stack + 3] = image
 
                     tile += 1
@@ -1701,7 +1722,7 @@ class cycif:
                             cycle_number) + '\Tiles' + '/focused_basic_brightness_corrected'
                     else:
                         im_path = experiment_directory + '/' + channel + "/" + type + '\cy_' + str(
-                            cycle_number) + '\Tiles' + '/flattened_brightness_background_subbed'
+                            cycle_number) + '\Tiles' + '/flattened_background_subbed'
                 elif type == 'Bleach':
                     im_path = experiment_directory + '/' + channel + "/" + type + '\cy_' + str(
                         cycle_number) + '\Tiles' + '/focused_basic_corrected'
@@ -1760,11 +1781,12 @@ class cycif:
         filenames = os.listdir(directory_path)
         for x in range(0, len(filenames)):
             try:
-                im2 = io.imread(filenames[x])
+                im2 = io.imread(filenames[x]).astype('float32')
                 im2 = np.nan_to_num(im2, posinf=65500)
                 io.imsave(filenames[x], im2)
             except:
                 pass
+
 
     def illumination_flattening(self, experiment_directory, cycle_number, rolling_ball = 1):
 
@@ -1833,7 +1855,7 @@ class cycif:
         print('cycle', cycle_number)
         bin_values = [10]
         channels = ['DAPI', 'A488', 'A555', 'A647']
-        #channels = ['A488']
+        #channels = ['A647']
 
         dapi_im_path = experiment_directory + '/' + 'DAPI' '\Stain\cy_' + str(cycle_number) + '\Tiles'
         tissue_path = experiment_directory + '/Tissue_Binary'
@@ -2018,6 +2040,12 @@ class cycif:
 
                     if rolling_ball != 1:
 
+                        #load in tissue binary
+                        tissue_path = experiment_directory + r'\Tissue_Binary'
+                        os.chdir(tissue_path)
+                        tissue_filename = 'x' + str(x) + '_y_' + str(y) + '_tissue.tif'
+                        tissue_im = io.imread(tissue_filename)
+
                         # load reference and "moved" image
                         ref_path = experiment_directory + 'DAPI\Bleach\cy_' + str(cycle) + '\Tiles/focused'
                         os.chdir(ref_path)
@@ -2043,15 +2071,17 @@ class cycif:
                             color_im = io.imread(filename)
                             color_im = np.nan_to_num(color_im, posinf= 65500)
                             color_reg = sr.transform(color_im)
+                            color_factor = color_reg * tissue_im
 
                             # sub background color channels
                             bleach_color_path = experiment_directory + channel + r'/Bleach/cy_' + str(1) + '\Tiles/focused_basic_corrected'
                             os.chdir(bleach_color_path)
                             color_bleach = io.imread(filename)
+                            color_bleach_factor = color_bleach * tissue_im
                             color_bleach = np.nan_to_num(color_bleach, posinf=65500)
-                            #coefficent = self.autof_factor_estimator(color_reg, color_bleach)
-                            #color_subbed = color_reg - coefficent * color_bleach
-                            color_subbed = color_reg - color_bleach
+                            coefficent = self.autof_factor_estimator(color_factor, color_bleach_factor)
+                            color_subbed = color_reg - coefficent * color_bleach
+                            #color_subbed = color_reg - color_bleach
                             color_subbed[color_subbed < 0] = 0
                             color_subbed = color_subbed.astype('float32')
                             color_subbed = np.nan_to_num(color_subbed, posinf= 65500)
@@ -2165,7 +2195,7 @@ class cycif:
         normalized_bright_array[zero_pixel_indicies] = 60000
         #invert array to make it have correction factors
         inverted_norm_bright_array = 1/normalized_bright_array
-        print(bright_array)
+        #print(bright_array)
 
         for channel in channels:
 

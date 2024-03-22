@@ -62,7 +62,7 @@ class fluidics:
         self.experiment_path = experiment_path
         self.flow_control = flow_control
 
-        self.pressure_on = 1050
+        self.pressure_on = 1400
         self.pressure_off = 0
         self.flow_on = 500
         self.flow_off = -3
