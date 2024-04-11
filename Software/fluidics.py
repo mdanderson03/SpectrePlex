@@ -62,7 +62,7 @@ class fluidics:
         self.experiment_path = experiment_path
         self.flow_control = flow_control
 
-        self.pressure_on = 1400
+        self.pressure_on = 1000
         self.pressure_off = 0
         self.flow_on = 500
         self.flow_off = -3
@@ -305,7 +305,7 @@ class fluidics:
         bleach_valve = 11
         pbs_valve = 12
         bleach_time = 5  # minutes
-        stain_flow_time = 47  # seconds
+        stain_flow_time = 45  # seconds
         if heater_state == 0:
             stain_inc_time = incub_val  # minutes
         if heater_state == 1:
@@ -329,7 +329,7 @@ class fluidics:
 
             self.valve_select(bleach_valve)
             self.flow(flow_rate)
-            time.sleep(70)
+            time.sleep(90)
             self.flow(flow_rate_stop)
             # time.sleep(bleach_time*60)
             self.valve_select(pbs_valve)
@@ -338,7 +338,7 @@ class fluidics:
                 time.sleep(60)
 
             self.flow(flow_rate)
-            time.sleep(100)
+            time.sleep(150)
             self.flow(flow_rate_stop)
             time.sleep(5)
 
@@ -375,7 +375,7 @@ class fluidics:
 
             self.valve_select(pbs_valve)
             self.flow(flow_rate)
-            time.sleep(70)
+            time.sleep(100)
             self.flow(flow_rate_stop)
 
 

@@ -308,19 +308,25 @@ class cycif:
             print('channel', channel, 'thresh', thresh, 'high', high_pixel, 'low', low_pixel, 'new exp', new_exp_factor, 'old exp', exp_array[channel_index])
             ratio_new_int_2_max_int = new_max_int_value / (0.75 * 65500)
             try:
-                frame_count = math.ceil(ratio_new_int_2_max_int)
+                frame_count = math.ceil(ratio_new_int_2_max_int + 0.05)
             except:
                 frame_count = 1
             new_exp_factor = new_exp_factor/frame_count
             total_exposure_time = frame_count * new_exp_factor
 
+
             if new_exp_factor > 500:
                 new_exp_factor = 500
                 frame_count = math.ceil(total_exposure_time/new_exp_factor)
 
-            if new_exp_factor < 25:
-                new_exp_factor = 25
+            if new_exp_factor < 20:
+                new_exp_factor = 20
                 frame_count = math.ceil(total_exposure_time/new_exp_factor)
+
+            if frame_count < 1:
+                frame_count = 1
+            else:
+                pass
 
             #add to exp_array and fm_array
             exp_array[channel_index] = new_exp_factor
@@ -1418,8 +1424,8 @@ class cycif:
             else:
                 cycle_start_search = 1
         '''
-        cycle_end = 8
-        cycle_start = 1
+        cycle_end = 10
+        cycle_start = 2
 
         self.tissue_binary_generate(experiment_directory)
         self.tissue_exist_array_generate(experiment_directory)
