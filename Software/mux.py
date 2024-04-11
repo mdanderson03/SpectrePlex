@@ -18,9 +18,9 @@ from array import array
 from Elveflow64 import *
 
 
-class mux_valve:
+class fluidics:
 
-    def __init__(self, experiment_path, mux_com_port):
+    def __init__(self, experiment_path, mux_com_port, ob1_com_port, flow_control=1):
 
         # MUX intiialize
         path = 'ASRL' + str(mux_com_port) + '::INSTR'
@@ -28,8 +28,19 @@ class mux_valve:
         MUX_DRI_Initialization(path.encode('ascii'), byref(
             mux_Instr_ID))  # choose the COM port, it can be ASRLXXX::INSTR (where XXX=port number)
 
+        # home
+        # answer = (c_char * 40)()
         self.mux_ID = mux_Instr_ID.value
+        # MUX_DRI_Send_Command(self.mux_ID, 0, answer, 40)
+
         self.experiment_path = experiment_path
+        self.flow_control = flow_control
+        self.ob1_com_port = ob1_com_port
+
+        self.pressure_on = 1000
+        self.pressure_off = 0
+        self.flow_on = 500
+        self.flow_off = -3
 
         return
 
@@ -97,3 +108,220 @@ class mux_valve:
             self.fluidics_logger(str(MUX_DRI_Get_Valve), error, current_valve)
             time.sleep(1)
 
+    def flow(self, on_off_state):
+
+        self.ob1_start()
+        run = 1
+
+        while run != 0:
+
+            # disable doing a rerun
+            run = 0
+
+            #set target to achieve
+            if self.flow_control == 1 and on_off_state == 'ON':
+                set_target = self.flow_on
+            if self.flow_control == 1 and on_off_state == 'OFF':
+                set_target = self.flow_off
+            if self.flow_control == 0 and on_off_state == 'ON':
+                set_target = self.pressure_on
+            if self.flow_control == 0 and on_off_state == 'OFF':
+                set_target = self.pressure_off
+            set_target_c_types = c_double(set_target)  # convert to c_double
+
+
+            set_channel = int(1)  # convert to int
+            set_channel = c_int32(set_channel)  # convert to c_int32
+
+            # OB1_Start_Remote_Measurement(self.pump_ID, self.calibration_array, 1000)
+            error = OB1_Set_Remote_Target(self.pump_ID, set_channel, set_target_c_types)
+            self.fluidics_logger(str(OB1_Set_Remote_Target), error, set_target)
+
+            data_sens = c_double()
+            data_reg = c_double()
+            set_channel = int(1)  # convert to int
+            set_channel = c_int32(set_channel)  # convert to c_int32
+            time.sleep(3) # wait 3 seconds to stabilize
+            error = OB1_Get_Remote_Data(self.pump_ID, set_channel, byref(data_reg), byref(data_sens))
+
+            if self.flow_control == 1:
+                current_flow_rate = data_sens.value
+            else:
+                current_flow_rate = data_reg.value
+
+            self.fluidics_logger(str(OB1_Get_Remote_Data), error, current_flow_rate)
+
+            error = OB1_Get_Remote_Data(self.pump_ID, set_channel, byref(data_reg), byref(data_sens))
+            current_flow_rate = data_sens.value
+            self.fluidics_logger(str(OB1_Get_Remote_Data), error, current_flow_rate)
+
+            if self.flow_control == 1:
+
+                if set_target > 400 and current_flow_rate < 0.1 * set_target:
+                    self.flow_control = 0
+
+                    set_channel = int(1)
+                    set_channel = c_int32(set_channel)  # convert to c_int32
+                    error = PID_Set_Running_Remote(self.pump_ID, set_channel, 0) # turn off PID loop
+                    self.fluidics_logger(str(PID_Set_Running_Remote), error, 0)
+
+                    run = 1 # restart flow function
+
+                if set_target< 40 and current_flow_rate > 100:
+                    self.flow_control = 0
+
+                    set_channel = int(1)
+                    set_channel = c_int32(set_channel)  # convert to c_int32
+                    error = PID_Set_Running_Remote(self.pump_ID, set_channel, 0) # TURN OFF pid LOOP
+                    self.fluidics_logger(str(PID_Set_Running_Remote), error, 0)
+
+                    run = 1 # restart flow function
+
+            else:
+                pass
+
+        self.ob1_end()
+
+    def ob1_end(self):
+
+        start = time.time()
+        error = OB1_Destructor(self.pump_ID)
+        self.fluidics_logger(str(OB1_Destructor), error, 0)
+        end = time.time()
+        print('destruction time', end - start)
+
+    def ob1_start(self):
+
+        start = time.time()
+        # OB1 initialize
+        ob1_path = 'ASRL' + str(self.ob1_com_port) + '::INSTR'
+        Instr_ID = c_int32()
+        OB1_Initialization(ob1_path.encode('ascii'), 0, 0, 0, 0, byref(Instr_ID))
+        OB1_Add_Sens(Instr_ID, 1, 5, 1, 0, 7,
+                     0)  # 16bit working range between 0-1000uL/min, also what are CustomSens_Voltage_5_to_25 and can I really choose any digital range?
+
+        Calib_path = r'C:\Users\CyCIF PC\Documents\GitHub\AutoCIF\Python_64_elveflow\calibration\1_12_24_cal.txt'
+        Calib = (c_double * 1000)()
+        # Elveflow_Calibration_Load(Calib_path.encode('ascii'), byref(Calib), 1000)
+        Elveflow_Calibration_Default(byref(Calib), 1000)
+
+        if self.flow_control == 1:
+
+            set_channel_regulator = int(1)  # convert to int
+            set_channel_regulator = c_int32(set_channel_regulator)  # convert to c_int32
+            set_channel_sensor = int(1)
+            set_channel_sensor = c_int32(set_channel_sensor)  # convert to c_int32
+            PID_Add_Remote(Instr_ID.value, set_channel_regulator, Instr_ID.value, set_channel_sensor, 0.9, 0.004, 1)
+        else:
+            pass
+
+        OB1_Start_Remote_Measurement(Instr_ID.value, byref(Calib), 1000)
+        self.calibration_array = byref(Calib)
+
+        self.pump_ID = Instr_ID.value
+        end = time.time()
+        print('initialize time', end - start)
+
+    def liquid_action(self, action_type, stain_valve=0, incub_val=45, heater_state=0):
+
+        bleach_valve = 11
+        pbs_valve = 12
+        bleach_time = 5  # minutes
+        stain_flow_time = 45  # seconds
+        if heater_state == 0:
+            stain_inc_time = incub_val  # minutes
+        if heater_state == 1:
+            stain_inc_time = 45  # minutes
+        nuc_valve = 4
+        nuc_flow_time = 45  # seconds
+        nuc_inc_time = 3  # minutes
+
+        flow_rate = "ON"
+        flow_rate_stop = 'OFF'
+
+        #flow_control = self.flow_control
+
+        #if flow_control != 1:
+        #    flow_rate = 1100
+        #    flow_rate_stop = 0
+        #else:
+        #    pass
+
+        if action_type == 'Bleach':
+
+            self.valve_select(bleach_valve)
+            self.flow(flow_rate)
+            time.sleep(90)
+            self.flow(flow_rate_stop)
+            # time.sleep(bleach_time*60)
+            self.valve_select(pbs_valve)
+
+            for x in range(0, bleach_time):
+                time.sleep(60)
+
+            self.flow(flow_rate)
+            time.sleep(150)
+            self.flow(flow_rate_stop)
+            time.sleep(5)
+
+        elif action_type == 'Stain':
+
+            self.valve_select(stain_valve)
+            self.flow(flow_rate)
+            time.sleep(stain_flow_time)
+            self.flow(flow_rate_stop)
+            self.valve_select(pbs_valve)
+
+            for x in range(0, stain_inc_time):
+                time.sleep(60)
+                print('Staining Time Elapsed ', x)
+
+            # if heater_state == 1:
+            #    arduino.heater_state(0)
+            #    arduino.chamber('fill')
+            # else:
+            #    pass
+
+
+
+            self.valve_select(pbs_valve)
+            time.sleep(1)
+            self.flow(flow_rate)
+            time.sleep(150)
+            self.flow(flow_rate_stop)
+            time.sleep(5)
+
+
+
+        elif action_type == "Wash":
+
+            self.valve_select(pbs_valve)
+            self.flow(flow_rate)
+            time.sleep(100)
+            self.flow(flow_rate_stop)
+
+
+        elif action_type == 'Nuc_Touchup':
+
+            self.valve_select(nuc_valve)
+            self.flow(500)
+            time.sleep(nuc_flow_time)
+            self.flow(0)
+            time.sleep(nuc_inc_time * 60)
+
+            self.valve_select(pbs_valve)
+            self.flow(450)
+            time.sleep(70)
+            self.flow(0)
+
+        elif action_type == 'PBS_flow_on':
+
+            self.valve_select(pbs_valve)
+            self.flow(500)
+            time.sleep(10)
+
+        elif action_type == 'PBS_flow_off':
+
+            self.valve_select(pbs_valve)
+            self.flow(0)
+            time.sleep(10)
