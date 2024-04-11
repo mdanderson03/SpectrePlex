@@ -53,7 +53,7 @@ calibration_array = byref(Calib)
 
 pump_ID = Instr_ID.value
 
-flow_control = flow_control
+flow_control = 1
 
 
 pressure_on = 1000
@@ -62,8 +62,8 @@ flow_on = 500
 flow_off = -3
 
 
-def fluidics_logger(self, function_used_string, error_code, value_sr):
-    experiment_directory = self.experiment_path
+def fluidics_logger(function_used_string, error_code, value_sr):
+    experiment_directory = experiment_path
     filename = 'logger.xlsx'
     logger_path = experiment_directory + '/fluidics data logger'
     os.chdir(experiment_directory)
@@ -96,101 +96,110 @@ def fluidics_logger(self, function_used_string, error_code, value_sr):
     ws.cell(row=row_select, column=4).value = value_sr
 
     wb.save(filename)
-def flow(self, on_off_state):
+def flow(on_off_state):
+    pump_ID = Instr_ID.value
 
-        run = 1
+    flow_control = 1
 
-        while run != 0:
+    pressure_on = 1000
+    pressure_off = 0
+    flow_on = 500
+    flow_off = -3
 
-            # disable doing a rerun
-            run = 0
+    run = 1
 
-            #set target to achieve
-            if self.flow_control == 1 and on_off_state == 'ON':
-                set_target = flow_on
-            if self.flow_control == 1 and on_off_state == 'OFF':
-                set_target = flow_off
-            if self.flow_control == 0 and on_off_state == 'ON':
-                set_target = pressure_on
-            if self.flow_control == 0 and on_off_state == 'OFF':
-                set_target = pressure_off
-            set_target_c_types = c_double(set_target)  # convert to c_double
+    while run != 0:
+
+        # disable doing a rerun
+        run = 0
+
+        #set target to achieve
+        if flow_control == 1 and on_off_state == 'ON':
+            set_target = flow_on
+        if flow_control == 1 and on_off_state == 'OFF':
+            set_target = flow_off
+        if flow_control == 0 and on_off_state == 'ON':
+            set_target = pressure_on
+        if flow_control == 0 and on_off_state == 'OFF':
+            set_target = pressure_off
+        set_target_c_types = c_double(set_target)  # convert to c_double
 
 
-            set_channel = int(1)  # convert to int
-            set_channel = c_int32(set_channel)  # convert to c_int32
+        set_channel = int(1)  # convert to int
+        set_channel = c_int32(set_channel)  # convert to c_int32
 
-            # OB1_Start_Remote_Measurement(self.pump_ID, self.calibration_array, 1000)
-            error = OB1_Set_Remote_Target(self.pump_ID, set_channel, set_target_c_types)
-            self.fluidics_logger(str(OB1_Set_Remote_Target), error, set_target)
+        # OB1_Start_Remote_Measurement(self.pump_ID, self.calibration_array, 1000)
+        error = OB1_Set_Remote_Target(pump_ID, set_channel, set_target_c_types)
+        fluidics_logger(str(OB1_Set_Remote_Target), error, set_target)
 
-            data_sens = c_double()
-            data_reg = c_double()
-            set_channel = int(1)  # convert to int
-            set_channel = c_int32(set_channel)  # convert to c_int32
-            time.sleep(3) # wait 3 seconds to stabilize
-            error = OB1_Get_Remote_Data(self.pump_ID, set_channel, byref(data_reg), byref(data_sens))
+        data_sens = c_double()
+        data_reg = c_double()
+        set_channel = int(1)  # convert to int
+        set_channel = c_int32(set_channel)  # convert to c_int32
+        time.sleep(3) # wait 3 seconds to stabilize
+        error = OB1_Get_Remote_Data(pump_ID, set_channel, byref(data_reg), byref(data_sens))
 
-            if self.flow_control == 1:
-                current_flow_rate = data_sens.value
-            else:
-                current_flow_rate = data_reg.value
-
-            self.fluidics_logger(str(OB1_Get_Remote_Data), error, current_flow_rate)
-
-            error = OB1_Get_Remote_Data(self.pump_ID, set_channel, byref(data_reg), byref(data_sens))
+        if flow_control == 1:
             current_flow_rate = data_sens.value
-            self.fluidics_logger(str(OB1_Get_Remote_Data), error, current_flow_rate)
+        else:
+            current_flow_rate = data_reg.value
 
-            if self.flow_control == 1:
+        fluidics_logger(str(OB1_Get_Remote_Data), error, current_flow_rate)
 
-                if set_target > 400 and current_flow_rate < 0.1 * set_target:
-                    self.flow_control = 0
+        error = OB1_Get_Remote_Data(pump_ID, set_channel, byref(data_reg), byref(data_sens))
+        current_flow_rate = data_sens.value
+        fluidics_logger(str(OB1_Get_Remote_Data), error, current_flow_rate)
 
-                    set_channel = int(1)
-                    set_channel = c_int32(set_channel)  # convert to c_int32
-                    error = PID_Set_Running_Remote(self.pump_ID, set_channel, 0) # turn off PID loop
-                    self.fluidics_logger(str(PID_Set_Running_Remote), error, 0)
+        if flow_control == 1:
 
-                    run = 1 # restart flow function
+            if set_target > 400 and current_flow_rate < 0.1 * set_target:
+                flow_control = 0
 
-                if set_target< 40 and current_flow_rate > 100:
-                    self.flow_control = 0
+                set_channel = int(1)
+                set_channel = c_int32(set_channel)  # convert to c_int32
+                error = PID_Set_Running_Remote(pump_ID, set_channel, 0) # turn off PID loop
+                fluidics_logger(str(PID_Set_Running_Remote), error, 0)
 
-                    set_channel = int(1)
-                    set_channel = c_int32(set_channel)  # convert to c_int32
-                    error = PID_Set_Running_Remote(self.pump_ID, set_channel, 0) # TURN OFF pid LOOP
-                    self.fluidics_logger(str(PID_Set_Running_Remote), error, 0)
+                run = 1 # restart flow function
 
-                    run = 1 # restart flow function
+            if set_target< 40 and current_flow_rate > 100:
+                flow_control = 0
 
-            else:
-                pass
+                set_channel = int(1)
+                set_channel = c_int32(set_channel)  # convert to c_int32
+                error = PID_Set_Running_Remote(pump_ID, set_channel, 0) # TURN OFF pid LOOP
+                fluidics_logger(str(PID_Set_Running_Remote), error, 0)
+
+                run = 1 # restart flow function
+
+        else:
+            pass
 
 
 flow('ON')
-time.sleep(75)
+time.sleep(10)
 flow('OFF')
-
+'''
 set_channel = int(1)
 set_channel = c_int32(set_channel)  # convert to c_int32
-error = PID_Set_Running_Remote(self.pump_ID, set_channel, 0)
-self.fluidics_logger(str(PID_Set_Running_Remote), error, 0)
+error = PID_Set_Running_Remote(pump_ID, set_channel, 0)
+fluidics_logger(str(PID_Set_Running_Remote), error, 0)
 
-error = OB1_Stop_Remote_Measurement(self.pump_ID)
-self.fluidics_logger(str(OB1_Stop_Remote_Measurement), error, 0)
-
-OB1_Destructor(self.pump_ID)
-self.fluidics_logger(str(OB1_Destructor), error, 0)
+error = OB1_Stop_Remote_Measurement(pump_ID)
+fluidics_logger(str(OB1_Stop_Remote_Measurement), error, 0)
+'''
+error = OB1_Destructor(pump_ID)
+fluidics_logger(str(OB1_Destructor), error, 0)
+'''
 set_channel = int(1)
 set_channel = c_int32(set_channel)  # convert to c_int32
-error = PID_Set_Running_Remote(self.pump_ID, set_channel, 0)
-self.fluidics_logger(str(PID_Set_Running_Remote), error, 0)
+error = PID_Set_Running_Remote(pump_ID, set_channel, 0)
+fluidics_logger(str(PID_Set_Running_Remote), error, 0)
 
-error = OB1_Stop_Remote_Measurement(self.pump_ID)
-self.fluidics_logger(str(OB1_Stop_Remote_Measurement), error, 0)
+error = OB1_Stop_Remote_Measurement(pump_ID)
+fluidics_logger(str(OB1_Stop_Remote_Measurement), error, 0)
 
-OB1_Destructor(self.pump_ID)
-self.fluidics_logger(str(OB1_Destructor), error, 0)
+OB1_Destructor(pump_ID)
+fluidics_logger(str(OB1_Destructor), error, 0)
 
-
+'''

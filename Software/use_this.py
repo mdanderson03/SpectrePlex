@@ -41,22 +41,22 @@ np.save('exp_array.npy', exp_array)
 '''
 
 
-pump.liquid_action('Stain', stain_valve=7)
+pump.liquid_action('Stain', stain_valve=8)
 #pump.liquid_action('Bleach')
 #pump.liquid_action('Bleach')
 #pump.liquid_action('Wash')
 #microscope.auto_exposure(experiment_directory, x_frame_size=x_frame_size)
 #microscope.image_cycle_acquire(7, experiment_directory, z_slices, 'Bleach', offset_array, x_frame_size=x_frame_size, establish_fm_array=0, auto_focus_run=0, auto_expose_run=0)
 
-#cycle_number = 4
+cycle_number = 8
 
 #print('cycle', cycle_number)
 #pump.liquid_action('Stain', stain_valve=cycle_number)  # nuc is valve=7, pbs valve=8, bleach valve=1 (action, stain_valve, heater state (off = 0, on = 1))
-#microscope.image_cycle_acquire(cycle_number, experiment_directory, z_slices, 'Stain', offset_array, x_frame_size=x_frame_size, establish_fm_array=0, auto_focus_run=0,auto_expose_run=1)
+microscope.image_cycle_acquire(cycle_number, experiment_directory, z_slices, 'Stain', offset_array, x_frame_size=x_frame_size, establish_fm_array=0, auto_focus_run=1,auto_expose_run=1)
 
 
 #pump.liquid_action('Bleach')
-microscope.image_cycle_acquire(7, experiment_directory, z_slices, 'Stain', offset_array, x_frame_size=x_frame_size, establish_fm_array=0, auto_focus_run=1, auto_expose_run=1)
+#microscope.image_cycle_acquire(7, experiment_directory, z_slices, 'Stain', offset_array, x_frame_size=x_frame_size, establish_fm_array=0, auto_focus_run=1, auto_expose_run=1)
 
 
 # start = time.time()
