@@ -1,6 +1,6 @@
 import datetime
 import os
-
+from subprocess import call
 import numpy as np
 import time
 import matplotlib.pyplot as plt
@@ -110,7 +110,6 @@ class fluidics:
 
     def flow(self, on_off_state):
 
-        self.ob1_start()
         run = 1
 
         while run != 0:
@@ -180,7 +179,6 @@ class fluidics:
             else:
                 pass
 
-        self.ob1_end()
 
     def ob1_end(self):
 
@@ -196,14 +194,17 @@ class fluidics:
         # OB1 initialize
         ob1_path = 'ASRL' + str(self.ob1_com_port) + '::INSTR'
         Instr_ID = c_int32()
-        OB1_Initialization(ob1_path.encode('ascii'), 0, 0, 0, 0, byref(Instr_ID))
-        OB1_Add_Sens(Instr_ID, 1, 5, 1, 0, 7,
+        error = OB1_Initialization(ob1_path.encode('ascii'), 0, 0, 0, 0, byref(Instr_ID))
+        self.fluidics_logger(str(OB1_Initialization), error, 0)
+        error = OB1_Add_Sens(Instr_ID, 1, 5, 1, 0, 7,
                      0)  # 16bit working range between 0-1000uL/min, also what are CustomSens_Voltage_5_to_25 and can I really choose any digital range?
+        self.fluidics_logger(str(OB1_Add_Sens), error, 0)
 
         Calib_path = r'C:\Users\CyCIF PC\Documents\GitHub\AutoCIF\Python_64_elveflow\calibration\1_12_24_cal.txt'
         Calib = (c_double * 1000)()
         # Elveflow_Calibration_Load(Calib_path.encode('ascii'), byref(Calib), 1000)
-        Elveflow_Calibration_Default(byref(Calib), 1000)
+        error = Elveflow_Calibration_Default(byref(Calib), 1000)
+        self.fluidics_logger(str(Elveflow_Calibration_Default), error, 0)
 
         if self.flow_control == 1:
 
@@ -211,16 +212,25 @@ class fluidics:
             set_channel_regulator = c_int32(set_channel_regulator)  # convert to c_int32
             set_channel_sensor = int(1)
             set_channel_sensor = c_int32(set_channel_sensor)  # convert to c_int32
-            PID_Add_Remote(Instr_ID.value, set_channel_regulator, Instr_ID.value, set_channel_sensor, 0.9, 0.004, 1)
+            error = PID_Add_Remote(Instr_ID.value, set_channel_regulator, Instr_ID.value, set_channel_sensor, 0.9, 0.004, 1)
+            self.fluidics_logger(str(PID_Add_Remote), error, 0)
         else:
             pass
 
-        OB1_Start_Remote_Measurement(Instr_ID.value, byref(Calib), 1000)
+        error = OB1_Start_Remote_Measurement(Instr_ID.value, byref(Calib), 1000)
+        self.fluidics_logger(str( OB1_Start_Remote_Measurement), error, 0)
         self.calibration_array = byref(Calib)
 
         self.pump_ID = Instr_ID.value
         end = time.time()
         print('initialize time', end - start)
+
+    def file_run(self, file_name):
+
+        os.chdir(r'C:\Users\CyCIF PC\Documents\GitHub\AutoCIF\Software')
+        call(["python", file_name])
+
+
 
     def liquid_action(self, action_type, stain_valve=0, incub_val=45, heater_state=0):
 
@@ -239,6 +249,7 @@ class fluidics:
         flow_rate = "ON"
         flow_rate_stop = 'OFF'
 
+
         #flow_control = self.flow_control
 
         #if flow_control != 1:
@@ -250,31 +261,26 @@ class fluidics:
         if action_type == 'Bleach':
 
             self.valve_select(bleach_valve)
-            self.flow(flow_rate)
-            time.sleep(90)
-            self.flow(flow_rate_stop)
-            # time.sleep(bleach_time*60)
-            self.valve_select(pbs_valve)
+            self.file_run('bleach.py')
 
             for x in range(0, bleach_time):
                 time.sleep(60)
 
-            self.flow(flow_rate)
-            time.sleep(150)
-            self.flow(flow_rate_stop)
-            time.sleep(5)
+            self.valve_select(pbs_valve)
+            self.file_run('wash.py')
 
         elif action_type == 'Stain':
 
             self.valve_select(stain_valve)
-            self.flow(flow_rate)
-            time.sleep(stain_flow_time)
-            self.flow(flow_rate_stop)
+            self.file_run('stain.py')
             self.valve_select(pbs_valve)
 
             for x in range(0, stain_inc_time):
                 time.sleep(60)
                 print('Staining Time Elapsed ', x)
+
+            self.file_run('wash.py')
+
 
             # if heater_state == 1:
             #    arduino.heater_state(0)
@@ -284,21 +290,10 @@ class fluidics:
 
 
 
-            self.valve_select(pbs_valve)
-            time.sleep(1)
-            self.flow(flow_rate)
-            time.sleep(150)
-            self.flow(flow_rate_stop)
-            time.sleep(5)
-
-
-
         elif action_type == "Wash":
 
             self.valve_select(pbs_valve)
-            self.flow(flow_rate)
-            time.sleep(100)
-            self.flow(flow_rate_stop)
+            self.file_run('wash.py')
 
 
         elif action_type == 'Nuc_Touchup':
@@ -325,3 +320,5 @@ class fluidics:
             self.valve_select(pbs_valve)
             self.flow(0)
             time.sleep(10)
+
+

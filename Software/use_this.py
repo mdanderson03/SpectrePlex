@@ -5,7 +5,7 @@ from autocyplex import *
 from optparse import OptionParser
 microscope = cycif() # initialize cycif object
 experiment_directory = r'E:\8-4-24 celiac'
-pump = fluidics(experiment_directory, 6, 13, flow_control=0)
+pump = fluidics(experiment_directory, 6, 13, flow_control=1)
 
 z_slices = 7
 x_frame_size = 2960
@@ -41,18 +41,18 @@ np.save('exp_array.npy', exp_array)
 '''
 
 
-pump.liquid_action('Stain', stain_valve=8)
+#pump.liquid_action('Stain', stain_valve=8)
 #pump.liquid_action('Bleach')
 #pump.liquid_action('Bleach')
 #pump.liquid_action('Wash')
 #microscope.auto_exposure(experiment_directory, x_frame_size=x_frame_size)
 #microscope.image_cycle_acquire(7, experiment_directory, z_slices, 'Bleach', offset_array, x_frame_size=x_frame_size, establish_fm_array=0, auto_focus_run=0, auto_expose_run=0)
 
-cycle_number = 8
+#cycle_number = 8
 
 #print('cycle', cycle_number)
 #pump.liquid_action('Stain', stain_valve=cycle_number)  # nuc is valve=7, pbs valve=8, bleach valve=1 (action, stain_valve, heater state (off = 0, on = 1))
-microscope.image_cycle_acquire(cycle_number, experiment_directory, z_slices, 'Stain', offset_array, x_frame_size=x_frame_size, establish_fm_array=0, auto_focus_run=1,auto_expose_run=1)
+#microscope.image_cycle_acquire(cycle_number, experiment_directory, z_slices, 'Stain', offset_array, x_frame_size=x_frame_size, establish_fm_array=0, auto_focus_run=1,auto_expose_run=1)
 
 
 #pump.liquid_action('Bleach')
@@ -60,12 +60,12 @@ microscope.image_cycle_acquire(cycle_number, experiment_directory, z_slices, 'St
 
 
 # start = time.time()
-#for cycle in range(6, 7):
-#    microscope.full_cycle(experiment_directory, cycle, offset_array, cycle, pump, z_slices)
+for cycle in range(8, 10):
+    microscope.full_cycle(experiment_directory, cycle, offset_array, cycle, pump, z_slices)
 # end = time.time()
 # print(end-start)
 
-#microscope.post_acquisition_processor(experiment_directory, x_frame_size, rolling_ball=0)
+microscope.post_acquisition_processor(experiment_directory, x_frame_size, rolling_ball=0)
 
 
 
