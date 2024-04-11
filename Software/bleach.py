@@ -1,4 +1,5 @@
 import ob1
+import time
 
 # OB1 initialize
 experiment_path = r'E:\8-4-24 celiac'
