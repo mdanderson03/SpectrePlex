@@ -22,6 +22,14 @@ class fluidics:
 
     def __init__(self, experiment_path, mux_com_port, ob1_com_port, flow_control=1):
 
+        # load in data structures
+        numpy_path = experiment_directory + '/' + 'np_arrays'
+        os.chdir(numpy_path)
+
+        fluid_info_array = np.zeros(3)
+        file_name = 'fluid_info_array.npy'
+        np.save(file_name, fluid_info_array)
+
         # MUX intiialize
         path = 'ASRL' + str(mux_com_port) + '::INSTR'
         mux_Instr_ID = c_int32()
@@ -110,6 +118,12 @@ class fluidics:
 
     def flow(self, on_off_state):
 
+        # load in data structures
+        numpy_path = experiment_directory + '/' + 'np_arrays'
+        os.chdir(numpy_path)
+        file_name = 'fluid_info_array.npy'
+        fluid_array = np.load(file_name, allow_pickle=False)
+
         run = 1
 
         while run != 0:
@@ -150,34 +164,37 @@ class fluidics:
 
             self.fluidics_logger(str(OB1_Get_Remote_Data), error, current_flow_rate)
 
-            error = OB1_Get_Remote_Data(self.pump_ID, set_channel, byref(data_reg), byref(data_sens))
-            current_flow_rate = data_sens.value
-            self.fluidics_logger(str(OB1_Get_Remote_Data), error, current_flow_rate)
+            #error = OB1_Get_Remote_Data(self.pump_ID, set_channel, byref(data_reg), byref(data_sens))
+            #current_flow_rate = data_sens.value
+            #self.fluidics_logger(str(OB1_Get_Remote_Data), error, current_flow_rate)
 
             if self.flow_control == 1:
 
                 if set_target > 400 and current_flow_rate < 0.1 * set_target:
-                    self.flow_control = 0
+                    #self.flow_control = 0
 
-                    set_channel = int(1)
-                    set_channel = c_int32(set_channel)  # convert to c_int32
-                    error = PID_Set_Running_Remote(self.pump_ID, set_channel, 0) # turn off PID loop
-                    self.fluidics_logger(str(PID_Set_Running_Remote), error, 0)
+                    #set_channel = int(1)
+                    #set_channel = c_int32(set_channel)  # convert to c_int32
+                    #error = PID_Set_Running_Remote(self.pump_ID, set_channel, 0) # turn off PID loop
+                    #self.fluidics_logger(str(PID_Set_Running_Remote), error, 0)
 
-                    run = 1 # restart flow function
+                    #run = 1 # restart flow function
+                    fluid_array[2] = 1
 
                 if set_target< 40 and current_flow_rate > 100:
-                    self.flow_control = 0
+                    #self.flow_control = 0
 
-                    set_channel = int(1)
-                    set_channel = c_int32(set_channel)  # convert to c_int32
-                    error = PID_Set_Running_Remote(self.pump_ID, set_channel, 0) # TURN OFF pid LOOP
-                    self.fluidics_logger(str(PID_Set_Running_Remote), error, 0)
+                    #set_channel = int(1)
+                    #set_channel = c_int32(set_channel)  # convert to c_int32
+                    #error = PID_Set_Running_Remote(self.pump_ID, set_channel, 0) # TURN OFF pid LOOP
+                    #self.fluidics_logger(str(PID_Set_Running_Remote), error, 0)
 
-                    run = 1 # restart flow function
+                    #run = 1 # restart flow function
+                    fluid_array[2] = 1
 
             else:
                 pass
+
 
 
     def ob1_end(self):
@@ -227,10 +244,40 @@ class fluidics:
 
     def file_run(self, file_name):
 
+
+        # load in data structures
+        numpy_path = experiment_directory + '/' + 'np_arrays'
+        os.chdir(numpy_path)
+        np_file_name = 'fluid_info_array.npy'
+        fluid_array = np.load(np_file_name, allow_pickle=False)
+
+        #set initial value to 0 which indicates that no failure has happened
+        fluid_array[2] = 0
+        np.save(np_file_name, fluid_array)
+
+        #run fluidics function
         os.chdir(r'C:\Users\CyCIF PC\Documents\GitHub\AutoCIF\Software')
         call(["python", file_name])
 
+        # load in data structures
+        os.chdir(numpy_path)
+        fluid_array = np.load(np_file_name, allow_pickle=False)
+        rerun = fluid_array[2]
 
+        while rerun == 1:
+
+            # set initial value to 0 which indicates that no failure has happened
+            os.chdir(numpy_path)
+            fluid_array[2] = 0
+            np.save(np_file_name, fluid_array)
+
+            os.chdir(r'C:\Users\CyCIF PC\Documents\GitHub\AutoCIF\Software')
+            call(["python", file_name])
+
+            # load in data structures
+            os.chdir(numpy_path)
+            fluid_array = np.load(np_file_name, allow_pickle=False)
+            rerun = fluid_array[2]
 
     def liquid_action(self, action_type, stain_valve=0, incub_val=45, heater_state=0):
 
