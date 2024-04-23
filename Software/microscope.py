@@ -1424,8 +1424,8 @@ class cycif:
             else:
                 cycle_start_search = 1
         '''
-        cycle_end = 10
-        cycle_start = 2
+        cycle_end = 9
+        cycle_start = 8
 
         self.tissue_binary_generate(experiment_directory)
         self.tissue_exist_array_generate(experiment_directory)
@@ -1725,7 +1725,7 @@ class cycif:
                 if type == 'Stain':
                     if channel == 'DAPI':
                         im_path = experiment_directory + '/' + channel + "/" + type + '\cy_' + str(
-                            cycle_number) + '\Tiles' + '/focused_basic_brightness_corrected'
+                            cycle_number) + '\Tiles' + '/focused_basic_corrected'
                     else:
                         im_path = experiment_directory + '/' + channel + "/" + type + '\cy_' + str(
                             cycle_number) + '\Tiles' + '/flattened_background_subbed'

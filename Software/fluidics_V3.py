@@ -23,7 +23,7 @@ class fluidics:
     def __init__(self, experiment_path, mux_com_port, ob1_com_port, flow_control=1):
 
         # load in data structures
-        numpy_path = experiment_directory + '/' + 'np_arrays'
+        numpy_path = experiment_path + '/' + 'np_arrays'
         os.chdir(numpy_path)
 
         fluid_info_array = np.zeros(3)
@@ -42,6 +42,7 @@ class fluidics:
         # MUX_DRI_Send_Command(self.mux_ID, 0, answer, 40)
 
         self.experiment_path = experiment_path
+        self.experiment_directory = experiment_path
         self.flow_control = flow_control
         self.ob1_com_port = ob1_com_port
 
@@ -119,7 +120,7 @@ class fluidics:
     def flow(self, on_off_state):
 
         # load in data structures
-        numpy_path = experiment_directory + '/' + 'np_arrays'
+        numpy_path = self.experiment_directory + '/' + 'np_arrays'
         os.chdir(numpy_path)
         file_name = 'fluid_info_array.npy'
         fluid_array = np.load(file_name, allow_pickle=False)
@@ -246,7 +247,7 @@ class fluidics:
 
 
         # load in data structures
-        numpy_path = experiment_directory + '/' + 'np_arrays'
+        numpy_path = self.experiment_directory + '/' + 'np_arrays'
         os.chdir(numpy_path)
         np_file_name = 'fluid_info_array.npy'
         fluid_array = np.load(np_file_name, allow_pickle=False)
@@ -263,6 +264,7 @@ class fluidics:
         os.chdir(numpy_path)
         fluid_array = np.load(np_file_name, allow_pickle=False)
         rerun = fluid_array[2]
+        print('rerun', rerun)
 
         while rerun == 1:
 
@@ -278,6 +280,7 @@ class fluidics:
             os.chdir(numpy_path)
             fluid_array = np.load(np_file_name, allow_pickle=False)
             rerun = fluid_array[2]
+            print('rerun', rerun)
 
     def liquid_action(self, action_type, stain_valve=0, incub_val=45, heater_state=0):
 
