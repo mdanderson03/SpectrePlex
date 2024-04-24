@@ -1434,8 +1434,8 @@ class cycif:
             #self.infocus(experiment_directory, cycle_number, x_pixels, 1, 1)
             #self.illumination_flattening(experiment_directory, cycle_number, rolling_ball)
             #self.illumination_flattening_per_tile(experiment_directory, cycle_number, rolling_ball)
-            self.background_sub(experiment_directory, cycle_number, rolling_ball)
-            #self.brightness_uniformer(experiment_directory, cycle_number)
+            #self.background_sub(experiment_directory, cycle_number, rolling_ball)
+            self.brightness_uniformer(experiment_directory, cycle_number)
             #self.mcmicro_image_stack_generator(cycle_number, experiment_directory, x_pixels)
             self.stage_placement(experiment_directory, cycle_number, x_pixels)
 
