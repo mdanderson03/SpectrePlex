@@ -1726,7 +1726,7 @@ class cycif:
                 if type == 'Stain':
                     if channel == 'DAPI':
                         im_path = experiment_directory + '/' + channel + "/" + type + '\cy_' + str(
-                            cycle_number) + '\Tiles' + '/focused_basic_corrected'
+                            cycle_number) + '\Tiles' + r'\focused_basic_brightness_corrected'
                     else:
                         im_path = experiment_directory + '/' + channel + "/" + type + '\cy_' + str(
                             cycle_number) + '\Tiles' + '/flattened_background_subbed'
@@ -2273,8 +2273,6 @@ class cycif:
 
     def brightness_uniformer(self, experiment_directory, cycle_number):
 
-        model = StarDist2D.from_pretrained('2D_versatile_fluo')
-
         experiment_directory = experiment_directory + '/'
         #import numpy focus map info
         numpy_path = experiment_directory + '/' + 'np_arrays'
@@ -2287,83 +2285,81 @@ class cycif:
         x_tiles = np.shape(fm_array[0])[1]
         y_tiles = np.shape(fm_array[0])[0]
         #paths to needed folders
-        dapi_file_path = experiment_directory + '/DAPI/Stain/cy_1/Tiles/focused_basic_corrected'
-        stardist_path = experiment_directory + '/Labelled_Nuc'
+        channel_file_path = experiment_directory + '/DAPI/Stain/cy_1/Tiles/focused_basic_corrected'
+        channel_output_path = experiment_directory + '/DAPI/Stain/cy_1/Tiles/focused_basic_brightness_corrected'
         #make array to store brightness information in
-        bright_array = np.ones((y_tiles, x_tiles))
-        #channels to apply bright_array to
-        channels = ['DAPI', 'A488', 'A555', 'A647']
+        bright_array = np.ones((y_tiles, x_tiles, 5))
 
-        #populate bright_array
-        for y in range(0, y_tiles):
-            for x in range(0, x_tiles):
+        os.chdir(channel_file_path)
 
+        for x in range(0, x_tiles):
+            for y in range(0, y_tiles):
                 if tissue_exist[y][x] == 1:
+                    #load in image
                     filename = 'x' + str(x) + '_y_' + str(y) + '_c_DAPI.tif'
-                    os.chdir(dapi_file_path)
-                    dapi_im = io.imread(filename)
-                    star_im, _ = model.predict_instances(normalize(dapi_im))
-                    star_im[star_im > 0] = 1
-                    if x == 1 and y == 3:
-                        io.imsave('mask.tif', star_im)
+                    image = io.imread(filename)
 
-                    multiplied_im = star_im * dapi_im
-                    #thresh = filters.threshold_otsu(dapi_im)
-                    #dapi_im[dapi_im < thresh] = 0
-                    non_zero_indicies = np.nonzero(multiplied_im)
-                    #non_zero_indicies = np.nonzero(dapi_im)
-                    average_int = np.mean(multiplied_im[non_zero_indicies])
-                    #average_int = np.mean(dapi_im[non_zero_indicies])
+                    #find dimensions
+                    x_pixels = np.shape(image)[1]
+                    y_pixels = np.shape(image)[0]
 
-                    bright_array[y][x] = average_int
+                    #find the 4 border mean values
+                    overlap_x_pixel_length = int(x_pixels * .1)
+                    overlap_y_pixel_length = int(y_pixels * .1)
+
+                    west = np.mean(image[::, 0:overlap_x_pixel_length])
+                    east = np.mean(image[::, (x_pixels - overlap_x_pixel_length):x_pixels])
+                    north = np.mean(image[0:overlap_y_pixel_length, ::])
+                    south = np.mean(image[(y_tiles - overlap_y_pixel_length):y_pixels, ::])
+
+                    #populate brightness array
+                    bright_array[y][x][0] = north
+                    bright_array[y][x][1] = south
+                    bright_array[y][x][2] = east
+                    bright_array[y][x][3] = west
+
                 else:
                     pass
 
-        #alter bright_array
-        max_int = np.max(bright_array)
-        normalized_bright_array = bright_array/max_int
-        #add big numbers to cells that have values of zero to prevent infinity values upon inversion
-        zero_pixel_indicies = np.where(normalized_bright_array == 0)[0]
-        normalized_bright_array[zero_pixel_indicies] = 60000
-        #invert array to make it have correction factors
-        inverted_norm_bright_array = 1/normalized_bright_array
-        #print(bright_array)
+        #find max value and set south on tile 0,0 to that value
+        max_value = np.max(bright_array)
+        ratio = max_value / bright_array[0][0][1]
+        bright_array[0][0][4] = ratio
+        bright_array[0][0][2] = ratio * bright_array[0][0][2]
 
-        for channel in channels:
+        #propogate max value to column 1 from top to bottom
+        for y in range(0, y_tiles - 1):
+            ratio = bright_array[y][0][1]/bright_array[y + 1][0][0]
+            bright_array[y + 1][x][4] = ratio
+            bright_array[y + 1][x][1] = ratio * bright_array[y + 1][x][1]
+            bright_array[y + 1][x][2] = ratio * bright_array[y + 1][x][2]
 
-            #determine path to images to be altered
-            if channel == 'DAPI':
-                folder_path = experiment_directory + '/' + channel + '/Stain/cy_' + str(cycle_number) + '/Tiles/focused_basic_corrected'
-            else:
-                folder_path = experiment_directory + '/' + channel + '/Stain/cy_' + str(cycle_number) + '/Tiles/flattened_background_subbed'
+        #Make East to West even
+        for y in range(0, y_tiles):
+            for x in range(0, x_tiles - 1):
 
-            #make new folder and determine path to it
-            if channel == 'DAPI':
-                output_folder_path = experiment_directory + '/' + channel + '/Stain/cy_' + str(
-                    cycle_number) + '/Tiles/focused_basic_brightness_corrected'
-            else:
-                output_folder_path = experiment_directory + '/' + channel + '/Stain/cy_' + str(
-                    cycle_number) + '/Tiles/flattened_brightness_background_subbed'
+                bright_tile_west = bright_array[y][x]
+                bright_tile_east = bright_array[y][x + 1]
+                ratio = bright_tile_west[2]/bright_tile_east[3]
+                bright_array[y][x][2] = ratio * bright_array[y][x][2]
+                bright_array[y][x][4] = ratio
 
-            try:
-                os.mkdir(output_folder_path)
-            except:
-                pass
-
-            #apply correction to each image
+        for x in range(0, x_tiles):
             for y in range(0, y_tiles):
-                for x in range(0, x_tiles):
+                if tissue_exist[y][x] == 1:
+                    # load in image
+                    filename = 'x' + str(x) + '_y_' + str(y) + '_c_DAPI.tif'
+                    image = io.imread(filename)
+                    image = bright_array[y][x][4] * image
 
-                    if tissue_exist[y][x] == 1:
+                    #save image
+                    os.chdir(channel_output_path)
+                    io.imsave(filename, image)
 
-                        filename = 'x' + str(x) + '_y_' + str(y) + '_c_' + channel + '.tif'
-                        os.chdir(folder_path)
-                        image = io.imread(filename)
-                        modded_imaged = image * inverted_norm_bright_array[y][x]
-                        os.chdir(output_folder_path)
-                        io.imsave(filename, modded_imaged)
-                    else:
-                        pass
+                else:
+                    pass
+
+
 
     def zc_save(self, zc_tif_stack, channels, x_tile, y_tile, cycle, x_pixels, experiment_directory, Stain_or_Bleach):
 
