@@ -2331,6 +2331,7 @@ class cycif:
         for y in range(0, y_tiles - 1):
             ratio = bright_array[y][0][1]/bright_array[y + 1][0][0]
             bright_array[y + 1][x][4] = ratio
+            print('south', bright_array[y][0][1], 'north', bright_array[y + 1][0][0], 'ratio', ratio)
             bright_array[y + 1][x][1] = ratio * bright_array[y + 1][x][1]
             bright_array[y + 1][x][2] = ratio * bright_array[y + 1][x][2]
 
