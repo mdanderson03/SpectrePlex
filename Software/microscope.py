@@ -2325,6 +2325,7 @@ class cycif:
         max_value = np.max(bright_array)
         ratio = max_value / bright_array[0][0][1]
         bright_array[0][0][4] = ratio
+        bright_array[0][0][1] = ratio * bright_array[0][0][1]
         bright_array[0][0][2] = ratio * bright_array[0][0][2]
 
         #propogate max value to column 1 from top to bottom
