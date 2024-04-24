@@ -2331,10 +2331,10 @@ class cycif:
         #propogate max value to column 1 from top to bottom
         for y in range(0, y_tiles - 1):
             ratio = bright_array[y][0][1]/bright_array[y + 1][0][0]
-            bright_array[y + 1][x][4] = ratio
+            bright_array[y + 1][0][4] = ratio
             print('previous y+1 south', bright_array[y + 1][0][1])
-            bright_array[y + 1][x][1] = ratio * bright_array[y + 1][x][1]
-            bright_array[y + 1][x][2] = ratio * bright_array[y + 1][x][2]
+            bright_array[y + 1][0][1] = ratio * bright_array[y + 1][0][1]
+            bright_array[y + 1][0][2] = ratio * bright_array[y + 1][0][2]
             print('south y', bright_array[y][0][1], 'south y+1', bright_array[y + 1][0][1], 'north y+1', bright_array[y + 1][0][0], 'ratio', ratio)
 
         #Make East to West even
