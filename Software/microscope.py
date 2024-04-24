@@ -21,8 +21,8 @@ from stardist.models import StarDist2D
 from matplotlib import pyplot as plt
 import cv2
 
-magellan = Magellan()
-core = Core()
+#magellan = Magellan()
+#core = Core()
 
 class cycif:
 
@@ -1433,7 +1433,7 @@ class cycif:
         for cycle_number in range(cycle_start, cycle_end):
             #self.infocus(experiment_directory, cycle_number, x_pixels, 1, 1)
             #self.illumination_flattening(experiment_directory, cycle_number, rolling_ball)
-            self.illumination_flattening_per_tile(experiment_directory, cycle_number, rolling_ball)
+            #self.illumination_flattening_per_tile(experiment_directory, cycle_number, rolling_ball)
             self.background_sub(experiment_directory, cycle_number, rolling_ball)
             #self.brightness_uniformer(experiment_directory, cycle_number)
             #self.mcmicro_image_stack_generator(cycle_number, experiment_directory, x_pixels)
@@ -1908,6 +1908,8 @@ class cycif:
 
             #find file names of folder
             names = os.listdir(stain_directory)
+            names.pop(0)
+            print(names)
 
             for name in names:
                 #transfer image and replica of image into temp folder
@@ -1933,18 +1935,20 @@ class cycif:
                 optimizer.write_images(stain_output_directory, epsilon=epsilon)
 
                 #delete files in temp and output
-                os.chdir(stain_temp_directory)
-                for name in os.listdir(stain_temp_directory):
-                    os.remove(name)
+                path_one = os.path.join(stain_temp_directory, first_name)
+                path_two = os.path.join(stain_temp_directory, second_name)
+                os.remove(path_one)
+                #os.remove(path_two)
 
-                os.chdir(stain_output_directory)
-                os.delete(second_name)
+                output_path_file = os.path.join(stain_temp_directory, second_name)
+                os.remove(output_path_file)
 
 
             #Replicate process with bleached version
 
             # find file names of folder
             names = os.listdir(bleach_directory)
+            names.pop(0)
 
             for name in names:
                 # transfer image and replica of image into temp folder
@@ -1970,12 +1974,13 @@ class cycif:
                 optimizer.write_images(bleach_output_directory, epsilon=epsilon)
 
                 # delete files in temp and output
-                os.chdir(bleach_temp_directory)
-                for name in os.listdir(bleach_temp_directory):
-                    os.remove(name)
+                path_one = os.path.join(bleach_temp_directory, first_name)
+                path_two = os.path.join(bleach_temp_directory, second_name)
+                os.remove(path_one)
+                #os.remove(path_two)
 
-                os.chdir(bleach_output_directory)
-                os.delete(second_name)
+                output_path_file = os.path.join(bleach_temp_directory, second_name)
+                os.remove(output_path_file)
 
     def infocus(self, experiment_directory, cycle_number, x_frame_size, x_sub_section_count = 1, y_sub_section_count = 1):
 
@@ -2206,9 +2211,9 @@ class cycif:
                             color_bleach = io.imread(filename)
                             color_bleach_factor = color_bleach * tissue_im
                             color_bleach = np.nan_to_num(color_bleach, posinf=65500)
-                            coefficent = self.autof_factor_estimator(color_factor, color_bleach_factor)
-                            color_subbed = color_reg - coefficent * color_bleach
-                            #color_subbed = color_reg - color_bleach
+                            #coefficent = self.autof_factor_estimator(color_factor, color_bleach_factor)
+                            #color_subbed = color_reg - coefficent * color_bleach
+                            color_subbed = color_reg - color_bleach
                             color_subbed[color_subbed < 0] = 0
                             color_subbed = color_subbed.astype('float32')
                             color_subbed = np.nan_to_num(color_subbed, posinf= 65500)
