@@ -2329,7 +2329,7 @@ class cycif:
         bright_array[0][0][2] = ratio * bright_array[0][0][2]
 
         #propogate max value to column 1 from top to bottom
-        for y in range(0, y_tiles - 1):
+        for y in range(1, y_tiles - 1):
             ratio = bright_array[y][0][1]/bright_array[y + 1][0][0]
             bright_array[y + 1][0][4] = ratio
             print('previous y+1 south', bright_array[y + 1][0][1])
