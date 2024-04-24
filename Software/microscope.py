@@ -2344,8 +2344,8 @@ class cycif:
                 bright_tile_west = bright_array[y][x]
                 bright_tile_east = bright_array[y][x + 1]
                 ratio = bright_tile_west[2]/bright_tile_east[3]
-                bright_array[y][x][2] = ratio * bright_array[y][x][2]
-                bright_array[y][x][4] = ratio
+                bright_array[y][x + 1][2] = ratio * bright_array[y][x + 1][2]
+                bright_array[y][x + 1][4] = ratio
 
         for x in range(0, x_tiles):
             for y in range(0, y_tiles):
