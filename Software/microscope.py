@@ -1424,18 +1424,19 @@ class cycif:
             else:
                 cycle_start_search = 1
         '''
-        cycle_end = 9
-        cycle_start = 8
+        cycle_end = 2
+        cycle_start = 1
 
-        self.tissue_binary_generate(experiment_directory)
-        self.tissue_exist_array_generate(experiment_directory)
+        #self.tissue_binary_generate(experiment_directory)
+        #self.tissue_exist_array_generate(experiment_directory)
 
         for cycle_number in range(cycle_start, cycle_end):
-            self.infocus(experiment_directory, cycle_number, x_pixels, 1, 1)
-            self.illumination_flattening(experiment_directory, cycle_number, rolling_ball)
+            #self.infocus(experiment_directory, cycle_number, x_pixels, 1, 1)
+            #self.illumination_flattening(experiment_directory, cycle_number, rolling_ball)
+            self.illumination_flattening_per_tile(experiment_directory, cycle_number, rolling_ball)
             self.background_sub(experiment_directory, cycle_number, rolling_ball)
-            self.brightness_uniformer(experiment_directory, cycle_number)
-            self.mcmicro_image_stack_generator(cycle_number, experiment_directory, x_pixels)
+            #self.brightness_uniformer(experiment_directory, cycle_number)
+            #self.mcmicro_image_stack_generator(cycle_number, experiment_directory, x_pixels)
             self.stage_placement(experiment_directory, cycle_number, x_pixels)
 
     def mcmicro_image_stack_generator(self, cycle_number, experiment_directory, x_frame_size):
@@ -1855,6 +1856,126 @@ class cycif:
             optimizer._sniff_input()
             optimizer._load_images()
             optimizer.write_images(bleach_output_directory, epsilon=epsilon)
+
+    def illumination_flattening_per_tile(self, experiment_directory, cycle_number, rolling_ball = 1):
+
+        # load numpy arrays in
+        numpy_path = experiment_directory + '/' + 'np_arrays'
+        os.chdir(numpy_path)
+        full_array = np.load('fm_array.npy', allow_pickle=False)
+
+        directory_start = experiment_directory + '//'
+
+        for channel in range(0, 4):
+
+            if channel == 0:
+                channel_name = 'DAPI'
+            if channel == 1:
+                channel_name = 'A488'
+            if channel == 2:
+                channel_name = 'A555'
+            if channel == 3:
+                channel_name = 'A647'
+
+            print('channel', channel_name, 'cycle', cycle_number)
+
+            if channel == 0:
+                stain_directory = directory_start + channel_name + '\Stain\cy_' + str(cycle_number) + r'\Tiles\focused'
+                bleach_directory = directory_start + channel_name + '\Bleach\cy_' + str(cycle_number) + r'\Tiles\focused'
+            else:
+                if rolling_ball != 1:
+                    stain_directory = directory_start + channel_name + '\Stain\cy_' + str(cycle_number) + r'\Tiles\focused'
+                    bleach_directory = directory_start + channel_name + '\Bleach\cy_' + str(cycle_number) + r'\Tiles\focused'
+                if rolling_ball == 1:
+                    directory = directory_start + channel_name + '\Stain\cy_' + str(cycle_number) + r'\Tiles\focused\background_subbed_rolling'
+            stain_output_directory = directory_start + channel_name + '\Stain\cy_' + str(cycle_number) + r'\Tiles\focused_basic_corrected'
+            bleach_output_directory = directory_start + channel_name + '\Bleach\cy_' + str(cycle_number) + r'\Tiles\focused_basic_corrected'
+
+            stain_temp_directory = directory_start + channel_name + '\Stain\cy_' + str(cycle_number) + r'\Tiles\focused\temp'
+            bleach_temp_directory = directory_start + channel_name + '\Bleach\cy_' + str(cycle_number) + r'\Tiles\focused\temp'
+
+            try:
+                os.mkdir(stain_temp_directory)
+                os.mkdir(bleach_temp_directory)
+            except:
+                pass
+
+            try:
+                os.mkdir(stain_output_directory)
+                os.mkdir(bleach_output_directory)
+            except:
+                pass
+
+            #find file names of folder
+            names = os.listdir(stain_directory)
+
+            for name in names:
+                #transfer image and replica of image into temp folder
+                first_name = name
+                second_name = '2_' + name
+                os.chdir(stain_directory)
+                image = io.imread(first_name)
+                image = np.nan_to_num(image, posinf=65500)
+                os.chdir(stain_temp_directory)
+                io.imsave(first_name, image)
+                io.imsave(second_name, image)
+                #build BaSiC model on two identical images and output into dictated folder
+                epsilon = 1e-06
+                optimizer = shading_correction.BaSiC(stain_temp_directory)
+                optimizer.prepare()
+                optimizer.run()
+                # Save the estimated fields (only if the profiles were estimated)
+                directory = Path(stain_output_directory)
+                flatfield_name = directory / "flatfield.tif"
+                darkfield_name = directory / "darkfield.tif"
+                cv2.imwrite(str(flatfield_name), optimizer.flatfield_fullsize.astype(np.float32))
+                cv2.imwrite(str(darkfield_name), optimizer.darkfield_fullsize.astype(np.float32))
+                optimizer.write_images(stain_output_directory, epsilon=epsilon)
+
+                #delete files in temp and output
+                os.chdir(stain_temp_directory)
+                for name in os.listdir(stain_temp_directory):
+                    os.remove(name)
+
+                os.chdir(stain_output_directory)
+                os.delete(second_name)
+
+
+            #Replicate process with bleached version
+
+            # find file names of folder
+            names = os.listdir(bleach_directory)
+
+            for name in names:
+                # transfer image and replica of image into temp folder
+                first_name = name
+                second_name = '2_' + name
+                os.chdir(bleach_directory)
+                image = io.imread(first_name)
+                image = np.nan_to_num(image, posinf=65500)
+                os.chdir(bleach_temp_directory)
+                io.imsave(first_name, image)
+                io.imsave(second_name, image)
+                # build BaSiC model on two identical images and output into dictated folder
+                epsilon = 1e-06
+                optimizer = shading_correction.BaSiC(bleach_temp_directory)
+                optimizer.prepare()
+                optimizer.run()
+                # Save the estimated fields (only if the profiles were estimated)
+                directory = Path(bleach_output_directory)
+                flatfield_name = directory / "flatfield.tif"
+                darkfield_name = directory / "darkfield.tif"
+                cv2.imwrite(str(flatfield_name), optimizer.flatfield_fullsize.astype(np.float32))
+                cv2.imwrite(str(darkfield_name), optimizer.darkfield_fullsize.astype(np.float32))
+                optimizer.write_images(bleach_output_directory, epsilon=epsilon)
+
+                # delete files in temp and output
+                os.chdir(bleach_temp_directory)
+                for name in os.listdir(bleach_temp_directory):
+                    os.remove(name)
+
+                os.chdir(bleach_output_directory)
+                os.delete(second_name)
 
     def infocus(self, experiment_directory, cycle_number, x_frame_size, x_sub_section_count = 1, y_sub_section_count = 1):
 
