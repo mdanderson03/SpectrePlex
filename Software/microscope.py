@@ -1434,10 +1434,11 @@ class cycif:
         for cycle_number in range(cycle_start, cycle_end):
             #self.infocus(experiment_directory, cycle_number, x_pixels, 1, 1)
             #self.illumination_flattening(experiment_directory, cycle_number, rolling_ball)
-            #self.illumination_flattening_per_tile(experiment_directory, cycle_number, rolling_ball)
+            self.background_sub(experiment_directory, cycle_number, rolling_ball)
+            self.illumination_flattening_per_tile(experiment_directory, cycle_number, rolling_ball)
             #self.background_sub(experiment_directory, cycle_number, rolling_ball)
             self.brightness_uniformer(experiment_directory, cycle_number)
-            #self.mcmicro_image_stack_generator(cycle_number, experiment_directory, x_pixels)
+            self.mcmicro_image_stack_generator(cycle_number, experiment_directory, x_pixels)
             self.stage_placement(experiment_directory, cycle_number, x_pixels)
 
     def mcmicro_image_stack_generator(self, cycle_number, experiment_directory, x_frame_size):
@@ -2198,7 +2199,7 @@ class cycif:
                         # apply translation to other color channels
 
                         for channel in channels:
-                            stain_color_path = experiment_directory + channel + r'/Stain/cy_' + str(cycle) + '\Tiles/focused_basic_corrected'
+                            stain_color_path = experiment_directory + channel + r'/Stain/cy_' + str(cycle) + '\Tiles/focused'
                             os.chdir(stain_color_path)
                             filename = 'x' + str(x) + '_y_' + str(y) + '_c_' + channel + '.tif'
                             color_im = io.imread(filename)
@@ -2207,7 +2208,7 @@ class cycif:
                             color_factor = color_reg * tissue_im
 
                             # sub background color channels
-                            bleach_color_path = experiment_directory + channel + r'/Bleach/cy_' + str(1) + '\Tiles/focused_basic_corrected'
+                            bleach_color_path = experiment_directory + channel + r'/Bleach/cy_' + str(1) + '\Tiles/focused'
                             os.chdir(bleach_color_path)
                             color_bleach = io.imread(filename)
                             color_bleach_factor = color_bleach * tissue_im
@@ -2221,7 +2222,7 @@ class cycif:
 
                             # save
 
-                            save_path = experiment_directory + channel + r'/Stain/cy_' + str(cycle) + '\Tiles/flattened_background_subbed'
+                            save_path = experiment_directory + channel + r'/Stain/cy_' + str(cycle) + '\Tiles/background_subbed'
                             try:
                                 os.chdir(save_path)
                             except:
