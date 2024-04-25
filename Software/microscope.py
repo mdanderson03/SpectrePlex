@@ -2379,96 +2379,32 @@ class cycif:
             bright_array[y + 1][0][0] = ratio * bright_array[y + 1][0][0]
 
 
-        #Make East to West even
-        for y in range(0, y_tiles):
-            for x in range(0, x_tiles - 1):
+        #Propgate row 1 values
+        for x in range(0, x_tiles - 1):
 
+            bright_tile_west = bright_array[y][x]
+            bright_tile_east = bright_array[y][x + 1]
+            ratio = bright_tile_west[2]/bright_tile_east[3]
+            print('x', x, 'y', y, 'tile 1 east', bright_tile_west[2], 'tile 2 west', bright_tile_east[3])
+            bright_array[0][x + 1][1] = ratio * bright_array[0][x + 1][1]
+            bright_array[0][x + 1][2] = ratio * bright_array[0][x + 1][2]
+            bright_array[0][x + 1][3] = ratio * bright_array[0][x + 1][3]
+            bright_array[0][x + 1][0] = ratio * bright_array[0][x + 1][0]
+            bright_array[0][x + 1][4] = ratio * bright_array[0][x + 1][4]
 
-                bright_tile_west = bright_array[y][x]
-                bright_tile_east = bright_array[y][x + 1]
-                ratio = bright_tile_west[2]/bright_tile_east[3]
-                print('x', x, 'y', y, 'tile 1 east', bright_tile_west[2], 'tile 2 west', bright_tile_east[3])
-                bright_array[y][x + 1][1] = ratio * bright_array[y][x + 1][1]
-                bright_array[y][x + 1][2] = ratio * bright_array[y][x + 1][2]
-                bright_array[y][x + 1][3] = ratio * bright_array[y][x + 1][3]
-                bright_array[y][x + 1][0] = ratio * bright_array[y][x + 1][0]
-                bright_array[y][x + 1][4] = ratio * bright_array[y][x + 1][4]
+        #Propgate row 1 values
+        for y in range(1, y_tiles):
+            for x in range(1, x_tiles):
 
-
-        #Even up north to south
-        for x in range(0, x_tiles):
-            for y in range(0, y_tiles - 1):
-
-                bright_tile_north = bright_array[y][x]
-                bright_tile_south = bright_array[y + 1][x]
-                ratio = bright_tile_north[1]/bright_tile_south[0]
-                print('xy even up', x,y, ratio)
-                bright_array[y + 1][x][1] = ratio * bright_array[y + 1][x][1]
-                bright_array[y + 1][x][2] = ratio * bright_array[y + 1][x][2]
-                bright_array[y + 1][x][3] = ratio * bright_array[y + 1][x][3]
-                bright_array[y + 1][x][0] = ratio * bright_array[y + 1][x][0]
-                bright_array[y + 1][x][4] = ratio * bright_array[y + 1][x][4]
-
-        #Make East to West even
-        for y in range(0, y_tiles):
-            for x in range(0, x_tiles - 1):
-
-
-                bright_tile_west = bright_array[y][x]
-                bright_tile_east = bright_array[y][x + 1]
-                ratio = bright_tile_west[2]/bright_tile_east[3]
-                print('x', x, 'y', y, 'tile 1 east', bright_tile_west[2], 'tile 2 west', bright_tile_east[3])
-                bright_array[y][x + 1][1] = ratio * bright_array[y][x + 1][1]
-                bright_array[y][x + 1][2] = ratio * bright_array[y][x + 1][2]
-                bright_array[y][x + 1][3] = ratio * bright_array[y][x + 1][3]
-                bright_array[y][x + 1][0] = ratio * bright_array[y][x + 1][0]
-                bright_array[y][x + 1][4] = ratio * bright_array[y][x + 1][4]
-
-
-        #Even up north to south
-        for x in range(0, x_tiles):
-            for y in range(0, y_tiles - 1):
-
-                bright_tile_north = bright_array[y][x]
-                bright_tile_south = bright_array[y + 1][x]
-                ratio = bright_tile_north[1]/bright_tile_south[0]
-                print('xy even up', x,y, ratio)
-                bright_array[y + 1][x][1] = ratio * bright_array[y + 1][x][1]
-                bright_array[y + 1][x][2] = ratio * bright_array[y + 1][x][2]
-                bright_array[y + 1][x][3] = ratio * bright_array[y + 1][x][3]
-                bright_array[y + 1][x][0] = ratio * bright_array[y + 1][x][0]
-                bright_array[y + 1][x][4] = ratio * bright_array[y + 1][x][4]
-        #Make East to West even
-        for y in range(0, y_tiles):
-            for x in range(0, x_tiles - 1):
-
-
-                bright_tile_west = bright_array[y][x]
-                bright_tile_east = bright_array[y][x + 1]
-                ratio = bright_tile_west[2]/bright_tile_east[3]
-                print('x', x, 'y', y, 'tile 1 east', bright_tile_west[2], 'tile 2 west', bright_tile_east[3])
-                bright_array[y][x + 1][1] = ratio * bright_array[y][x + 1][1]
-                bright_array[y][x + 1][2] = ratio * bright_array[y][x + 1][2]
-                bright_array[y][x + 1][3] = ratio * bright_array[y][x + 1][3]
-                bright_array[y][x + 1][0] = ratio * bright_array[y][x + 1][0]
-                bright_array[y][x + 1][4] = ratio * bright_array[y][x + 1][4]
-
-
-        #Even up north to south
-        for x in range(0, x_tiles):
-            for y in range(0, y_tiles - 1):
-
-                bright_tile_north = bright_array[y][x]
-                bright_tile_south = bright_array[y + 1][x]
-                ratio = bright_tile_north[1]/bright_tile_south[0]
-                print('xy even up', x,y, ratio)
-                bright_array[y + 1][x][1] = ratio * bright_array[y + 1][x][1]
-                bright_array[y + 1][x][2] = ratio * bright_array[y + 1][x][2]
-                bright_array[y + 1][x][3] = ratio * bright_array[y + 1][x][3]
-                bright_array[y + 1][x][0] = ratio * bright_array[y + 1][x][0]
-                bright_array[y + 1][x][4] = ratio * bright_array[y + 1][x][4]
-
-
+                bright_tile_north = bright_array[y + 1][x]
+                bright_tile_west = bright_array[y][x - 1]
+                bright_tile_center = bright_array[y][x]
+                ratio = (bright_tile_north[1] + bright_tile_west[2])/(bright_tile_center[0] + bright_tile_center[3])
+                bright_array[y][x][1] = ratio * bright_array[y][x][1]
+                bright_array[y][x][2] = ratio * bright_array[y][x][2]
+                bright_array[y][x][3] = ratio * bright_array[y][x][3]
+                bright_array[y][x][0] = ratio * bright_array[y][x][0]
+                bright_array[y][x][4] = ratio * bright_array[y][x][4]
 
         for y in range(0, y_tiles):
             for x in range(0, x_tiles):
