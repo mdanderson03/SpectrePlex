@@ -21,6 +21,7 @@ from stardist.models import StarDist2D
 from matplotlib import pyplot as plt
 import cv2
 
+
 #magellan = Magellan()
 #core = Core()
 
@@ -1433,8 +1434,8 @@ class cycif:
         for cycle_number in range(cycle_start, cycle_end):
             #self.infocus(experiment_directory, cycle_number, x_pixels, 1, 1)
             #self.illumination_flattening(experiment_directory, cycle_number, rolling_ball)
-            #self.illumination_flattening_per_tile(experiment_directory, cycle_number, rolling_ball)
-            #self.background_sub(experiment_directory, cycle_number, rolling_ball)
+            self.illumination_flattening_per_tile(experiment_directory, cycle_number, rolling_ball)
+            self.background_sub(experiment_directory, cycle_number, rolling_ball)
             self.brightness_uniformer(experiment_directory, cycle_number)
             #self.mcmicro_image_stack_generator(cycle_number, experiment_directory, x_pixels)
             self.stage_placement(experiment_directory, cycle_number, x_pixels)
@@ -2286,18 +2287,28 @@ class cycif:
         y_tiles = np.shape(fm_array[0])[0]
         #paths to needed folders
         channel_file_path = experiment_directory + '/DAPI/Stain/cy_1/Tiles/focused_basic_corrected'
+        tissue_path = experiment_directory + '/Tissue_Binary'
         channel_output_path = experiment_directory + '/DAPI/Stain/cy_1/Tiles/focused_basic_brightness_corrected'
         #make array to store brightness information in
         bright_array = np.ones((y_tiles, x_tiles, 5))
 
         os.chdir(channel_file_path)
 
+
         for x in range(0, x_tiles):
             for y in range(0, y_tiles):
                 if tissue_exist[y][x] == 1:
                     #load in image
+                    os.chdir(channel_file_path)
                     filename = 'x' + str(x) + '_y_' + str(y) + '_c_DAPI.tif'
-                    image = io.imread(filename)
+                    image = io.imread(filename) - 1300
+                    image[image < 0] = 0
+
+                    #os.chdir(tissue_path)
+                    #tissue_name = 'x' + str(x) +'_y_' + str(y) +'_tissue.tif'
+                    #tissue_mask = io.imread(tissue_name)
+
+                    #image = image * tissue_mask
 
                     #find dimensions
                     x_pixels = np.shape(image)[1]
@@ -2307,20 +2318,50 @@ class cycif:
                     overlap_x_pixel_length = int(x_pixels * .1)
                     overlap_y_pixel_length = int(y_pixels * .1)
 
-                    west = np.mean(image[::, 0:overlap_x_pixel_length])
-                    east = np.mean(image[::, (x_pixels - overlap_x_pixel_length):x_pixels])
-                    north = np.mean(image[0:overlap_y_pixel_length, ::])
-                    south = np.mean(image[(y_tiles - overlap_y_pixel_length):y_pixels, ::])
+                    west_image = image[::, 0:overlap_x_pixel_length]
+                    sum = np.sum(west_image)
+                    non_zero_count = np.count_nonzero(west_image)
+                    west = sum / non_zero_count
+                    west = np.nan_to_num(west, nan=1)
+
+                    east_image = image[::, (x_pixels - overlap_x_pixel_length):x_pixels]
+                    sum = np.sum(east_image)
+                    non_zero_count = np.count_nonzero(east_image)
+                    east = sum/non_zero_count
+                    east = np.nan_to_num(east, nan= 1)
+
+                    north_image = image[0:overlap_y_pixel_length, ::]
+                    sum = np.sum(north_image)
+                    non_zero_count = np.count_nonzero(north_image)
+                    north = sum/non_zero_count
+                    north = np.nan_to_num(north, nan= 1)
+
+                    south_image = image[(y_tiles - overlap_y_pixel_length):y_pixels, ::]
+                    sum = np.sum(south_image)
+                    non_zero_count = np.count_nonzero(south_image)
+                    south = sum/non_zero_count
+                    south = np.nan_to_num(south, nan= 1)
+
+
+
+
+
+                    #east = np.mean(image[::, (x_pixels - overlap_x_pixel_length):x_pixels]) + 1
+                    #north = np.mean(image[0:overlap_y_pixel_length, ::]) + 1
+                    #south = np.mean(image[(y_tiles - overlap_y_pixel_length):y_pixels, ::]) + 1
 
                     #populate brightness array
-                    bright_array[y][x][0] = north
-                    bright_array[y][x][1] = south
-                    bright_array[y][x][2] = east
-                    bright_array[y][x][3] = west
+                    bright_array[y][x][0] = north + 1000
+                    bright_array[y][x][1] = south + 1000
+                    bright_array[y][x][2] = east + 1000
+                    bright_array[y][x][3] = west + 1000
+
 
                 else:
                     pass
 
+        print(bright_array[0][1][1])
+        print(bright_array[1][1][0])
         #find max value and set south on tile 0,0 to that value
         max_value = np.max(bright_array)
         ratio = max_value / bright_array[0][0][1]
@@ -2329,30 +2370,115 @@ class cycif:
         bright_array[0][0][2] = ratio * bright_array[0][0][2]
 
         #propogate max value to column 1 from top to bottom
-        for y in range(1, y_tiles - 1):
+        for y in range(0, y_tiles - 1):
             ratio = bright_array[y][0][1]/bright_array[y + 1][0][0]
             bright_array[y + 1][0][4] = ratio
-            print('previous y+1 south', bright_array[y + 1][0][1])
             bright_array[y + 1][0][1] = ratio * bright_array[y + 1][0][1]
             bright_array[y + 1][0][2] = ratio * bright_array[y + 1][0][2]
-            print('south y', bright_array[y][0][1], 'south y+1', bright_array[y + 1][0][1], 'north y+1', bright_array[y + 1][0][0], 'ratio', ratio)
+            bright_array[y + 1][0][3] = ratio * bright_array[y + 1][0][3]
+            bright_array[y + 1][0][0] = ratio * bright_array[y + 1][0][0]
+
 
         #Make East to West even
         for y in range(0, y_tiles):
             for x in range(0, x_tiles - 1):
 
+
                 bright_tile_west = bright_array[y][x]
                 bright_tile_east = bright_array[y][x + 1]
                 ratio = bright_tile_west[2]/bright_tile_east[3]
+                print('x', x, 'y', y, 'tile 1 east', bright_tile_west[2], 'tile 2 west', bright_tile_east[3])
+                bright_array[y][x + 1][1] = ratio * bright_array[y][x + 1][1]
                 bright_array[y][x + 1][2] = ratio * bright_array[y][x + 1][2]
-                bright_array[y][x + 1][4] = ratio
+                bright_array[y][x + 1][3] = ratio * bright_array[y][x + 1][3]
+                bright_array[y][x + 1][0] = ratio * bright_array[y][x + 1][0]
+                bright_array[y][x + 1][4] = ratio * bright_array[y][x + 1][4]
 
+
+        #Even up north to south
         for x in range(0, x_tiles):
-            for y in range(0, y_tiles):
+            for y in range(0, y_tiles - 1):
+
+                bright_tile_north = bright_array[y][x]
+                bright_tile_south = bright_array[y + 1][x]
+                ratio = bright_tile_north[1]/bright_tile_south[0]
+                print('xy even up', x,y, ratio)
+                bright_array[y + 1][x][1] = ratio * bright_array[y + 1][x][1]
+                bright_array[y + 1][x][2] = ratio * bright_array[y + 1][x][2]
+                bright_array[y + 1][x][3] = ratio * bright_array[y + 1][x][3]
+                bright_array[y + 1][x][0] = ratio * bright_array[y + 1][x][0]
+                bright_array[y + 1][x][4] = ratio * bright_array[y + 1][x][4]
+
+        #Make East to West even
+        for y in range(0, y_tiles):
+            for x in range(0, x_tiles - 1):
+
+
+                bright_tile_west = bright_array[y][x]
+                bright_tile_east = bright_array[y][x + 1]
+                ratio = bright_tile_west[2]/bright_tile_east[3]
+                print('x', x, 'y', y, 'tile 1 east', bright_tile_west[2], 'tile 2 west', bright_tile_east[3])
+                bright_array[y][x + 1][1] = ratio * bright_array[y][x + 1][1]
+                bright_array[y][x + 1][2] = ratio * bright_array[y][x + 1][2]
+                bright_array[y][x + 1][3] = ratio * bright_array[y][x + 1][3]
+                bright_array[y][x + 1][0] = ratio * bright_array[y][x + 1][0]
+                bright_array[y][x + 1][4] = ratio * bright_array[y][x + 1][4]
+
+
+        #Even up north to south
+        for x in range(0, x_tiles):
+            for y in range(0, y_tiles - 1):
+
+                bright_tile_north = bright_array[y][x]
+                bright_tile_south = bright_array[y + 1][x]
+                ratio = bright_tile_north[1]/bright_tile_south[0]
+                print('xy even up', x,y, ratio)
+                bright_array[y + 1][x][1] = ratio * bright_array[y + 1][x][1]
+                bright_array[y + 1][x][2] = ratio * bright_array[y + 1][x][2]
+                bright_array[y + 1][x][3] = ratio * bright_array[y + 1][x][3]
+                bright_array[y + 1][x][0] = ratio * bright_array[y + 1][x][0]
+                bright_array[y + 1][x][4] = ratio * bright_array[y + 1][x][4]
+        #Make East to West even
+        for y in range(0, y_tiles):
+            for x in range(0, x_tiles - 1):
+
+
+                bright_tile_west = bright_array[y][x]
+                bright_tile_east = bright_array[y][x + 1]
+                ratio = bright_tile_west[2]/bright_tile_east[3]
+                print('x', x, 'y', y, 'tile 1 east', bright_tile_west[2], 'tile 2 west', bright_tile_east[3])
+                bright_array[y][x + 1][1] = ratio * bright_array[y][x + 1][1]
+                bright_array[y][x + 1][2] = ratio * bright_array[y][x + 1][2]
+                bright_array[y][x + 1][3] = ratio * bright_array[y][x + 1][3]
+                bright_array[y][x + 1][0] = ratio * bright_array[y][x + 1][0]
+                bright_array[y][x + 1][4] = ratio * bright_array[y][x + 1][4]
+
+
+        #Even up north to south
+        for x in range(0, x_tiles):
+            for y in range(0, y_tiles - 1):
+
+                bright_tile_north = bright_array[y][x]
+                bright_tile_south = bright_array[y + 1][x]
+                ratio = bright_tile_north[1]/bright_tile_south[0]
+                print('xy even up', x,y, ratio)
+                bright_array[y + 1][x][1] = ratio * bright_array[y + 1][x][1]
+                bright_array[y + 1][x][2] = ratio * bright_array[y + 1][x][2]
+                bright_array[y + 1][x][3] = ratio * bright_array[y + 1][x][3]
+                bright_array[y + 1][x][0] = ratio * bright_array[y + 1][x][0]
+                bright_array[y + 1][x][4] = ratio * bright_array[y + 1][x][4]
+
+
+
+        for y in range(0, y_tiles):
+            for x in range(0, x_tiles):
                 if tissue_exist[y][x] == 1:
                     # load in image
+                    os.chdir(channel_file_path)
                     filename = 'x' + str(x) + '_y_' + str(y) + '_c_DAPI.tif'
                     image = io.imread(filename)
+                    image[image < 0] = 0
+                    print('x', x, 'y', y, 'ratio', bright_array[y][x][4])
                     image = bright_array[y][x][4] * image
 
                     #save image
