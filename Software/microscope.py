@@ -1434,8 +1434,8 @@ class cycif:
         for cycle_number in range(cycle_start, cycle_end):
             #self.infocus(experiment_directory, cycle_number, x_pixels, 1, 1)
             #self.illumination_flattening(experiment_directory, cycle_number, rolling_ball)
-            self.illumination_flattening_per_tile(experiment_directory, cycle_number, rolling_ball)
-            self.background_sub(experiment_directory, cycle_number, rolling_ball)
+            #self.illumination_flattening_per_tile(experiment_directory, cycle_number, rolling_ball)
+            #self.background_sub(experiment_directory, cycle_number, rolling_ball)
             self.brightness_uniformer(experiment_directory, cycle_number)
             #self.mcmicro_image_stack_generator(cycle_number, experiment_directory, x_pixels)
             self.stage_placement(experiment_directory, cycle_number, x_pixels)
@@ -2301,7 +2301,7 @@ class cycif:
                     #load in image
                     os.chdir(channel_file_path)
                     filename = 'x' + str(x) + '_y_' + str(y) + '_c_DAPI.tif'
-                    image = io.imread(filename) - 1300
+                    image = io.imread(filename)
                     image[image < 0] = 0
 
                     #os.chdir(tissue_path)
@@ -2351,17 +2351,15 @@ class cycif:
                     #south = np.mean(image[(y_tiles - overlap_y_pixel_length):y_pixels, ::]) + 1
 
                     #populate brightness array
-                    bright_array[y][x][0] = north + 1000
-                    bright_array[y][x][1] = south + 1000
-                    bright_array[y][x][2] = east + 1000
-                    bright_array[y][x][3] = west + 1000
+                    bright_array[y][x][0] = north
+                    bright_array[y][x][1] = south
+                    bright_array[y][x][2] = east
+                    bright_array[y][x][3] = west
 
 
                 else:
                     pass
 
-        print(bright_array[0][1][1])
-        print(bright_array[1][1][0])
         #find max value and set south on tile 0,0 to that value
         max_value = np.max(bright_array)
         ratio = max_value / bright_array[0][0][1]
@@ -2396,7 +2394,7 @@ class cycif:
         for y in range(1, y_tiles):
             for x in range(1, x_tiles):
 
-                bright_tile_north = bright_array[y + 1][x]
+                bright_tile_north = bright_array[y - 1][x]
                 bright_tile_west = bright_array[y][x - 1]
                 bright_tile_center = bright_array[y][x]
                 ratio = (bright_tile_north[1] + bright_tile_west[2])/(bright_tile_center[0] + bright_tile_center[3])
