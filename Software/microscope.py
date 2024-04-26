@@ -20,6 +20,11 @@ from csbdeep.utils import normalize
 from stardist.models import StarDist2D
 from matplotlib import pyplot as plt
 import cv2
+from pywt import wavedecn, waverecn
+from scipy.ndimage import gaussian_filter
+from joblib import Parallel, delayed
+import multiprocessing
+import matplotlib.pyplot as plt
 
 
 #magellan = Magellan()
@@ -1441,6 +1446,34 @@ class cycif:
             #self.mcmicro_image_stack_generator(cycle_number, experiment_directory, x_pixels)
             self.stage_placement(experiment_directory, cycle_number, x_pixels)
 
+    def post_acquisition_processor_experimental(self, experiment_directory, x_pixels, rolling_ball = 1):
+
+        mcmicro_path = experiment_directory + r'\mcmicro\raw'
+        cycle_start = 1
+        cycle_start_search = 0
+        '''
+        os.chdir(mcmicro_path)
+        while cycle_start_search == 0:
+            file_name = str(experiment_directory.split("\\")[-1]) + '-cycle-0' + str(cycle_start) + '.ome.tif'
+            if os.path.isfile(file_name) == 1:
+                cycle_start += 1
+            else:
+                cycle_start_search = 1
+        '''
+        cycle_end = 4
+        cycle_start = 1
+
+        self.tissue_binary_generate(experiment_directory)
+        self.tissue_exist_array_generate(experiment_directory)
+
+        for cycle_number in range(cycle_start, cycle_end):
+            self.max_projector(experiment_directory, cycle_number, x_pixels)
+            #self.illumination_flattening(experiment_directory, cycle_number, rolling_ball)
+            self.wavelet_background_sub(experiment_directory, cycle_number, resolution_px=100, noise_lvl=1)
+            #self.illumination_flattening_per_tile(experiment_directory, cycle_number, rolling_ball)
+            #self.mcmicro_image_stack_generator(cycle_number, experiment_directory, x_pixels)
+            self.stage_placement(experiment_directory, cycle_number, x_pixels)
+
     def mcmicro_image_stack_generator(self, cycle_number, experiment_directory, x_frame_size):
 
         numpy_path = experiment_directory + '/' + 'np_arrays'
@@ -1720,7 +1753,8 @@ class cycif:
         # load images into python
 
         channels = ['DAPI', 'A488', 'A555', 'A647']
-        types = ['Stain', 'Bleach']
+        #types = ['Stain', 'Bleach']
+        types = ['Stain']
 
         for type in types:
             for channel in channels:
@@ -1728,13 +1762,13 @@ class cycif:
                 if type == 'Stain':
                     if channel == 'DAPI':
                         im_path = experiment_directory + '/' + channel + "/" + type + '\cy_' + str(
-                            cycle_number) + '\Tiles' + r'\focused_basic_brightness_corrected'
+                            cycle_number) + '\Tiles' + r'\wavelet_subbed'
                     else:
                         im_path = experiment_directory + '/' + channel + "/" + type + '\cy_' + str(
-                            cycle_number) + '\Tiles' + '/focused_basic_brightness_corrected'
+                            cycle_number) + '\Tiles' + '/wavelet_subbed'
                 elif type == 'Bleach':
                     im_path = experiment_directory + '/' + channel + "/" + type + '\cy_' + str(
-                        cycle_number) + '\Tiles' + '/focused_basic_corrected'
+                        cycle_number) + '\Tiles' + '/wavelet_subbed'
                 os.chdir(im_path)
 
                 # place images into large array
@@ -2452,7 +2486,176 @@ class cycif:
                     else:
                         pass
 
+    def max_projector(self, experiment_directory, cycle_number, x_frame_size):
 
+        experiment_directory = experiment_directory + '/'
+        # import numpy focus map info
+        numpy_path = experiment_directory + '/' + 'np_arrays'
+        os.chdir(numpy_path)
+        file_name = 'fm_array.npy'
+        fm_array = np.load(file_name, allow_pickle=False)
+        tissue_exist = np.load('tissue_exist.npy', allow_pickle=False)
+        channels = ['DAPI', 'A488', 'A555', 'A647']
+
+
+        #determine number of z slices and x and y tile counts
+        z_slice_count = fm_array[3][0][0]
+        y_tile_count = np.shape(fm_array[0])[0]
+        x_tile_count = np.shape(fm_array[0])[1]
+
+        for channel in channels:
+
+            file_path = experiment_directory + '/' + channel + '/Stain' + '/cy_' + str(cycle_number) + '/Tiles'
+            os.chdir(file_path)
+            for y in range(0, y_tile_count):
+                for x in range(0, x_tile_count):
+                    if tissue_exist == 1:
+                        # make z_stack for channel and tile
+                        z_stack = np.ones((z_slice_count, 2960, x_frame_size))
+                        for z in range(0, z_slice_count):
+
+                            file_name = 'z_' + str(z) + '_x' + str(0) + '_y_' + str(y) + '_c_' + channel + '.tif'
+                            slice = io.imread(file_name)
+                            z_stack[z] = slice
+
+                        #make max projection
+                        max_proj = np.max(z_stack, axis=0)
+
+                        #save projection
+                        saving_path = experiment_directory + '/' + channel + '/Stain' + '/cy_' + str(cycle_number) + '/Tiles' + '/max_projection'
+                        try:
+                            os.mkdir(saving_path)
+                            os.chdir(saving_path)
+                        except:
+                            os.chdir(saving_path)
+                        file_name = 'x' + str(0) + '_y_' + str(y) + '_c_' + channel + '.tif'
+                        io.imsave(file_name, max_proj)
+
+                    else:
+                        pass
+
+    def wavelet_background_sub(self, experiment_directory, cycle_number, resolution_px, noise_lvl):
+
+        experiment_directory = experiment_directory + '/'
+        # import numpy focus map info
+        numpy_path = experiment_directory + '/' + 'np_arrays'
+        os.chdir(numpy_path)
+        file_name = 'fm_array.npy'
+        fm_array = np.load(file_name, allow_pickle=False)
+        tissue_exist = np.load('tissue_exist.npy', allow_pickle=False)
+        channels = ['DAPI', 'A488', 'A555', 'A647']
+
+        y_tile_count = np.shape(fm_array[0])[0]
+        x_tile_count = np.shape(fm_array[0])[1]
+
+        for channel in channels:
+            for x in range(0, x_tile_count):
+                for y in range(0, y_tile_count):
+
+                    if tissue_exist == 1:
+
+                        image_path = experiment_directory + '/' + channel + '/Stain' + '/cy_' + str(cycle_number) + '/Tiles' + '/max_projection'
+                        os.chdir(image_path)
+
+                        file_name = 'x' + str(0) + '_y_' + str(y) + '_c_' + channel + '.tif'
+                        image = io.imread(file_name)
+                        processed_image = self.run_wavelet(image, resolution_px, noise_lvl)
+
+                        saving_path = experiment_directory + '/' + channel + '/Stain' + '/cy_' + str(cycle_number) + '/Tiles' + '/wavelet_subbed'
+                        os.chdir(saving_path)
+                        io.imsave(file_name, processed_image)
+
+                    else:
+                        pass
+
+    def wavelet_based_BG_subtraction_function(self, image, num_levels, noise_lvl):
+
+        coeffs = wavedecn(image, 'db1', level=num_levels)  # decomposition
+        coeffs2 = coeffs.copy()
+
+        for BGlvl in range(1, num_levels):
+            coeffs[-BGlvl] = {k: np.zeros_like(v) for k, v in coeffs[-BGlvl].items()}  # set lvl 1 details  to zero
+
+        Background = waverecn(coeffs, 'db1')  # reconstruction
+        del coeffs
+        BG_unfiltered = Background
+        Background = gaussian_filter(Background, sigma=2 ** num_levels)  # gaussian filter sigma = 2^#lvls
+
+        coeffs2[0] = np.ones_like(coeffs2[0])  # set approx to one (constant)
+        for lvl in range(1, num_levels - noise_lvl):
+            coeffs2[lvl] = {k: np.zeros_like(v) for k, v in coeffs2[lvl].items()}  # keep first detail lvl only
+        Noise = waverecn(coeffs2, 'db1')  # reconstruction
+        del coeffs2
+
+        return Background, Noise, BG_unfiltered
+
+    def run_wavelet(self, image, resolution_px = 100, noise_lvl = 1):
+
+        # number of levels for background estimate
+        num_levels = np.uint16(np.ceil(np.log2(resolution_px)))
+
+        image = np.array(image, dtype='float32')
+
+        # image = np.array(io.imread(os.path.join(data_dir, file)),dtype = 'float32')
+        if np.ndim(image) == 2:
+            shape = np.shape(image)
+            image = np.reshape(image, [1, shape[0], shape[1]])
+        shape = np.shape(image)
+        if shape[1] % 2 != 0:
+            image = np.pad(image, ((0, 0), (0, 1), (0, 0)), 'edge')
+            pad_1 = True
+        else:
+            pad_1 = False
+        if shape[2] % 2 != 0:
+            image = np.pad(image, ((0, 0), (0, 0), (0, 1)), 'edge')
+            pad_2 = True
+        else:
+            pad_2 = False
+
+        # extract background and noise
+        num_cores = multiprocessing.cpu_count()  # number of cores on your CPU
+        res = Parallel(n_jobs=num_cores, max_nbytes=None)(
+            delayed(self.wavelet_based_BG_subtraction_function)(image[slice], num_levels, noise_lvl) for slice in
+            range(np.size(image, 0)))
+        Background, Noise, BG_unfiltered = zip(*res)
+
+        # convert to float64 numpy array
+        Noise = np.asarray(Noise, dtype='float32')
+        Background = np.asarray(Background, dtype='float32')
+        BG_unfiltered = np.asarray(BG_unfiltered, dtype='float32')
+
+        # undo padding
+        if pad_1:
+            image = image[:, :-1, :]
+            Noise = Noise[:, :-1, :]
+            Background = Background[:, :-1, :]
+            BG_unfiltered = BG_unfiltered[:, :-1, :]
+        if pad_2:
+            image = image[:, :, :-1]
+            Noise = Noise[:, :, :-1]
+            Background = Background[:, :, :-1]
+            BG_unfiltered = BG_unfiltered[:, :, :-1]
+
+        BG_unfiltered = np.asarray(BG_unfiltered, dtype=img_type.name)
+        Background = np.asarray(Background, dtype=img_type.name)
+
+        result = image - Background
+        result[result < 0] = 0  # positivity constrait
+        result = np.asarray(result, dtype=img_type.name)
+        noisy_sig = result
+
+        # correct noise
+        Noise[Noise < 0] = 0  # positivity constraint
+        noise_threshold = np.mean(Noise) + 2 * np.std(Noise)
+        Noise[Noise > noise_threshold] = noise_threshold  # 2 sigma threshold reduces artifacts
+
+        # subtract Noise
+        result = image - Background
+        result = result - Noise
+        result[result < 0] = 0  # positivity constraint
+        result = np.asarray(result, dtype=img_type.name)
+
+        return result
 
     def zc_save(self, zc_tif_stack, channels, x_tile, y_tile, cycle, x_pixels, experiment_directory, Stain_or_Bleach):
 
