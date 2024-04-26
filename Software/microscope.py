@@ -1425,7 +1425,7 @@ class cycif:
             else:
                 cycle_start_search = 1
         '''
-        cycle_end = 2
+        cycle_end = 8
         cycle_start = 1
 
         #self.tissue_binary_generate(experiment_directory)
@@ -1438,7 +1438,7 @@ class cycif:
             self.illumination_flattening_per_tile(experiment_directory, cycle_number, rolling_ball)
             #self.background_sub(experiment_directory, cycle_number, rolling_ball)
             self.brightness_uniformer(experiment_directory, cycle_number)
-            self.mcmicro_image_stack_generator(cycle_number, experiment_directory, x_pixels)
+            #self.mcmicro_image_stack_generator(cycle_number, experiment_directory, x_pixels)
             self.stage_placement(experiment_directory, cycle_number, x_pixels)
 
     def mcmicro_image_stack_generator(self, cycle_number, experiment_directory, x_frame_size):
@@ -1731,7 +1731,7 @@ class cycif:
                             cycle_number) + '\Tiles' + r'\focused_basic_brightness_corrected'
                     else:
                         im_path = experiment_directory + '/' + channel + "/" + type + '\cy_' + str(
-                            cycle_number) + '\Tiles' + '/flattened_background_subbed'
+                            cycle_number) + '\Tiles' + '/focused_basic_brightness_corrected'
                 elif type == 'Bleach':
                     im_path = experiment_directory + '/' + channel + "/" + type + '\cy_' + str(
                         cycle_number) + '\Tiles' + '/focused_basic_corrected'
@@ -1883,28 +1883,30 @@ class cycif:
 
             if channel == 0:
                 stain_directory = directory_start + channel_name + '\Stain\cy_' + str(cycle_number) + r'\Tiles\focused'
+                stain_temp_directory = directory_start + channel_name + '\Stain\cy_' + str(cycle_number) + r'\Tiles\focused\temp'
                 bleach_directory = directory_start + channel_name + '\Bleach\cy_' + str(cycle_number) + r'\Tiles\focused'
             else:
                 if rolling_ball != 1:
-                    stain_directory = directory_start + channel_name + '\Stain\cy_' + str(cycle_number) + r'\Tiles\focused'
+                    stain_directory = directory_start + channel_name + '\Stain\cy_' + str(cycle_number) + r'\Tiles\background_subbed'
+                    stain_temp_directory = directory_start + channel_name + '\Stain\cy_' + str(cycle_number) + r'\Tiles\background_subbed\temp'
                     bleach_directory = directory_start + channel_name + '\Bleach\cy_' + str(cycle_number) + r'\Tiles\focused'
                 if rolling_ball == 1:
                     directory = directory_start + channel_name + '\Stain\cy_' + str(cycle_number) + r'\Tiles\focused\background_subbed_rolling'
             stain_output_directory = directory_start + channel_name + '\Stain\cy_' + str(cycle_number) + r'\Tiles\focused_basic_corrected'
-            bleach_output_directory = directory_start + channel_name + '\Bleach\cy_' + str(cycle_number) + r'\Tiles\focused_basic_corrected'
+            #bleach_output_directory = directory_start + channel_name + '\Bleach\cy_' + str(cycle_number) + r'\Tiles\focused_basic_corrected'
 
-            stain_temp_directory = directory_start + channel_name + '\Stain\cy_' + str(cycle_number) + r'\Tiles\focused\temp'
-            bleach_temp_directory = directory_start + channel_name + '\Bleach\cy_' + str(cycle_number) + r'\Tiles\focused\temp'
+            #stain_temp_directory = directory_start + channel_name + '\Stain\cy_' + str(cycle_number) + r'\Tiles\background_subbed\temp'
+            #bleach_temp_directory = directory_start + channel_name + '\Bleach\cy_' + str(cycle_number) + r'\Tiles\background_subbed\temp'
 
             try:
                 os.mkdir(stain_temp_directory)
-                os.mkdir(bleach_temp_directory)
+                #os.mkdir(bleach_temp_directory)
             except:
                 pass
 
             try:
                 os.mkdir(stain_output_directory)
-                os.mkdir(bleach_output_directory)
+                #os.mkdir(bleach_output_directory)
             except:
                 pass
 
@@ -1913,12 +1915,27 @@ class cycif:
             names.pop(0)
             print(names)
 
+            '''
+            # build BaSiC model on two identical images and output into dictated folder
+            epsilon = 1e-06
+            optimizer = shading_correction.BaSiC(stain_directory)
+            optimizer.prepare()
+            optimizer.run()
+            # Save the estimated fields (only if the profiles were estimated)
+            directory = Path(stain_output_directory)
+            flatfield_name = directory / "flatfield.tif"
+            darkfield_name = directory / "darkfield.tif"
+            cv2.imwrite(str(flatfield_name), optimizer.flatfield_fullsize.astype(np.float32))
+            cv2.imwrite(str(darkfield_name), optimizer.darkfield_fullsize.astype(np.float32))
+            optimizer.write_images(stain_output_directory, epsilon=epsilon)
+            '''
+
             for name in names:
                 #transfer image and replica of image into temp folder
                 first_name = name
                 second_name = '2_' + name
                 os.chdir(stain_directory)
-                image = io.imread(first_name)
+                image = io.imread(first_name) + 100
                 image = np.nan_to_num(image, posinf=65500)
                 os.chdir(stain_temp_directory)
                 io.imsave(first_name, image)
@@ -1946,6 +1963,7 @@ class cycif:
                 os.remove(output_path_file)
 
 
+            '''
             #Replicate process with bleached version
 
             # find file names of folder
@@ -1983,6 +2001,7 @@ class cycif:
 
                 output_path_file = os.path.join(bleach_temp_directory, second_name)
                 os.remove(output_path_file)
+            '''
 
     def infocus(self, experiment_directory, cycle_number, x_frame_size, x_sub_section_count = 1, y_sub_section_count = 1):
 
@@ -2173,13 +2192,13 @@ class cycif:
                 if tissue_exist[y][x] == 1:
 
                     if rolling_ball != 1:
-
+                        '''
                         #load in tissue binary
                         tissue_path = experiment_directory + r'\Tissue_Binary'
                         os.chdir(tissue_path)
                         tissue_filename = 'x' + str(x) + '_y_' + str(y) + '_tissue.tif'
                         tissue_im = io.imread(tissue_filename)
-
+                        
                         # load reference and "moved" image
                         ref_path = experiment_directory + 'DAPI\Bleach\cy_' + str(cycle) + '\Tiles/focused'
                         os.chdir(ref_path)
@@ -2195,6 +2214,7 @@ class cycif:
                         # Translational transformation
                         sr = StackReg(StackReg.TRANSLATION)
                         out_tra = sr.register_transform(ref, mov)
+                        '''
 
                         # apply translation to other color channels
 
@@ -2204,18 +2224,19 @@ class cycif:
                             filename = 'x' + str(x) + '_y_' + str(y) + '_c_' + channel + '.tif'
                             color_im = io.imread(filename)
                             color_im = np.nan_to_num(color_im, posinf= 65500)
-                            color_reg = sr.transform(color_im)
-                            color_factor = color_reg * tissue_im
+                            #color_reg = sr.transform(color_im)
+                            #color_factor = color_reg * tissue_im
 
                             # sub background color channels
                             bleach_color_path = experiment_directory + channel + r'/Bleach/cy_' + str(1) + '\Tiles/focused'
                             os.chdir(bleach_color_path)
                             color_bleach = io.imread(filename)
-                            color_bleach_factor = color_bleach * tissue_im
+                            #color_bleach_factor = color_bleach * tissue_im
                             color_bleach = np.nan_to_num(color_bleach, posinf=65500)
                             #coefficent = self.autof_factor_estimator(color_factor, color_bleach_factor)
                             #color_subbed = color_reg - coefficent * color_bleach
-                            color_subbed = color_reg - color_bleach
+                            #color_subbed = color_reg - color_bleach
+                            color_subbed = color_im - color_bleach
                             color_subbed[color_subbed < 0] = 0
                             color_subbed = color_subbed.astype('float32')
                             color_subbed = np.nan_to_num(color_subbed, posinf= 65500)
@@ -2282,146 +2303,154 @@ class cycif:
         file_name = 'fm_array.npy'
         fm_array = np.load(file_name, allow_pickle=False)
         tissue_exist = np.load('tissue_exist.npy', allow_pickle=False)
+        channels = ['DAPI', 'A488', 'A555', 'A647']
 
-        #find number of tiles in xy grid
-        x_tiles = np.shape(fm_array[0])[1]
-        y_tiles = np.shape(fm_array[0])[0]
-        #paths to needed folders
-        channel_file_path = experiment_directory + '/DAPI/Stain/cy_1/Tiles/focused_basic_corrected'
-        tissue_path = experiment_directory + '/Tissue_Binary'
-        channel_output_path = experiment_directory + '/DAPI/Stain/cy_1/Tiles/focused_basic_brightness_corrected'
-        #make array to store brightness information in
-        bright_array = np.ones((y_tiles, x_tiles, 5))
+        for channel in channels:
 
-        os.chdir(channel_file_path)
+            #find number of tiles in xy grid
+            x_tiles = np.shape(fm_array[0])[1]
+            y_tiles = np.shape(fm_array[0])[0]
+            #paths to needed folders
+            channel_file_path = experiment_directory + '/' + channel + '/Stain/cy_' + str(cycle_number) + '/Tiles/focused_basic_corrected'
+            tissue_path = experiment_directory + '/Tissue_Binary'
+            channel_output_path = experiment_directory + '/' + channel + '/Stain/cy_' + str(cycle_number) + '/Tiles/focused_basic_brightness_corrected'
+            #make array to store brightness information in
+            bright_array = np.ones((y_tiles, x_tiles, 5))
 
+            os.chdir(channel_file_path)
 
-        for x in range(0, x_tiles):
-            for y in range(0, y_tiles):
-                if tissue_exist[y][x] == 1:
-                    #load in image
-                    os.chdir(channel_file_path)
-                    filename = 'x' + str(x) + '_y_' + str(y) + '_c_DAPI.tif'
-                    image = io.imread(filename)
-                    image[image < 0] = 0
-
-                    #os.chdir(tissue_path)
-                    #tissue_name = 'x' + str(x) +'_y_' + str(y) +'_tissue.tif'
-                    #tissue_mask = io.imread(tissue_name)
-
-                    #image = image * tissue_mask
-
-                    #find dimensions
-                    x_pixels = np.shape(image)[1]
-                    y_pixels = np.shape(image)[0]
-
-                    #find the 4 border mean values
-                    overlap_x_pixel_length = int(x_pixels * .1)
-                    overlap_y_pixel_length = int(y_pixels * .1)
-
-                    west_image = image[::, 0:overlap_x_pixel_length]
-                    sum = np.sum(west_image)
-                    non_zero_count = np.count_nonzero(west_image)
-                    west = sum / non_zero_count
-                    west = np.nan_to_num(west, nan=1)
-
-                    east_image = image[::, (x_pixels - overlap_x_pixel_length):x_pixels]
-                    sum = np.sum(east_image)
-                    non_zero_count = np.count_nonzero(east_image)
-                    east = sum/non_zero_count
-                    east = np.nan_to_num(east, nan= 1)
-
-                    north_image = image[0:overlap_y_pixel_length, ::]
-                    sum = np.sum(north_image)
-                    non_zero_count = np.count_nonzero(north_image)
-                    north = sum/non_zero_count
-                    north = np.nan_to_num(north, nan= 1)
-
-                    south_image = image[(y_tiles - overlap_y_pixel_length):y_pixels, ::]
-                    sum = np.sum(south_image)
-                    non_zero_count = np.count_nonzero(south_image)
-                    south = sum/non_zero_count
-                    south = np.nan_to_num(south, nan= 1)
+            try:
+                os.mkdir(channel_output_path)
+            except:
+                pass
 
 
-
-
-
-                    #east = np.mean(image[::, (x_pixels - overlap_x_pixel_length):x_pixels]) + 1
-                    #north = np.mean(image[0:overlap_y_pixel_length, ::]) + 1
-                    #south = np.mean(image[(y_tiles - overlap_y_pixel_length):y_pixels, ::]) + 1
-
-                    #populate brightness array
-                    bright_array[y][x][0] = north
-                    bright_array[y][x][1] = south
-                    bright_array[y][x][2] = east
-                    bright_array[y][x][3] = west
-
-
-                else:
-                    pass
-
-        #find max value and set south on tile 0,0 to that value
-        max_value = np.max(bright_array)
-        ratio = max_value / bright_array[0][0][1]
-        bright_array[0][0][4] = ratio
-        bright_array[0][0][1] = ratio * bright_array[0][0][1]
-        bright_array[0][0][2] = ratio * bright_array[0][0][2]
-
-        #propogate max value to column 1 from top to bottom
-        for y in range(0, y_tiles - 1):
-            ratio = bright_array[y][0][1]/bright_array[y + 1][0][0]
-            bright_array[y + 1][0][4] = ratio
-            bright_array[y + 1][0][1] = ratio * bright_array[y + 1][0][1]
-            bright_array[y + 1][0][2] = ratio * bright_array[y + 1][0][2]
-            bright_array[y + 1][0][3] = ratio * bright_array[y + 1][0][3]
-            bright_array[y + 1][0][0] = ratio * bright_array[y + 1][0][0]
-
-
-        #Propgate row 1 values
-        for x in range(0, x_tiles - 1):
-
-            bright_tile_west = bright_array[y][x]
-            bright_tile_east = bright_array[y][x + 1]
-            ratio = bright_tile_west[2]/bright_tile_east[3]
-            print('x', x, 'y', y, 'tile 1 east', bright_tile_west[2], 'tile 2 west', bright_tile_east[3])
-            bright_array[0][x + 1][1] = ratio * bright_array[0][x + 1][1]
-            bright_array[0][x + 1][2] = ratio * bright_array[0][x + 1][2]
-            bright_array[0][x + 1][3] = ratio * bright_array[0][x + 1][3]
-            bright_array[0][x + 1][0] = ratio * bright_array[0][x + 1][0]
-            bright_array[0][x + 1][4] = ratio * bright_array[0][x + 1][4]
-
-        #Propgate row 1 values
-        for y in range(1, y_tiles):
-            for x in range(1, x_tiles):
-
-                bright_tile_north = bright_array[y - 1][x]
-                bright_tile_west = bright_array[y][x - 1]
-                bright_tile_center = bright_array[y][x]
-                ratio = (bright_tile_north[1] + bright_tile_west[2])/(bright_tile_center[0] + bright_tile_center[3])
-                bright_array[y][x][1] = ratio * bright_array[y][x][1]
-                bright_array[y][x][2] = ratio * bright_array[y][x][2]
-                bright_array[y][x][3] = ratio * bright_array[y][x][3]
-                bright_array[y][x][0] = ratio * bright_array[y][x][0]
-                bright_array[y][x][4] = ratio * bright_array[y][x][4]
-
-        for y in range(0, y_tiles):
             for x in range(0, x_tiles):
-                if tissue_exist[y][x] == 1:
-                    # load in image
-                    os.chdir(channel_file_path)
-                    filename = 'x' + str(x) + '_y_' + str(y) + '_c_DAPI.tif'
-                    image = io.imread(filename)
-                    image[image < 0] = 0
-                    print('x', x, 'y', y, 'ratio', bright_array[y][x][4])
-                    image = bright_array[y][x][4] * image
+                for y in range(0, y_tiles):
+                    if tissue_exist[y][x] == 1:
+                        #load in image
+                        os.chdir(channel_file_path)
+                        filename = 'x' + str(x) + '_y_' + str(y) + '_c_' + channel + '.tif'
+                        image = io.imread(filename)
+                        image[image < 0] = 0
 
-                    #save image
-                    os.chdir(channel_output_path)
-                    io.imsave(filename, image)
+                        #os.chdir(tissue_path)
+                        #tissue_name = 'x' + str(x) +'_y_' + str(y) +'_tissue.tif'
+                        #tissue_mask = io.imread(tissue_name)
 
-                else:
-                    pass
+                        #image = image * tissue_mask
+
+                        #find dimensions
+                        x_pixels = np.shape(image)[1]
+                        y_pixels = np.shape(image)[0]
+
+                        #find the 4 border mean values
+                        overlap_x_pixel_length = int(x_pixels * .1)
+                        overlap_y_pixel_length = int(y_pixels * .1)
+
+                        west_image = image[::, 0:overlap_x_pixel_length]
+                        sum = np.sum(west_image)
+                        non_zero_count = np.count_nonzero(west_image)
+                        west = sum / non_zero_count
+                        west = np.nan_to_num(west, nan=1)
+
+                        east_image = image[::, (x_pixels - overlap_x_pixel_length):x_pixels]
+                        sum = np.sum(east_image)
+                        non_zero_count = np.count_nonzero(east_image)
+                        east = sum/non_zero_count
+                        east = np.nan_to_num(east, nan= 1)
+
+                        north_image = image[0:overlap_y_pixel_length, ::]
+                        sum = np.sum(north_image)
+                        non_zero_count = np.count_nonzero(north_image)
+                        north = sum/non_zero_count
+                        north = np.nan_to_num(north, nan= 1)
+
+                        south_image = image[(y_tiles - overlap_y_pixel_length):y_pixels, ::]
+                        sum = np.sum(south_image)
+                        non_zero_count = np.count_nonzero(south_image)
+                        south = sum/non_zero_count
+                        south = np.nan_to_num(south, nan= 1)
+
+
+
+
+
+                        #east = np.mean(image[::, (x_pixels - overlap_x_pixel_length):x_pixels]) + 1
+                        #north = np.mean(image[0:overlap_y_pixel_length, ::]) + 1
+                        #south = np.mean(image[(y_tiles - overlap_y_pixel_length):y_pixels, ::]) + 1
+
+                        #populate brightness array
+                        bright_array[y][x][0] = north
+                        bright_array[y][x][1] = south
+                        bright_array[y][x][2] = east
+                        bright_array[y][x][3] = west
+
+
+                    else:
+                        pass
+
+            #find max value and set south on tile 0,0 to that value
+            max_value = np.max(bright_array)
+            ratio = max_value / bright_array[0][0][1]
+            bright_array[0][0][4] = ratio
+            bright_array[0][0][1] = ratio * bright_array[0][0][1]
+            bright_array[0][0][2] = ratio * bright_array[0][0][2]
+
+            #propogate max value to column 1 from top to bottom
+            for y in range(0, y_tiles - 1):
+                ratio = bright_array[y][0][1]/bright_array[y + 1][0][0]
+                bright_array[y + 1][0][4] = ratio
+                bright_array[y + 1][0][1] = ratio * bright_array[y + 1][0][1]
+                bright_array[y + 1][0][2] = ratio * bright_array[y + 1][0][2]
+                bright_array[y + 1][0][3] = ratio * bright_array[y + 1][0][3]
+                bright_array[y + 1][0][0] = ratio * bright_array[y + 1][0][0]
+
+
+            #Propgate row 1 values
+            for x in range(0, x_tiles - 1):
+
+                bright_tile_west = bright_array[y][x]
+                bright_tile_east = bright_array[y][x + 1]
+                ratio = bright_tile_west[2]/bright_tile_east[3]
+                print('x', x, 'y', y, 'tile 1 east', bright_tile_west[2], 'tile 2 west', bright_tile_east[3])
+                bright_array[0][x + 1][1] = ratio * bright_array[0][x + 1][1]
+                bright_array[0][x + 1][2] = ratio * bright_array[0][x + 1][2]
+                bright_array[0][x + 1][3] = ratio * bright_array[0][x + 1][3]
+                bright_array[0][x + 1][0] = ratio * bright_array[0][x + 1][0]
+                bright_array[0][x + 1][4] = ratio * bright_array[0][x + 1][4]
+
+            #Propgate row 1 values
+            for y in range(1, y_tiles):
+                for x in range(1, x_tiles):
+
+                    bright_tile_north = bright_array[y - 1][x]
+                    bright_tile_west = bright_array[y][x - 1]
+                    bright_tile_center = bright_array[y][x]
+                    ratio = (bright_tile_north[1] + bright_tile_west[2])/(bright_tile_center[0] + bright_tile_center[3])
+                    bright_array[y][x][1] = ratio * bright_array[y][x][1]
+                    bright_array[y][x][2] = ratio * bright_array[y][x][2]
+                    bright_array[y][x][3] = ratio * bright_array[y][x][3]
+                    bright_array[y][x][0] = ratio * bright_array[y][x][0]
+                    bright_array[y][x][4] = ratio * bright_array[y][x][4]
+
+            for y in range(0, y_tiles):
+                for x in range(0, x_tiles):
+                    if tissue_exist[y][x] == 1:
+                        # load in image
+                        os.chdir(channel_file_path)
+                        filename = 'x' + str(x) + '_y_' + str(y) + '_c_' + channel + '.tif'
+                        image = io.imread(filename)
+                        image[image < 0] = 0
+                        print('x', x, 'y', y, 'ratio', bright_array[y][x][4])
+                        image = bright_array[y][x][4] * image
+
+                        #save image
+                        os.chdir(channel_output_path)
+                        io.imsave(filename, image)
+
+                    else:
+                        pass
 
 
 
