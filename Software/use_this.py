@@ -4,8 +4,8 @@ import os
 from autocyplex import *
 from optparse import OptionParser
 microscope = cycif() # initialize cycif object
-experiment_directory = r'E:\4-3-24 celiac multiplex'
-pump = fluidics(experiment_directory, 6, 13, flow_control=1)
+experiment_directory = r'E:\22-4-24 celiac'
+#pump = fluidics(experiment_directory, 6, 13, flow_control=1)
 
 z_slices = 7
 x_frame_size = 2960
@@ -62,6 +62,65 @@ np.save('exp_array.npy', exp_array)
 #cycle_number = 2
 #microscope.image_cycle_acquire(cycle_number, experiment_directory, z_slices, 'Stain', offset_array, x_frame_size=x_frame_size, establish_fm_array=0, auto_focus_run=1,auto_expose_run=1)
 
+live_manager = studio.get_acquisition_manager()
+
+
+
+
+
+x_frame_size = 2960
+gap = int((5056 - x_frame_size)/2)
+
+frame_count = 10
+temp_array = np.ones((frame_count,2960, x_frame_size))
+
+#core.set_config('Color', 'A647')
+#time.sleep(1)
+
+exp_time = 25
+#core.set_exposure(int(exp_time))
+
+#core.set_config("amp", 'high')
+#image = live_manager.snap().get(0)
+#pixels = image.get_raw_pixels()
+
+
+
+start = time.time()
+for x in range(0, frame_count):
+
+
+    core.set_config("amp", 'high')
+    image = live_manager.snap().get(0)
+    pixels = image.get_raw_pixels()
+    pixels = np.reshape(pixels, newshape=[2960, 5056])
+    pixels = pixels[::, gap:int(gap + x_frame_size)]
+    temp_array[x] = pixels
+
+end = time.time()
+
+print((end-start)/frame_count)
+
+
+
+
+os.chdir(r'C:\Users\CyCIF PC\Desktop\dark_field')
+io.imsave('stack2.tif', temp_array)
+
+
+
+
+#live_manager.get_tagged_image()
+
+#dis_manager = studio.get_display_manager()
+
+#dis_manager.get_displays().show(image)
+
+
+
+
+
+
 
 
 # start = time.time()
@@ -71,7 +130,7 @@ np.save('exp_array.npy', exp_array)
 # end = time.time()
 # print(end-start)
 
-microscope.post_acquisition_processor(experiment_directory, x_frame_size, rolling_ball=0)
+#microscope.post_acquisition_processor_experimental(experiment_directory, x_frame_size, rolling_ball=0)
 
 
 

@@ -1,5 +1,5 @@
 import ome_types
-from pycromanager import Core,Magellan
+from pycromanager import Core, Magellan, Studio
 import numpy as np
 import time
 from skimage import io, filters, morphology, restoration
@@ -28,7 +28,8 @@ import matplotlib.pyplot as plt
 
 
 #magellan = Magellan()
-#core = Core()
+core = Core()
+studio = Studio()
 
 class cycif:
 
@@ -1460,18 +1461,19 @@ class cycif:
             else:
                 cycle_start_search = 1
         '''
-        cycle_end = 4
-        cycle_start = 1
+        cycle_end = 9
+        cycle_start = 3
 
-        self.tissue_binary_generate(experiment_directory)
-        self.tissue_exist_array_generate(experiment_directory)
+        #self.tissue_binary_generate(experiment_directory)
+        #self.tissue_exist_array_generate(experiment_directory)
 
         for cycle_number in range(cycle_start, cycle_end):
-            self.max_projector(experiment_directory, cycle_number, x_pixels)
+            #self.infocus(experiment_directory, cycle_number, x_pixels, 1, 1)
+            #self.max_projector(experiment_directory, cycle_number, x_pixels)
             #self.illumination_flattening(experiment_directory, cycle_number, rolling_ball)
             self.wavelet_background_sub(experiment_directory, cycle_number, resolution_px=100, noise_lvl=1)
             #self.illumination_flattening_per_tile(experiment_directory, cycle_number, rolling_ball)
-            #self.mcmicro_image_stack_generator(cycle_number, experiment_directory, x_pixels)
+            self.mcmicro_image_stack_generator(cycle_number, experiment_directory, x_pixels)
             self.stage_placement(experiment_directory, cycle_number, x_pixels)
 
     def mcmicro_image_stack_generator(self, cycle_number, experiment_directory, x_frame_size):
@@ -1492,13 +1494,13 @@ class cycif:
         tile_count = int(tissue_exist.sum())
 
         dapi_im_path = experiment_directory + '\DAPI\Stain\cy_' + str(
-            cycle_number) + '\Tiles' + '/focused_basic_brightness_corrected'
+            cycle_number) + '\Tiles' + '/max_projection'
         a488_im_path = experiment_directory + '\A488\Stain\cy_' + str(
-            cycle_number) + '\Tiles' + '/flattened_background_subbed'
+            cycle_number) + '\Tiles' + '/max_projection'
         a555_im_path = experiment_directory + '\A555\Stain\cy_' + str(
-            cycle_number) + '\Tiles' + '/flattened_background_subbed'
+            cycle_number) + '\Tiles' + '/max_projection'
         a647_im_path = experiment_directory + '\A647\Stain\cy_' + str(
-            cycle_number) + '\Tiles' + '/flattened_background_subbed'
+            cycle_number) + '\Tiles' + '/max_projection'
 
         mcmicro_path = experiment_directory + r'\mcmicro\raw'
 
@@ -2499,22 +2501,23 @@ class cycif:
 
 
         #determine number of z slices and x and y tile counts
-        z_slice_count = fm_array[3][0][0]
+        z_slice_count = fm_array[3][0][0].astype('int16')
         y_tile_count = np.shape(fm_array[0])[0]
         x_tile_count = np.shape(fm_array[0])[1]
 
         for channel in channels:
 
-            file_path = experiment_directory + '/' + channel + '/Stain' + '/cy_' + str(cycle_number) + '/Tiles'
-            os.chdir(file_path)
             for y in range(0, y_tile_count):
                 for x in range(0, x_tile_count):
-                    if tissue_exist == 1:
+                    if tissue_exist[y][x] ==1:
+                        file_path = experiment_directory + '/' + channel + '/Stain' + '/cy_' + str(
+                            cycle_number) + '/Tiles'
+                        os.chdir(file_path)
                         # make z_stack for channel and tile
                         z_stack = np.ones((z_slice_count, 2960, x_frame_size))
                         for z in range(0, z_slice_count):
 
-                            file_name = 'z_' + str(z) + '_x' + str(0) + '_y_' + str(y) + '_c_' + channel + '.tif'
+                            file_name = 'z_' + str(z) + r'_x' + str(x) + '_y_' + str(y) + '_c_' + channel + '.tif'
                             slice = io.imread(file_name)
                             z_stack[z] = slice
 
@@ -2528,7 +2531,7 @@ class cycif:
                             os.chdir(saving_path)
                         except:
                             os.chdir(saving_path)
-                        file_name = 'x' + str(0) + '_y_' + str(y) + '_c_' + channel + '.tif'
+                        file_name = 'x' + str(x) + '_y_' + str(y) + '_c_' + channel + '.tif'
                         io.imsave(file_name, max_proj)
 
                     else:
@@ -2552,17 +2555,22 @@ class cycif:
             for x in range(0, x_tile_count):
                 for y in range(0, y_tile_count):
 
-                    if tissue_exist == 1:
+                    if tissue_exist[y][x] == 1:
 
-                        image_path = experiment_directory + '/' + channel + '/Stain' + '/cy_' + str(cycle_number) + '/Tiles' + '/max_projection'
+                        image_path = experiment_directory + '/' + channel + '/Stain' + '/cy_' + str(cycle_number) + '/Tiles' + '/focused'
                         os.chdir(image_path)
 
-                        file_name = 'x' + str(0) + '_y_' + str(y) + '_c_' + channel + '.tif'
-                        image = io.imread(file_name)
+                        file_name = 'x' + str(x) + '_y_' + str(y) + '_c_' + channel + '.tif'
+                        image = io.imread(file_name) + 1000
+                        image = np.nan_to_num(image, posinf=65000)
                         processed_image = self.run_wavelet(image, resolution_px, noise_lvl)
 
                         saving_path = experiment_directory + '/' + channel + '/Stain' + '/cy_' + str(cycle_number) + '/Tiles' + '/wavelet_subbed'
-                        os.chdir(saving_path)
+                        try:
+                            os.mkdir(saving_path)
+                            os.chdir(saving_path)
+                        except:
+                            os.chdir(saving_path)
                         io.imsave(file_name, processed_image)
 
                     else:
@@ -2591,6 +2599,7 @@ class cycif:
 
     def run_wavelet(self, image, resolution_px = 100, noise_lvl = 1):
 
+        img_type = image.dtype
         # number of levels for background estimate
         num_levels = np.uint16(np.ceil(np.log2(resolution_px)))
 
