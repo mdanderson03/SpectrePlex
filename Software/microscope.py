@@ -124,14 +124,14 @@ class cycif:
         if autofocus == 1 and auto_expose == 1:
             self.recursive_stardist_autofocus(experiment_directory, desired_cycle_count)
             self.establish_exp_arrays(experiment_directory)
-            self.auto_exposure(experiment_directory, x_frame_size, percentage_cut_off = 0.99999, target_percentage = 0.1)
+            self.auto_exposure(experiment_directory, x_frame_size, percentage_cut_off = 0.99999, target_percentage = 0.25)
         if autofocus == 1 and auto_expose == 0:
             #self.DAPI_surface_autofocus(experiment_directory, 20, 2, x_frame_size)
             self.recursive_stardist_autofocus(experiment_directory, desired_cycle_count)
             #self.fm_channel_initial(experiment_directory, off_array, z_slices, 2)
         if autofocus == 0 and auto_expose == 1:
             self.establish_exp_arrays(experiment_directory)
-            self.auto_exposure(experiment_directory, x_frame_size, percentage_cut_off = 0.99999, target_percentage = 0.1)
+            self.auto_exposure(experiment_directory, x_frame_size, percentage_cut_off = 0.99999, target_percentage = 0.25)
         else:
             pass
 
@@ -239,6 +239,7 @@ class cycif:
                         core.set_exposure(exp_time)
 
                         #take reference image
+                        core.set_config("amp", 'high')
                         core.snap_image()
                         tagged_image = core.get_tagged_image()
                         pixels = np.reshape(tagged_image.pix,
@@ -313,7 +314,7 @@ class cycif:
 
             new_max_int_value = new_exp_factor/exp_array[channel_index] * high_pixel
             print('channel', channel, 'thresh', thresh, 'high', high_pixel, 'low', low_pixel, 'new exp', new_exp_factor, 'old exp', exp_array[channel_index])
-            ratio_new_int_2_max_int = new_max_int_value / (0.75 * 65500)
+            ratio_new_int_2_max_int = new_max_int_value / (0.8 * 65500)
             try:
                 frame_count = math.ceil(ratio_new_int_2_max_int + 0.05)
             except:
@@ -326,12 +327,13 @@ class cycif:
                 new_exp_factor = 500
                 frame_count = math.ceil(total_exposure_time/new_exp_factor)
 
-            if new_exp_factor < 20:
-                new_exp_factor = 20
+            if new_exp_factor < 50:
+                new_exp_factor = 50
                 frame_count = math.ceil(total_exposure_time/new_exp_factor)
 
             if frame_count < 1:
                 frame_count = 1
+                new_exp_factor = total_exposure_time
             else:
                 pass
 
@@ -445,6 +447,7 @@ class cycif:
         while intensity > 50000:
             exp_time = exp_time / 3
             core.set_exposure(exp_time)
+            core.set_config("amp", 'high')
             core.snap_image()
             tagged_image = core.get_tagged_image()
             new_image = np.reshape(tagged_image.pix, newshape=[tagged_image.tags["Height"], tagged_image.tags["Width"]])
@@ -467,6 +470,7 @@ class cycif:
 
             #gather new image
             core.set_exposure(exp_time)
+            core.set_config("amp", 'high')
             core.snap_image()
             tagged_image = core.get_tagged_image()
             image = np.reshape(tagged_image.pix, newshape=[tagged_image.tags["Height"], tagged_image.tags["Width"]])
@@ -1027,8 +1031,14 @@ class cycif:
         time.sleep(0.5)
         core.set_exposure(int(exp_time))
 
+        core.set_config("amp", 'high')
+        core.snap_image()
+        core.get_tagged_image()
+
+        core.set_config("amp", 'high')
         core.snap_image()
         tagged_image = core.get_tagged_image()
+
         pixels = np.reshape(tagged_image.pix, newshape=[tagged_image.tags["Height"], tagged_image.tags["Width"]])
         # time.sleep(1)
 
@@ -1071,6 +1081,7 @@ class cycif:
         # acquire and populate array
         for x in range(0, frame_count):
             time.sleep(0.1)
+            core.set_config("amp", 'high')
             core.snap_image()
             tagged_image = core.get_tagged_image()
             pixels = np.reshape(tagged_image.pix,newshape=[tagged_image.tags["Height"], tagged_image.tags["Width"]])
@@ -1165,6 +1176,11 @@ class cycif:
                             core.set_config("Color", channel)
                             core.set_exposure(exp_time)
 
+                            #burner image due to defect that makes signal 8% higher int he first one
+                            core.set_config("amp", 'high')
+                            core.snap_image()
+                            core.get_tagged_image()
+
                             z_end = int(numpy_z[y][x])
                             z_start = int(z_end - z_slices * slice_gap)
 
@@ -1221,6 +1237,11 @@ class cycif:
                             exp_time = int(exp_time_array[tif_stack_c_index])
                             core.set_config("Color", channel)
                             core.set_exposure(exp_time)
+
+                            #burner image due to defect that makes signal 8% higher int he first one
+                            core.set_config("amp", 'high')
+                            core.snap_image()
+                            core.get_tagged_image()
 
                             z_end = int(numpy_z[y][x])
                             z_start = int(z_end - z_slices * slice_gap)
