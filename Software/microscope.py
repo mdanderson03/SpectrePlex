@@ -27,7 +27,7 @@ import multiprocessing
 import matplotlib.pyplot as plt
 
 
-#magellan = Magellan()
+magellan = Magellan()
 core = Core()
 studio = Studio()
 
@@ -312,6 +312,9 @@ class cycif:
             #find new exp factor and frame count to average over
             new_exp_factor = target_percentage * 65500 / low_pixel * exp_array[channel_index]
 
+
+
+
             new_max_int_value = new_exp_factor/exp_array[channel_index] * high_pixel
             print('channel', channel, 'thresh', thresh, 'high', high_pixel, 'low', low_pixel, 'new exp', new_exp_factor, 'old exp', exp_array[channel_index])
             ratio_new_int_2_max_int = new_max_int_value / (0.8 * 65500)
@@ -322,18 +325,24 @@ class cycif:
             new_exp_factor = new_exp_factor/frame_count
             total_exposure_time = frame_count * new_exp_factor
 
+            if total_exposure_time < 100:
+                total_exposure_time = 100
+            else:
+                pass
+
 
             if new_exp_factor > 500:
                 new_exp_factor = 500
                 frame_count = math.ceil(total_exposure_time/new_exp_factor)
 
-            if new_exp_factor < 50:
-                new_exp_factor = 50
+            if new_exp_factor < 10:
+                new_exp_factor = 10
                 frame_count = math.ceil(total_exposure_time/new_exp_factor)
 
             if frame_count < 1:
                 frame_count = 1
-                new_exp_factor = total_exposure_time
+
+
             else:
                 pass
 
@@ -811,7 +820,7 @@ class cycif:
     def tissue_filter(self, image):
 
         image = image.astype('bool')
-        image_2 = morphology.remove_small_objects(image, min_size=80000, connectivity=1)
+        image_2 = morphology.remove_small_objects(image, min_size=50000, connectivity=1)
         image_2 = image_2.astype('int8')
 
         return image_2
@@ -1462,10 +1471,10 @@ class cycif:
             #self.infocus(experiment_directory, cycle_number, x_pixels, 1, 1)
             #self.illumination_flattening(experiment_directory, cycle_number, rolling_ball)
             self.background_sub(experiment_directory, cycle_number, rolling_ball)
-            self.illumination_flattening_per_tile(experiment_directory, cycle_number, rolling_ball)
+            #self.illumination_flattening_per_tile(experiment_directory, cycle_number, rolling_ball)
             #self.background_sub(experiment_directory, cycle_number, rolling_ball)
-            self.brightness_uniformer(experiment_directory, cycle_number)
-            #self.mcmicro_image_stack_generator(cycle_number, experiment_directory, x_pixels)
+            #self.brightness_uniformer(experiment_directory, cycle_number)
+            self.mcmicro_image_stack_generator(cycle_number, experiment_directory, x_pixels)
             self.stage_placement(experiment_directory, cycle_number, x_pixels)
 
     def post_acquisition_processor_experimental(self, experiment_directory, x_pixels, rolling_ball = 1):
@@ -1515,13 +1524,13 @@ class cycif:
         tile_count = int(tissue_exist.sum())
 
         dapi_im_path = experiment_directory + '\DAPI\Stain\cy_' + str(
-            cycle_number) + '\Tiles' + '/max_projection'
+            cycle_number) + '\Tiles' + '/focused_basic_corrected'
         a488_im_path = experiment_directory + '\A488\Stain\cy_' + str(
-            cycle_number) + '\Tiles' + '/max_projection'
+            cycle_number) + '\Tiles' + '/focused_flattened_subbed'
         a555_im_path = experiment_directory + '\A555\Stain\cy_' + str(
-            cycle_number) + '\Tiles' + '/max_projection'
+            cycle_number) + '\Tiles' + '/focused_flattened_subbed'
         a647_im_path = experiment_directory + '\A647\Stain\cy_' + str(
-            cycle_number) + '\Tiles' + '/max_projection'
+            cycle_number) + '\Tiles' + '/focused_flattened_subbed'
 
         mcmicro_path = experiment_directory + r'\mcmicro\raw'
 
@@ -1785,13 +1794,13 @@ class cycif:
                 if type == 'Stain':
                     if channel == 'DAPI':
                         im_path = experiment_directory + '/' + channel + "/" + type + '\cy_' + str(
-                            cycle_number) + '\Tiles' + r'\wavelet_subbed'
+                            cycle_number) + '\Tiles' + r'\focused_basic_corrected'
                     else:
                         im_path = experiment_directory + '/' + channel + "/" + type + '\cy_' + str(
-                            cycle_number) + '\Tiles' + '/wavelet_subbed'
+                            cycle_number) + '\Tiles' + '/focused_flattened_subbed'
                 elif type == 'Bleach':
                     im_path = experiment_directory + '/' + channel + "/" + type + '\cy_' + str(
-                        cycle_number) + '\Tiles' + '/wavelet_subbed'
+                        cycle_number) + '\Tiles' + '/focused_flattened'
                 os.chdir(im_path)
 
                 # place images into large array
@@ -2247,6 +2256,10 @@ class cycif:
             for x in range(0, x_tile_count):
 
                 if tissue_exist[y][x] == 1:
+                    #tissue_path = experiment_directory + '/Tissue_Binary'
+                    #os.chdir(tissue_path)
+                    #filename = 'x' + str(x) + '_y_' + str(y) + '_tissue.tif'
+                    #tissue_im = io.imread(filename)
 
                     if rolling_ball != 1:
                         '''
@@ -2276,31 +2289,30 @@ class cycif:
                         # apply translation to other color channels
 
                         for channel in channels:
-                            stain_color_path = experiment_directory + channel + r'/Stain/cy_' + str(cycle) + '\Tiles/focused'
+                            stain_color_path = experiment_directory + channel + r'/Stain/cy_' + str(cycle) + '\Tiles/focused_basic_corrected'
                             os.chdir(stain_color_path)
                             filename = 'x' + str(x) + '_y_' + str(y) + '_c_' + channel + '.tif'
                             color_im = io.imread(filename)
                             color_im = np.nan_to_num(color_im, posinf= 65500)
                             #color_reg = sr.transform(color_im)
-                            #color_factor = color_reg * tissue_im
+                            color_factor = color_im
 
                             # sub background color channels
-                            bleach_color_path = experiment_directory + channel + r'/Bleach/cy_' + str(1) + '\Tiles/focused'
+                            bleach_color_path = experiment_directory + channel + r'/Bleach/cy_' + str(cycle) + '\Tiles/focused_basic_corrected'
                             os.chdir(bleach_color_path)
                             color_bleach = io.imread(filename)
-                            #color_bleach_factor = color_bleach * tissue_im
+                            color_bleach_factor = color_bleach
                             color_bleach = np.nan_to_num(color_bleach, posinf=65500)
-                            #coefficent = self.autof_factor_estimator(color_factor, color_bleach_factor)
-                            #color_subbed = color_reg - coefficent * color_bleach
+                            coefficent = self.autof_factor_estimator(color_factor, color_bleach_factor)
+                            #color_subbed = color_im - coefficent * color_bleach
                             #color_subbed = color_reg - color_bleach
                             color_subbed = color_im - color_bleach
                             color_subbed[color_subbed < 0] = 0
-                            color_subbed = color_subbed.astype('float32')
-                            color_subbed = np.nan_to_num(color_subbed, posinf= 65500)
+                            #color_subbed = np.nan_to_num(color_subbed, posinf= 65500)
 
                             # save
 
-                            save_path = experiment_directory + channel + r'/Stain/cy_' + str(cycle) + '\Tiles/background_subbed'
+                            save_path = experiment_directory + channel + r'/Stain/cy_' + str(cycle) + '\Tiles/focused_flattened_subbed'
                             try:
                                 os.chdir(save_path)
                             except:

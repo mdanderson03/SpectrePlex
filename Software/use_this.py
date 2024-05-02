@@ -4,12 +4,13 @@ import os
 from autocyplex import *
 from optparse import OptionParser
 microscope = cycif() # initialize cycif object
-experiment_directory = r'E:\22-4-24 celiac'
-#pump = fluidics(experiment_directory, 6, 13, flow_control=1)
+experiment_directory = r'E:\fluidics testing'
+pump = fluidics(experiment_directory, 6, 13, flow_control=1)
 
 z_slices = 7
 x_frame_size = 2960
 offset_array = [0, -8, -7, -7]
+
 '''
 numpy_path = experiment_directory + '/' + 'np_arrays'
 os.chdir(numpy_path)
@@ -19,118 +20,38 @@ fm_array = np.load(file_name, allow_pickle=False)
 exp_array = np.load(exp_filename, allow_pickle=False)
 fm_array[2][::,::] = 1
 
-#exp_array[1] = 348
-#exp_array[2] = 30
-#exp_array[3] = 20
+exp_array[1] = 10
+exp_array[2] = 200
+exp_array[3] = 200
 
-#fm_array[12][0][0] = 3
+fm_array[12][0][0] = 3
 
-#fm_array[13][0][0] = 2
+fm_array[13][0][0] = 1
 
-#fm_array[14][0][0] = 8
+fm_array[14][0][0] = 1
 
 #print('dapi frames', fm_array[11][0][0])
 #print('a488 frames', fm_array[12][0][0])
 #print('a555 frames', fm_array[13][0][0])
 #print('a647 frames', fm_array[14][0][0])
-np.save('fm_array.npy', fm_array)
+#np.save('fm_array.npy', fm_array)
 np.save('exp_array.npy', exp_array)
-
 '''
 
 
 
-#pump.liquid_action('Stain', stain_valve=1)
-#pump.liquid_action('Bleach')
-#pump.liquid_action('Bleach')
+
 #pump.liquid_action('Wash')
-#microscope.auto_exposure(experiment_directory, x_frame_size=x_frame_size)
-#microscope.image_cycle_acquire(0, experiment_directory, z_slices, 'Bleach', offset_array, x_frame_size=x_frame_size, establish_fm_array=1, auto_focus_run=0, auto_expose_run=0)
-
-
-#cycle_number = 1
-
-#print('cycle', cycle_number)
-#pump.liquid_action('Stain', stain_valve=cycle_number)  # nuc is valve=7, pbs valve=8, bleach valve=1 (action, stain_valve, heater state (off = 0, on = 1))
-#microscope.image_cycle_acquire(cycle_number, experiment_directory, z_slices, 'Stain', offset_array, x_frame_size=x_frame_size, establish_fm_array=0, auto_focus_run=0,auto_expose_run=0)
-
-#microscope.recursive_stardist_autofocus(experiment_directory, 2)
-
+#microscope.image_cycle_acquire(1, experiment_directory, z_slices, 'Stain', offset_array, x_frame_size=x_frame_size, establish_fm_array=0, auto_focus_run=0, auto_expose_run=0)
 #pump.liquid_action('Bleach')
-#microscope.image_cycle_acquire(2, experiment_directory, z_slices, 'Bleach', offset_array, x_frame_size=x_frame_size, establish_fm_array=0, auto_focus_run=0, auto_expose_run=0)
-#pump.liquid_action('Stain', stain_valve=2)
-#cycle_number = 2
-#microscope.image_cycle_acquire(cycle_number, experiment_directory, z_slices, 'Stain', offset_array, x_frame_size=x_frame_size, establish_fm_array=0, auto_focus_run=1,auto_expose_run=1)
+#microscope.image_cycle_acquire(1, experiment_directory, z_slices, 'Bleach', offset_array, x_frame_size=x_frame_size, establish_fm_array=0, auto_focus_run=0, auto_expose_run=0)
 
-live_manager = studio.get_acquisition_manager()
-
-
-
-
-
-x_frame_size = 2960
-gap = int((5056 - x_frame_size)/2)
-
-frame_count = 10
-temp_array = np.ones((frame_count,2960, x_frame_size))
-
-#core.set_config('Color', 'A647')
-#time.sleep(1)
-
-exp_time = 25
-#core.set_exposure(int(exp_time))
-
-#core.set_config("amp", 'high')
-#image = live_manager.snap().get(0)
-#pixels = image.get_raw_pixels()
-
-
-
-start = time.time()
-for x in range(0, frame_count):
-
-
-    core.set_config("amp", 'high')
-    image = live_manager.snap().get(0)
-    pixels = image.get_raw_pixels()
-    pixels = np.reshape(pixels, newshape=[2960, 5056])
-    pixels = pixels[::, gap:int(gap + x_frame_size)]
-    temp_array[x] = pixels
-
-end = time.time()
-
-print((end-start)/frame_count)
-
-
-
-
-os.chdir(r'C:\Users\CyCIF PC\Desktop\dark_field')
-io.imsave('stack2.tif', temp_array)
-
-
-
-
-#live_manager.get_tagged_image()
-
-#dis_manager = studio.get_display_manager()
-
-#dis_manager.get_displays().show(image)
-
-
-
-
-
-
-
-
-# start = time.time()
-#
-#for cycle in range(3, 9):
+#for cycle in range(2, 9):
 #    microscope.full_cycle(experiment_directory, cycle, offset_array, cycle, pump, z_slices)
 # end = time.time()
 # print(end-start)
 
-#microscope.post_acquisition_processor_experimental(experiment_directory, x_frame_size, rolling_ball=0)
+microscope.post_acquisition_processor(experiment_directory, x_frame_size, rolling_ball=0)
 
 
 
