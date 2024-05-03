@@ -176,6 +176,9 @@ class cycif:
         number_channels = len(channels[0])
         slice_gap = 2
 
+        #reset exp array to default values
+        exp_array = [75, 30, 30, 30]
+
         #find tile counts
         x_tiles = np.shape(fm_array[0])[1]
         y_tiles = np.shape(fm_array[0])[0]
@@ -188,6 +191,7 @@ class cycif:
         #make psuedo stack to hold images in
         #exp_image_stack = np.random.rand(number_channels, y_tiles, x_tiles, 2960, x_frame_size)
         exp_image_stack = np.zeros((number_channels, y_tiles, x_tiles, 2960, x_frame_size))
+        exp_tile_logger = np.zeros((number_channels, y_tiles, x_tiles))
 
         #define pixel range in X dimension
         side_pixel_count = int((5056 - x_frame_size)/2)
@@ -250,26 +254,12 @@ class cycif:
 
                         #Determine if intensity is in bounds and take diff image if not. Record new exp time
                         pixels, exp_time = self.exp_bound_solver(pixels, exp_time, 0.9999)
-                        exp_array[channel_index] = exp_time
 
-                        #load in auto fluorescence image
-                        auto_fl_path = experiment_directory + '/' + str(channel) + '/Bleach/' + 'cy_0/' + 'Tiles'
-                        os.chdir(auto_fl_path)
-                        filename = 'z_' + str(int(slice_count/2)) + '_x' + str(x) + '_y_' + str(y) + '_c_' + str(channel) + '.tif'
-                        auto_fl_im = io.imread(filename).astype('float64')
+                        #eliminate offset
+                        pixels = pixels - 300
 
-                        #find ideal constant and sub off auto_fl_im from snapped image
-
-                        if channel_index == 0:
-                            subbed_image = pixels
-                        else:
-                            pass
-                            #factor = self.autof_factor_estimator(pixels, auto_fl_im)
-                            #pixels = pixels.astype('float64')
-                            #subbed_image = pixels - factor*auto_fl_im
-                            #offset = np.mean(factor*auto_fl_im)
-                            #subbed_image[subbed_image < 0] = 0
-                            #subbed_image = np.nan_to_num(subbed_image, posinf= 65500)
+                        #exp_array[channel_index] = exp_time
+                        exp_tile_logger[channel_index][y][x] = exp_time
 
                         #multiply by tissue binary
                         masked_subbed_image = pixels * tissue_bin_im
@@ -300,6 +290,18 @@ class cycif:
                 channel_index = 3
                 frame_count_index = 14
 
+            #Normalize exposure pixels to lowest exp count
+            channel_exp_times = exp_tile_logger[channel_index]
+            lowest_exp = np.min(channel_exp_times.ravel()[np.flatnonzero(channel_exp_times)])
+            #add one to eliminate 0 values
+            channel_exp_times = channel_exp_times + 1
+
+            #propogate normalization factor
+            for x in range(0, x_tiles):
+                for y in range(0, y_tiles):
+                    scaled_factor_2_lowest = lowest_exp/exp_tile_logger[channel_index][y][x]
+                    exp_image_stack[channel_index][y][x] = exp_image_stack[channel_index][y][x] * scaled_factor_2_lowest
+
             # use Otsu's (or any other threshold method) to find well stained pixels
             channel_pixels = np.nan_to_num(exp_image_stack[channel_index], posinf=65500)
             non_zero_pixels = channel_pixels.ravel()[np.flatnonzero(channel_pixels)]
@@ -310,30 +312,29 @@ class cycif:
             high_pixel, low_pixel = self.image_percentile_level(non_zero_thresh_pixels, cut_off_threshold= percentage_cut_off)
 
             #find new exp factor and frame count to average over
-            new_exp_factor = target_percentage * 65500 / low_pixel * exp_array[channel_index]
+            new_exp_factor = (target_percentage * 65500 / low_pixel) * lowest_exp
+            new_max_int_value = (new_exp_factor/lowest_exp) * high_pixel
 
-
-
-
-            new_max_int_value = new_exp_factor/exp_array[channel_index] * high_pixel
-            print('channel', channel, 'thresh', thresh, 'high', high_pixel, 'low', low_pixel, 'new exp', new_exp_factor, 'old exp', exp_array[channel_index])
+            print('channel', channel, 'thresh', thresh, 'high', high_pixel, 'low', low_pixel, 'new exp', new_exp_factor, 'normalized exp', lowest_exp)
             ratio_new_int_2_max_int = new_max_int_value / (0.8 * 65500)
+
             try:
                 frame_count = math.ceil(ratio_new_int_2_max_int + 0.05)
             except:
                 frame_count = 1
+
+            total_exposure_time = new_exp_factor
             new_exp_factor = new_exp_factor/frame_count
-            total_exposure_time = frame_count * new_exp_factor
 
             if total_exposure_time < 100:
                 total_exposure_time = 100
             else:
                 pass
 
-
-            if new_exp_factor > 500:
-                new_exp_factor = 500
-                frame_count = math.ceil(total_exposure_time/new_exp_factor)
+            #if exposure is really high most likely nothing is really there. Just take it one frame
+            if new_exp_factor > 1000:
+                new_exp_factor = 1000
+                frame_count = 1
 
             if new_exp_factor < 10:
                 new_exp_factor = 10
@@ -341,7 +342,6 @@ class cycif:
 
             if frame_count < 1:
                 frame_count = 1
-
 
             else:
                 pass
@@ -355,7 +355,7 @@ class cycif:
 
         print('auto_exp time elapsed', finish - start)
 
-        exp_array[0] = 50
+        exp_array[0] = 75
         numpy_path = experiment_directory + '/' + 'np_arrays'
         os.chdir(numpy_path)
         print(exp_array)
