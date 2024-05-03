@@ -40,11 +40,10 @@ np.save('exp_array.npy', exp_array)
 
 
 
-pump.liquid_action('Stain', stain_valve=12,incub_val=5)
-pump.liquid_action('Bleach')
-pump.liquid_action('Stain', stain_valve=12)
-#pump.liquid_action('Bleach')
-pump.liquid_action('Wash')
+for x in range(0, 9):
+    pump.liquid_action('Stain', stain_valve=12)
+    pump.liquid_action('Bleach')
+
 #microscope.auto_exposure(experiment_directory, x_frame_size=x_frame_size)
 #microscope.image_cycle_acquire(0, experiment_directory, z_slices, 'Bleach', offset_array, x_frame_size=x_frame_size, establish_fm_array=1, auto_focus_run=0, auto_expose_run=0)
 

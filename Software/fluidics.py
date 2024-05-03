@@ -305,7 +305,7 @@ class fluidics:
         bleach_valve = 11
         pbs_valve = 12
         bleach_time = 5  # minutes
-        stain_flow_time = 45  # seconds
+        stain_flow_time = 10  # seconds
         if heater_state == 0:
             stain_inc_time = incub_val  # minutes
         if heater_state == 1:
@@ -329,7 +329,7 @@ class fluidics:
 
             self.valve_select(bleach_valve)
             self.flow(flow_rate)
-            time.sleep(90)
+            time.sleep(10)
             self.flow(flow_rate_stop)
             # time.sleep(bleach_time*60)
             self.valve_select(pbs_valve)
