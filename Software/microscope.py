@@ -1468,7 +1468,7 @@ class cycif:
             else:
                 cycle_start_search = 1
         '''
-        cycle_end = 8
+        cycle_end = 2
         cycle_start = 1
 
         #self.tissue_binary_generate(experiment_directory)
@@ -1476,6 +1476,7 @@ class cycif:
 
         for cycle_number in range(cycle_start, cycle_end):
             self.focus_excel_creation(experiment_directory, cycle_number)
+            self.in_focus_excel_populate(experiment_directory, cycle_number, x_pixels)
             #self.infocus(experiment_directory, cycle_number, x_pixels, 1, 1)
             #self.illumination_flattening(experiment_directory, cycle_number, rolling_ball)
             #self.background_sub(experiment_directory, cycle_number, rolling_ball)
@@ -2203,6 +2204,106 @@ class cycif:
 
         wb.save(file_name)
 
+    def in_focus_excel_populate(self, experiment_directory, cycle_number, x_frame_size):
+
+        print('cycle', cycle_number)
+        channels = ['DAPI', 'A488', 'A555', 'A647']
+
+        dapi_im_path = experiment_directory + '/' + 'DAPI' '\Stain\cy_' + str(cycle_number) + '\Tiles'
+        tissue_path = experiment_directory + '/Tissue_Binary'
+
+        excel_folder_name = 'focus_grid_excel'
+        excel_file_name = 'focus_grid.xlsx'
+
+        # load numpy arrays in
+        numpy_path = experiment_directory + '/' + 'np_arrays'
+        os.chdir(numpy_path)
+        full_array = np.load('fm_array.npy', allow_pickle=False)
+        tissue_exist = np.load('tissue_exist.npy', allow_pickle=False)
+
+        numpy_x = full_array[0]
+        numpy_y = full_array[1]
+
+        y_tile_count = numpy_x.shape[0]
+        x_tile_count = numpy_y.shape[1]
+
+        z_slice_count = 7
+
+        #load in excel file
+        os.chdir(excel_folder_name)
+        wb = load_workbook(excel_file_name)
+
+        # make object to hold all tissue binary maps
+        tissue_binary_stack = np.random.rand(y_tile_count, x_tile_count, 2960, x_frame_size).astype('uint16')
+        for x in range(0, x_tile_count):
+            for y in range(0, y_tile_count):
+                if tissue_exist[y][x] == 1:
+                    os.chdir(tissue_path)
+                    file_name = 'x' + str(x) + '_y_' + str(y) + '_tissue.tif'
+                    image = tf.imread(file_name)
+                    tissue_binary_stack[y][x] = image
+                else:
+                    pass
+
+        for channel in channels:
+
+            #load in sheet
+            sheet_name = channel + '_cy' + str(cycle_number)
+            ws = wb[sheet_name]
+
+            # generate imstack of z slices for tile
+            im_path = experiment_directory + '/' + channel + '\Stain\cy_' + str(cycle_number) + '\Tiles'
+            os.chdir(im_path)
+
+            z_stack = np.random.rand(z_slice_count, 2960, x_frame_size).astype('float32')
+            for x in range(0, x_tile_count):
+                for y in range(0, y_tile_count):
+                    if tissue_exist[y][x] == 1:
+                        for z in range(0, z_slice_count):
+                            im_path = experiment_directory + '/' + channel + '\Stain\cy_' + str(cycle_number) + '\Tiles'
+                            os.chdir(im_path)
+                            file_name = 'z_' + str(z) + '_x' + str(x) + '_y_' + str(y) + '_c_' + str(channel) + '.tif'
+                            image = tf.imread(file_name)
+                            z_stack[z] = image
+
+                            # break into sub sections (2x2)
+
+                        number_bins = len(bin_values)
+                        brenner_sub_selector = np.random.rand(z_slice_count, number_bins, y_sub_section_count,
+                                                              x_sub_section_count)
+                        for z in range(0, z_slice_count):
+                            for y_sub in range(0, y_sub_section_count):
+                                for x_sub in range(0, x_sub_section_count):
+
+                                    y_end = int((y_sub + 1) * (2960 / y_sub_section_count))
+                                    y_start = int(y_sub * (2960 / y_sub_section_count))
+                                    x_end = int((x_sub + 1) * (x_frame_size / x_sub_section_count))
+                                    x_start = int(x_sub * (x_frame_size / x_sub_section_count))
+                                    sub_image = z_stack[z][y_start:y_end, x_start:x_end]
+
+                                    sub_tissue_bin = tissue_binary_stack[y][x][y_start:y_end, x_start:x_end]
+
+                                    for b in range(0, number_bins):
+                                        bin_value = int(bin_values[b])
+                                        score = self.focus_score(sub_image, bin_value, sub_tissue_bin)
+                                        # score = self.focus_score_post_processing(sub_image, bin_value)
+                                        # score = 500
+                                        brenner_sub_selector[z][b][y_sub][x_sub] = score
+
+                        reconstruct_array = self.brenner_reconstruct_array(brenner_sub_selector, z_slice_count,
+                                                                           number_bins)
+
+                        #transfer reconstruct array to excel sheet
+                        ws.cell(row=(y + 1),column=(x + 1)).value = reconstruct_array[y][x]
+
+                        # reconstruct_array = skimage.filters.median(reconstruct_array)
+                        #self.image_reconstructor(experiment_directory, reconstruct_array, channel, cycle_number,
+                                                 x_frame_size, y, x)
+
+                    else:
+                        pass
+
+
     def brenner_reconstruct_array(self, brenner_sub_selector, z_slice_count, number_bins):
         '''
         take in sub selector array and slice to find max values for brenner scores and then find mode for various bin levels
@@ -2224,7 +2325,6 @@ class cycif:
                     sub_scores = brenner_sub_selector[::, b, y, x]
                     max_score = np.max(sub_scores)
                     max_index = np.where(sub_scores == max_score)[0][0]
-                    print(sub_scores, max_index)
                     #max_index = 3
                     # temp_bin_max_indicies[b] = max_index
                 # sub_section_index_mode = stats.mode(temp_bin_max_indicies)[0][0]
