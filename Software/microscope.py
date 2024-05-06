@@ -1471,8 +1471,8 @@ class cycif:
         cycle_end = 8
         cycle_start = 1
 
-        self.tissue_binary_generate(experiment_directory)
-        self.tissue_exist_array_generate(experiment_directory)
+        #self.tissue_binary_generate(experiment_directory)
+        #self.tissue_exist_array_generate(experiment_directory)
 
         for cycle_number in range(cycle_start, cycle_end):
             self.focus_excel_creation(experiment_directory, cycle_number)
@@ -2174,8 +2174,8 @@ class cycif:
     #Find focus functions
     def focus_excel_creation(self, experiment_directory, cycle_number):
         os.chdir(experiment_directory)
-        folder_name = focus_grid_excel
-        file_name = 'focus_grid.xlxs'
+        folder_name = 'focus_grid_excel'
+        file_name = 'focus_grid.xlsx'
         channels = ['DAPI', 'A488', 'A555', 'A647']
 
         #make directory and set as active directory
@@ -2191,17 +2191,12 @@ class cycif:
         except:
             wb = Workbook()
 
-        #create sheets for cycle
-        number_sheets = len(wb.get_sheet_names)
-        number_sheets = number_sheets - 1 #correct for counting from zero
+        sheet_start = (cycle_number -1) * 4
 
-        if number_sheets == 0:
-            sheet_start = number_sheets
-        else:
-            sheet_start = number_sheets + 1
+
 
         channel_index = 0
-        for x in range(sheet_start, len(channels)):
+        for x in range(sheet_start, len(channels) + sheet_start):
             sheet_name = channels[channel_index] + '_cycle' + str(cycle_number)
             wb.create_sheet(sheet_name,x)
             channel_index += 1
