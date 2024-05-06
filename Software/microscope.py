@@ -1475,8 +1475,9 @@ class cycif:
         #self.tissue_exist_array_generate(experiment_directory)
 
         for cycle_number in range(cycle_start, cycle_end):
-            self.focus_excel_creation(experiment_directory, cycle_number)
-            self.in_focus_excel_populate(experiment_directory, cycle_number, x_pixels)
+            #self.focus_excel_creation(experiment_directory, cycle_number)
+            #self.in_focus_excel_populate(experiment_directory, cycle_number, x_pixels)
+            self.excel_2_focus(experiment_directory, cycle_number)
             #self.infocus(experiment_directory, cycle_number, x_pixels, 1, 1)
             #self.illumination_flattening(experiment_directory, cycle_number, rolling_ball)
             #self.background_sub(experiment_directory, cycle_number, rolling_ball)
@@ -2312,6 +2313,45 @@ class cycif:
         print('saving')
         wb.save(excel_file_name)
 
+    def excel_2_focus(self, experiment_directory, cycle_number):
+
+        # load numpy arrays in
+        numpy_path = experiment_directory + '/' + 'np_arrays'
+        os.chdir(numpy_path)
+        full_array = np.load('fm_array.npy', allow_pickle=False)
+        tissue_exist = np.load('tissue_exist.npy', allow_pickle=False)
+        excel_folder_name = 'focus_grid_excel'
+        excel_file_name = 'focus_grid.xlsx'
+
+
+        numpy_x = full_array[0]
+        numpy_y = full_array[1]
+
+        y_tile_count = numpy_x.shape[0]
+        x_tile_count = numpy_y.shape[1]
+
+        #load in excel file
+        os.chdir(experiment_directory + r'/' + excel_folder_name)
+        wb = load_workbook(excel_file_name)
+
+        channels = ['DAPI', 'A488', 'A555', 'A647']
+
+        for channel in channels:
+            sheet_name = channel + '_cycle' + str(cycle_number)
+            ws = wb[sheet_name]
+            for x in range(0, x_tile_count):
+                for y in range(0, y_tile_count):
+                    if tissue_exist[y][x] == 1:
+
+                        slice_number = ws.cell(row= (y+1), column = (x + 1)).value
+                        self.image_reconstructor(experiment_directory, slice_number, channel, cycle_number,x_frame_size, y, x)
+
+                    else:
+                        pass
+
+
+
+
 
     def brenner_reconstruct_array(self, brenner_sub_selector, z_slice_count, number_bins):
         '''
@@ -2362,22 +2402,22 @@ class cycif:
             # rebuilt image container
             rebuilt_image = np.random.rand(2960, x_frame_size).astype('float32')
 
-            for y in range(0, y_sections):
-                for x in range(0, x_sections):
-                    # define y and x start and ends subsection of rebuilt image
-                    y_end = int((y + 1) * (2960 / y_sections))
-                    y_start = int(y * (2960 / y_sections))
-                    x_end = int((x + 1) * (x_frame_size / x_sections))
-                    x_start = int(x * ((x_frame_size) / x_sections))
+            #for y in range(0, y_sections):
+            #    for x in range(0, x_sections):
+            #        # define y and x start and ends subsection of rebuilt image
+            #        y_end = int((y + 1) * (2960 / y_sections))
+            #        y_start = int(y * (2960 / y_sections))
+            #        x_end = int((x + 1) * (x_frame_size / x_sections))
+            #        x_start = int(x * ((x_frame_size) / x_sections))
 
                     # find z for specific subsection
-                    z_slice = reconstruct_array[y][x]
+                    #z_slice = reconstruct_array[y][x]
+            z_slice = reconstruct_array
                     #z_slice = 5
                     # load in image to extract for subsection
-                    file_name = 'z_' + str(z_slice) + '_x' + str(x_tile_number) + '_y_' + str(
-                        y_tile_number) + '_c_' + str(channel) + '.tif'
-                    image = tf.imread(file_name)
-                    rebuilt_image[y_start:y_end, x_start:x_end] = image[y_start:y_end, x_start:x_end]
+            file_name = 'z_' + str(z_slice) + '_x' + str(x_tile_number) + '_y_' + str(y_tile_number) + '_c_' + str(channel) + '.tif'
+            image = tf.imread(file_name)
+            rebuilt_image[y_start:y_end, x_start:x_end] = image[y_start:y_end, x_start:x_end]
 
             reconstruct_path = experiment_directory + '/' + channel + '/' + cycle_type + '\cy_' + str(
                 cycle_number) + '\Tiles' + '/focused'
