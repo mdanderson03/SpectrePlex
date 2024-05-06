@@ -1475,14 +1475,15 @@ class cycif:
         self.tissue_exist_array_generate(experiment_directory)
 
         for cycle_number in range(cycle_start, cycle_end):
-            self.infocus(experiment_directory, cycle_number, x_pixels, 1, 1)
-            self.illumination_flattening(experiment_directory, cycle_number, rolling_ball)
-            self.background_sub(experiment_directory, cycle_number, rolling_ball)
+            self.focus_excel_creation(experiment_directory, cycle_number)
+            #self.infocus(experiment_directory, cycle_number, x_pixels, 1, 1)
+            #self.illumination_flattening(experiment_directory, cycle_number, rolling_ball)
+            #self.background_sub(experiment_directory, cycle_number, rolling_ball)
             #self.illumination_flattening_per_tile(experiment_directory, cycle_number, rolling_ball)
             #self.background_sub(experiment_directory, cycle_number, rolling_ball)
             #self.brightness_uniformer(experiment_directory, cycle_number)
-            self.mcmicro_image_stack_generator(cycle_number, experiment_directory, x_pixels)
-            self.stage_placement(experiment_directory, cycle_number, x_pixels)
+            #self.mcmicro_image_stack_generator(cycle_number, experiment_directory, x_pixels)
+            #self.stage_placement(experiment_directory, cycle_number, x_pixels)
 
     def post_acquisition_processor_experimental(self, experiment_directory, x_pixels, rolling_ball = 1):
 
@@ -2169,6 +2170,43 @@ class cycif:
 
                     else:
                         pass
+
+    #Find focus functions
+    def focus_excel_creation(self, experiment_directory, cycle_number):
+        os.chdir(experiment_directory)
+        folder_name = focus_grid_excel
+        file_name = 'focus_grid.xlxs'
+        channels = ['DAPI', 'A488', 'A555', 'A647']
+
+        #make directory and set as active directory
+        try:
+            os.mkdir(folder_name)
+            os.chdir(folder_name)
+        except:
+            os.chdir(folder_name)
+
+        #Create new file or load it in
+        try:
+            wb = load_workbook(file_name)
+        except:
+            wb = Workbook()
+
+        #create sheets for cycle
+        number_sheets = len(wb.get_sheet_names)
+        number_sheets = number_sheets - 1 #correct for counting from zero
+
+        if number_sheets == 0:
+            sheet_start = number_sheets
+        else:
+            sheet_start = number_sheets + 1
+
+        channel_index = 0
+        for x in range(sheet_start, len(channels)):
+            sheet_name = channels[channel_index] + '_cycle' + str(cycle_number)
+            wb.create_sheet(sheet_name,x)
+            channel_index += 1
+
+        wb.save(file_name)
 
     def brenner_reconstruct_array(self, brenner_sub_selector, z_slice_count, number_bins):
         '''
