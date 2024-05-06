@@ -2204,10 +2204,12 @@ class cycif:
 
         wb.save(file_name)
 
-    def in_focus_excel_populate(self, experiment_directory, cycle_number, x_frame_size):
+    def in_focus_excel_populate(self, experiment_directory, cycle_number, x_frame_size, x_sub_section_count = 1, y_sub_section_count = 1):
 
         print('cycle', cycle_number)
         channels = ['DAPI', 'A488', 'A555', 'A647']
+
+        bin_values = [10]
 
         dapi_im_path = experiment_directory + '/' + 'DAPI' '\Stain\cy_' + str(cycle_number) + '\Tiles'
         tissue_path = experiment_directory + '/Tissue_Binary'
@@ -2230,7 +2232,7 @@ class cycif:
         z_slice_count = 7
 
         #load in excel file
-        os.chdir(excel_folder_name)
+        os.chdir(experiment_directory + r'/' + excel_folder_name)
         wb = load_workbook(excel_file_name)
 
         # make object to hold all tissue binary maps
@@ -2248,7 +2250,8 @@ class cycif:
         for channel in channels:
 
             #load in sheet
-            sheet_name = channel + '_cy' + str(cycle_number)
+
+            sheet_name = channel + '_cycle' + str(cycle_number)
             ws = wb[sheet_name]
 
             # generate imstack of z slices for tile
@@ -2294,14 +2297,20 @@ class cycif:
                                                                            number_bins)
 
                         #transfer reconstruct array to excel sheet
-                        ws.cell(row=(y + 1),column=(x + 1)).value = reconstruct_array[y][x]
+                        ws.cell(row=(y + 1),column=(x + 1)).value = reconstruct_array[0][0]
+
 
                         # reconstruct_array = skimage.filters.median(reconstruct_array)
                         #self.image_reconstructor(experiment_directory, reconstruct_array, channel, cycle_number,
-                                                 x_frame_size, y, x)
+                        #                         x_frame_size, y, x)
 
                     else:
                         pass
+
+
+        os.chdir(experiment_directory + '/' + excel_folder_name)
+        print('saving')
+        wb.save(excel_file_name)
 
 
     def brenner_reconstruct_array(self, brenner_sub_selector, z_slice_count, number_bins):
