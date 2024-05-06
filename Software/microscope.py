@@ -124,14 +124,14 @@ class cycif:
         if autofocus == 1 and auto_expose == 1:
             self.recursive_stardist_autofocus(experiment_directory, desired_cycle_count)
             self.establish_exp_arrays(experiment_directory)
-            self.auto_exposure(experiment_directory, x_frame_size, percentage_cut_off = 0.99999, target_percentage = 0.25)
+            self.auto_exposure(experiment_directory, x_frame_size, percentage_cut_off = 0.99, target_percentage = 0.25)
         if autofocus == 1 and auto_expose == 0:
             #self.DAPI_surface_autofocus(experiment_directory, 20, 2, x_frame_size)
             self.recursive_stardist_autofocus(experiment_directory, desired_cycle_count)
             #self.fm_channel_initial(experiment_directory, off_array, z_slices, 2)
         if autofocus == 0 and auto_expose == 1:
             self.establish_exp_arrays(experiment_directory)
-            self.auto_exposure(experiment_directory, x_frame_size, percentage_cut_off = 0.99999, target_percentage = 0.25)
+            self.auto_exposure(experiment_directory, x_frame_size, percentage_cut_off = 0.99, target_percentage = 0.25)
         else:
             pass
 
@@ -292,6 +292,7 @@ class cycif:
 
             #Normalize exposure pixels to lowest exp count
             channel_exp_times = exp_tile_logger[channel_index]
+            print('channel exp times', channel_exp_times)
             lowest_exp = np.min(channel_exp_times.ravel()[np.flatnonzero(channel_exp_times)])
             #add one to eliminate 0 values
             channel_exp_times = channel_exp_times + 1
@@ -445,7 +446,7 @@ class cycif:
 
         target_intensity = 65535 * 0.05
         max_time = 100
-        min_time = 15
+        min_time = 5
         trigger_state = 0
 
         x_frame_size = np.shape(image)[1]
@@ -453,7 +454,7 @@ class cycif:
         intensity, low_intensity = self.image_percentile_level(image, percentage_cutoff)
         #print(intensity)
 
-        while intensity > 50000:
+        while intensity > 60000 and exp_time >= min_time:
             exp_time = exp_time / 3
             core.set_exposure(exp_time)
             core.set_config("amp", 'high')
@@ -475,6 +476,11 @@ class cycif:
             else:
                 exp_time = int(exp_time * scale_factor)
 
+            if exp_time > max_time:
+                exp_time = max_time
+            elif max_time < min_time:
+                exp_time = min_time
+
         if trigger_state == 1:
 
             #gather new image
@@ -486,6 +492,7 @@ class cycif:
             #crop image to equal first image
             side_pixel_count = int((5056 - x_frame_size)/2)
             image = image[::, side_pixel_count:side_pixel_count + x_frame_size]
+            image[image > 60000] = 0
             image = np.nan_to_num(image, posinf=65500)
         else:
             pass
@@ -1464,12 +1471,12 @@ class cycif:
         cycle_end = 8
         cycle_start = 1
 
-        #self.tissue_binary_generate(experiment_directory)
-        #self.tissue_exist_array_generate(experiment_directory)
+        self.tissue_binary_generate(experiment_directory)
+        self.tissue_exist_array_generate(experiment_directory)
 
         for cycle_number in range(cycle_start, cycle_end):
-            #self.infocus(experiment_directory, cycle_number, x_pixels, 1, 1)
-            #self.illumination_flattening(experiment_directory, cycle_number, rolling_ball)
+            self.infocus(experiment_directory, cycle_number, x_pixels, 1, 1)
+            self.illumination_flattening(experiment_directory, cycle_number, rolling_ball)
             self.background_sub(experiment_directory, cycle_number, rolling_ball)
             #self.illumination_flattening_per_tile(experiment_directory, cycle_number, rolling_ball)
             #self.background_sub(experiment_directory, cycle_number, rolling_ball)

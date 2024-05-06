@@ -4,7 +4,7 @@ import os
 from autocyplex import *
 from optparse import OptionParser
 microscope = cycif() # initialize cycif object
-experiment_directory = r'E:\fluidics testing'
+experiment_directory = r'E:\3-5-24 healthy'
 pump = fluidics(experiment_directory, 6, 13, flow_control=1)
 
 z_slices = 7
@@ -44,10 +44,10 @@ np.save('exp_array.npy', exp_array)
 #pump.liquid_action('Wash')
 #microscope.image_cycle_acquire(1, experiment_directory, z_slices, 'Stain', offset_array, x_frame_size=x_frame_size, establish_fm_array=0, auto_focus_run=0, auto_expose_run=0)
 #pump.liquid_action('Bleach')
-#microscope.image_cycle_acquire(1, experiment_directory, z_slices, 'Bleach', offset_array, x_frame_size=x_frame_size, establish_fm_array=0, auto_focus_run=0, auto_expose_run=0)
+#microscope.image_cycle_acquire(1, experiment_directory, z_slices, 'Stain', offset_array, x_frame_size=x_frame_size, establish_fm_array=0, auto_focus_run=0, auto_expose_run=1)
 
-#for cycle in range(2, 9):
-#    microscope.full_cycle(experiment_directory, cycle, offset_array, cycle, pump, z_slices)
+for cycle in range(1, 9):
+    microscope.full_cycle(experiment_directory, cycle, offset_array, cycle, pump, z_slices)
 # end = time.time()
 # print(end-start)
 
