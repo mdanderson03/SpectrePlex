@@ -1468,8 +1468,8 @@ class cycif:
             else:
                 cycle_start_search = 1
         '''
-        cycle_end = 2
-        cycle_start = 1
+        cycle_end = 5
+        cycle_start = 2
 
         #self.tissue_binary_generate(experiment_directory)
         #self.tissue_exist_array_generate(experiment_directory)
@@ -1477,14 +1477,14 @@ class cycif:
         for cycle_number in range(cycle_start, cycle_end):
             #self.focus_excel_creation(experiment_directory, cycle_number)
             #self.in_focus_excel_populate(experiment_directory, cycle_number, x_pixels)
-            self.excel_2_focus(experiment_directory, cycle_number)
+            #self.excel_2_focus(experiment_directory, cycle_number)
             #self.infocus(experiment_directory, cycle_number, x_pixels, 1, 1)
             #self.illumination_flattening(experiment_directory, cycle_number, rolling_ball)
             #self.background_sub(experiment_directory, cycle_number, rolling_ball)
             #self.illumination_flattening_per_tile(experiment_directory, cycle_number, rolling_ball)
             #self.background_sub(experiment_directory, cycle_number, rolling_ball)
             #self.brightness_uniformer(experiment_directory, cycle_number)
-            #self.mcmicro_image_stack_generator(cycle_number, experiment_directory, x_pixels)
+            self.mcmicro_image_stack_generator(cycle_number, experiment_directory, x_pixels)
             #self.stage_placement(experiment_directory, cycle_number, x_pixels)
 
     def post_acquisition_processor_experimental(self, experiment_directory, x_pixels, rolling_ball = 1):
@@ -1534,13 +1534,13 @@ class cycif:
         tile_count = int(tissue_exist.sum())
 
         dapi_im_path = experiment_directory + '\DAPI\Stain\cy_' + str(
-            cycle_number) + '\Tiles' + '/focused_basic_corrected'
+            cycle_number) + '\Tiles' + '/focused'
         a488_im_path = experiment_directory + '\A488\Stain\cy_' + str(
-            cycle_number) + '\Tiles' + '/focused_flattened_subbed'
+            cycle_number) + '\Tiles' + '/focused_basic_corrected'
         a555_im_path = experiment_directory + '\A555\Stain\cy_' + str(
-            cycle_number) + '\Tiles' + '/focused_flattened_subbed'
+            cycle_number) + '\Tiles' + '/focused_basic_corrected'
         a647_im_path = experiment_directory + '\A647\Stain\cy_' + str(
-            cycle_number) + '\Tiles' + '/focused_flattened_subbed'
+            cycle_number) + '\Tiles' + '/focused_basic_corrected'
 
         mcmicro_path = experiment_directory + r'\mcmicro\raw'
 
@@ -1804,13 +1804,13 @@ class cycif:
                 if type == 'Stain':
                     if channel == 'DAPI':
                         im_path = experiment_directory + '/' + channel + "/" + type + '\cy_' + str(
-                            cycle_number) + '\Tiles' + r'\focused_basic_corrected'
+                            cycle_number) + '\Tiles' + r'\focused'
                     else:
                         im_path = experiment_directory + '/' + channel + "/" + type + '\cy_' + str(
-                            cycle_number) + '\Tiles' + '/focused_flattened_subbed'
+                            cycle_number) + '\Tiles' + '/focused_basic_corrected'
                 elif type == 'Bleach':
                     im_path = experiment_directory + '/' + channel + "/" + type + '\cy_' + str(
-                        cycle_number) + '\Tiles' + '/focused_flattened'
+                        cycle_number) + '\Tiles' + '/focused'
                 os.chdir(im_path)
 
                 # place images into large array
@@ -1823,7 +1823,8 @@ class cycif:
                             try:
                                 image = io.imread(filename)
                             except:
-                                image = cv2.imread(filename)[::,::,0]
+                                pass
+                                #image = cv2.imread(filename)[::,::,0]
 
                             # define subsection of large array that fits dimensions of single FOV
                             # x_center = numpy_x_pixels[y][x]
@@ -2313,7 +2314,7 @@ class cycif:
         print('saving')
         wb.save(excel_file_name)
 
-    def excel_2_focus(self, experiment_directory, cycle_number):
+    def excel_2_focus(self, experiment_directory, cycle_number, x_frame_size = 2960):
 
         # load numpy arrays in
         numpy_path = experiment_directory + '/' + 'np_arrays'
@@ -2385,8 +2386,8 @@ class cycif:
     def image_reconstructor(self, experiment_directory, reconstruct_array, channel, cycle_number, x_frame_size,
                             y_tile_number, x_tile_number):
 
-        y_sections = np.shape(reconstruct_array)[0]
-        x_sections = np.shape(reconstruct_array)[1]
+        #y_sections = np.shape(reconstruct_array)[0]
+        #x_sections = np.shape(reconstruct_array)[1]
 
         cycle_types = ['Stain', 'Bleach']
 
@@ -2417,13 +2418,13 @@ class cycif:
                     # load in image to extract for subsection
             file_name = 'z_' + str(z_slice) + '_x' + str(x_tile_number) + '_y_' + str(y_tile_number) + '_c_' + str(channel) + '.tif'
             image = tf.imread(file_name)
-            rebuilt_image[y_start:y_end, x_start:x_end] = image[y_start:y_end, x_start:x_end]
+            #rebuilt_image[y_start:y_end, x_start:x_end] = image[y_start:y_end, x_start:x_end]
 
             reconstruct_path = experiment_directory + '/' + channel + '/' + cycle_type + '\cy_' + str(
                 cycle_number) + '\Tiles' + '/focused'
             os.chdir(reconstruct_path)
             filename = 'x' + str(x_tile_number) + '_y_' + str(y_tile_number) + '_c_' + str(channel) + '.tif'
-            tf.imwrite(filename, rebuilt_image)
+            tf.imwrite(filename, image)
 
     def background_sub(self, experiment_directory, cycle, rolling_ball = 1):
 
