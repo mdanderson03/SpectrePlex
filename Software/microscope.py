@@ -1581,11 +1581,11 @@ class cycif:
         dapi_im_path = experiment_directory + '\DAPI\Stain\cy_' + str(
             cycle_number) + '\Tiles' + '/focused_basic_corrected'
         a488_im_path = experiment_directory + '\A488\Stain\cy_' + str(
-            cycle_number) + '\Tiles' + '/focused_basic_corrected'
+            cycle_number) + '\Tiles' + '/focused_flattened_subbed'
         a555_im_path = experiment_directory + '\A555\Stain\cy_' + str(
-            cycle_number) + '\Tiles' + '/focused_basic_corrected'
+            cycle_number) + '\Tiles' + '/focused_flattened_subbed'
         a647_im_path = experiment_directory + '\A647\Stain\cy_' + str(
-            cycle_number) + '\Tiles' + '/focused_basic_corrected'
+            cycle_number) + '\Tiles' + '/focused_flattened_subbed'
 
         mcmicro_path = experiment_directory + r'\mcmicro\raw'
 
@@ -1675,8 +1675,8 @@ class cycif:
         #    numpy_y[r][1] = numpy_y[r + 1][1] - y_gap - col_col_gap
 
         # sub in needed pixel size and pixel grid changes
-        ome.pixels.physical_size_x = 0.053
-        ome.pixels.physical_size_y = 0.053
+        ome.pixels.physical_size_x = 0.2
+        ome.pixels.physical_size_y = 0.2
         ome.pixels.size_x = x_frame_size
         ome.pixels.size_y = 2960
         # sub in other optional numbers to make metadata more accurate
@@ -1840,8 +1840,8 @@ class cycif:
         # load images into python
 
         channels = ['DAPI', 'A488', 'A555', 'A647']
-        #types = ['Stain', 'Bleach']
-        types = ['Stain']
+        types = ['Stain', 'Bleach']
+        #types = ['Stain']
 
         for type in types:
             for channel in channels:
@@ -1849,13 +1849,13 @@ class cycif:
                 if type == 'Stain':
                     if channel == 'DAPI':
                         im_path = experiment_directory + '/' + channel + "/" + type + '\cy_' + str(
-                            cycle_number) + '\Tiles' + r'\focused'
+                            cycle_number) + '\Tiles' + r'\focused_basic_corrected'
                     else:
                         im_path = experiment_directory + '/' + channel + "/" + type + '\cy_' + str(
-                            cycle_number) + '\Tiles' + '/focused_basic_corrected'
+                            cycle_number) + '\Tiles' + '/focused_flattened_subbed'
                 elif type == 'Bleach':
                     im_path = experiment_directory + '/' + channel + "/" + type + '\cy_' + str(
-                        cycle_number) + '\Tiles' + '/focused'
+                        cycle_number) + '\Tiles' + '/focused_basic_corrected'
                 os.chdir(im_path)
 
                 # place images into large array
