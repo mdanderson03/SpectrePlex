@@ -1485,7 +1485,7 @@ class cycif:
             #self.background_sub(experiment_directory, cycle_number, rolling_ball)
             #self.brightness_uniformer(experiment_directory, cycle_number)
             self.mcmicro_image_stack_generator(cycle_number, experiment_directory, x_pixels)
-            #self.stage_placement(experiment_directory, cycle_number, x_pixels)
+            self.stage_placement(experiment_directory, cycle_number, x_pixels)
 
     def post_acquisition_processor_experimental(self, experiment_directory, x_pixels, rolling_ball = 1):
 
@@ -1534,7 +1534,7 @@ class cycif:
         tile_count = int(tissue_exist.sum())
 
         dapi_im_path = experiment_directory + '\DAPI\Stain\cy_' + str(
-            cycle_number) + '\Tiles' + '/focused'
+            cycle_number) + '\Tiles' + '/focused_basic_corrected'
         a488_im_path = experiment_directory + '\A488\Stain\cy_' + str(
             cycle_number) + '\Tiles' + '/focused_basic_corrected'
         a555_im_path = experiment_directory + '\A555\Stain\cy_' + str(
@@ -1547,7 +1547,7 @@ class cycif:
         mcmicro_stack = np.random.rand(tile_count * 4, 2960, x_frame_size).astype('uint16')
 
         tile = 0
-        for x in range(0, x_tile_count):
+        for x in range(1, x_tile_count):
             for y in range(0, y_tile_count):
 
                 if tissue_exist[y][x] == 1:
@@ -1630,8 +1630,8 @@ class cycif:
         #    numpy_y[r][1] = numpy_y[r + 1][1] - y_gap - col_col_gap
 
         # sub in needed pixel size and pixel grid changes
-        ome.pixels.physical_size_x = 0.2
-        ome.pixels.physical_size_y = 0.2
+        ome.pixels.physical_size_x = 0.053
+        ome.pixels.physical_size_y = 0.053
         ome.pixels.size_x = x_frame_size
         ome.pixels.size_y = 2960
         # sub in other optional numbers to make metadata more accurate
