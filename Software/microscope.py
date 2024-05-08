@@ -132,6 +132,13 @@ class cycif:
         if autofocus == 0 and auto_expose == 1:
             self.establish_exp_arrays(experiment_directory)
             self.auto_exposure(experiment_directory, x_frame_size, percentage_cut_off = 0.99, target_percentage = 0.25)
+        if autofocus == 0 and auto_expose == 2:
+            self.establish_exp_arrays(experiment_directory)
+            self.exp_predetermined(experiment_directory, desired_cycle_count)
+        if autofocus == 1 and auto_expose == 2:
+                self.recursive_stardist_autofocus(experiment_directory, desired_cycle_count)
+                self.establish_exp_arrays(experiment_directory)
+                self.exp_predetermined(experiment_directory, desired_cycle_count)
         else:
             pass
 
@@ -499,6 +506,45 @@ class cycif:
 
 
         return image, exp_time
+
+    def exp_predetermined(self, experiment_directory, cycle_number):
+        # load in data structures
+        numpy_path = experiment_directory + '/' + 'np_arrays'
+        os.chdir(numpy_path)
+        file_name = 'fm_array.npy'
+        exp_filename = 'exp_array.npy'
+        fm_array = np.load(file_name, allow_pickle=False)
+        exp_array = np.load(exp_filename, allow_pickle=False)
+        channels = ['A488', 'A555', 'A647']
+        number_channels = len(channels[0])
+
+        #load in exp excel sheet
+        exp_path = experiment_directory + '/' + 'exposure_times'
+        os.chdir(exp_path)
+        wb = load_workbook('Exp.xlsx')
+        ws = wb.active
+        row_number = cycle_number + 2
+
+        a488_exp = ws.cell(row=row_number, column=4).value
+        a555_exp = _exp = ws.cell(row=row_number, column=6).value
+        a647_exp = ws.cell(row=row_number, column=8).value
+
+        a488_frames = ws.cell(row=row_number, column=5).value
+        a555_frames = _exp = ws.cell(row=row_number, column=7).value
+        a647_frames = ws.cell(row=row_number, column=9).value
+
+        exp_array[1] = a488_exp
+        exp_array[2] = a555_exp
+        exp_array[3] = a647_exp
+
+        fm_array[12][0][0] = a488_frames
+        fm_array[13][0][0] = a555_frames
+        fm_array[14][0][0] = a647_frames
+
+        #save exp and fm arrays
+        os.chdir(numpy_path)
+        np.save(file_name, fm_array)
+        np.save(exp_filename, exp_array)
 
     def exp_logbook(self, experiment_directory, cycle):
         '''
@@ -1329,7 +1375,7 @@ class cycif:
             pump.liquid_action('Stain', incub_val=incub_val, stain_valve=stain_valve)  # nuc is valve=7, pbs valve=8, bleach valve=1 (action, stain_valve, heater state (off = 0, on = 1))
             # print(status_str)
             self.image_cycle_acquire(cycle_number, experiment_directory, z_slices, 'Stain', offset_array,x_frame_size=x_frame_size, establish_fm_array=0, auto_focus_run=1,
-                                     auto_expose_run=1)
+                                     auto_expose_run=2)
             time.sleep(5)
 
             # print(status_str)
@@ -1341,7 +1387,6 @@ class cycif:
             time.sleep(3)
 
         # self.post_acquisition_processor(experiment_directory, x_frame_size)
-
 
 
     ######Folder System Generation########################################################
