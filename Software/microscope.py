@@ -1121,8 +1121,11 @@ class cycif:
                 super_image[start_y:end_y, start_x:end_x] = tile_image
 
         labelled_super = skimage.measure.label(super_image)
-        io.imshow(labelled_super)
-        io.show()
+        props = skimage.measure.regionprops(labelled_super)
+        print(getattr(props[0], 'area'))
+        print(props[0]['area'])
+        #io.imshow(labelled_super)
+        #io.show()
 
 
 
