@@ -1083,6 +1083,48 @@ class cycif:
 
         return image_2
 
+    def tissue_cluster_filter(self, experiment_directory, x_frame_size):
+        '''
+        Looks at tissue binary images, combines them and determines the largest x clusters in
+        the joined image and removes the rest. In addition, this will fill in holes
+        :param experiment_directory:
+        :return:
+        '''
+
+        # load numpy arrays in
+        numpy_path = experiment_directory + '/' + 'np_arrays'
+        os.chdir(numpy_path)
+        full_array = np.load('fm_array.npy', allow_pickle=False)
+
+        numpy_x = full_array[0]
+        numpy_y = full_array[1]
+
+        y_tile_count = numpy_x.shape[0]
+        x_tile_count = numpy_y.shape[1]
+
+        file_path = experiment_directory + '/Tissue_Binary'
+        os.chdir(file_path)
+
+        #make image that can hold individual images
+        super_image = np.ones((y_tile_count * 2960, x_tile_count * x_frame_size))
+
+        for y in range(0, y_tile_count):
+            for x in range(0, x_tile_count):
+                filename = 'x' + str(x) + '_y_' +str(y) + '_tissue.tif'
+                tile_image = io.imread(filename)
+
+                start_x = (x - 1) * x_frame_size
+                end_x = start_x + x_frame_size
+                start_y = (y - 1) * 2960
+                end_y = y + 2960
+
+                super_image[start_y:end_y, start_x:end_x] = tile_image
+
+        io.imshow(super_image)
+        io.show()
+
+
+
     def tissue_binary_generate(self, experiment_directory):
         '''
         Generates tissue binary maps from star dist binary maps
