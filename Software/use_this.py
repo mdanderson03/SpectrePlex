@@ -4,8 +4,8 @@ import os
 from autocyplex import *
 from optparse import OptionParser
 microscope = cycif() # initialize cycif object
-experiment_directory = r'E:\10-5-24 celiac'
-pump = fluidics(experiment_directory, 6, 13, flow_control=1)
+experiment_directory = r'E:\delete'
+#pump = fluidics(experiment_directory, 6, 13, flow_control=1)
 
 z_slices = 7
 x_frame_size = 2960
@@ -41,8 +41,8 @@ focus_position = 85
 #for cycle in range(3, 9):
 #   microscope.full_cycle(experiment_directory, cycle, offset_array, cycle, pump, z_slices)
 
-
-microscope.post_acquisition_processor(experiment_directory, x_frame_size, rolling_ball=0)
+microscope.fm_grid_readjuster(experiment_directory, x_frame_size)
+#microscope.post_acquisition_processor(experiment_directory, x_frame_size, rolling_ball=0)
 
 
 
