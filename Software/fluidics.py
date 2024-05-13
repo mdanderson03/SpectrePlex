@@ -1,7 +1,7 @@
 import datetime
 import os
 import math
-
+import kasa
 import numpy as np
 import time
 import matplotlib.pyplot as plt
@@ -205,7 +205,48 @@ class fluidics:
             else:
                 pass
 
+    def flow_meter_freeze_check(self):
+        '''
+        checks if flow meter value is changing (ie checks 3 times and if all are the same value,
+        says that the meter is frozen). If frozen, asks to reboot OB1
+        :return:
+        '''
 
+        #make ctypes structures
+        data_sens = c_double()
+        data_reg = c_double()
+        set_channel = int(1)  # convert to int
+        set_channel = c_int32(set_channel)  # convert to c_int32
+
+        #make triple value array
+        flows = np.zeros((3))
+        #populate with 3 values with second spacing
+        for x in range(0,3):
+            error = OB1_Get_Remote_Data(self.pump_ID, set_channel, byref(data_reg), byref(data_sens))
+            current_flow_rate = data_sens.value
+            self.fluidics_logger('checking if frozen_' + str(OB1_Get_Remote_Data), error, current_flow_rate)
+            flows[x] = current_flow_rate
+
+        #determine if frozen, ie see how many unique values there are
+        unique_value_count = np.unique(flows)
+
+        if unique_value_count == 1:
+            self.fluidics_logger('rebooting ob1', error, current_flow_rate)
+            self.ob1_reboot()
+        else:
+            pass
+
+    def ob1_reboot(self):
+
+        kasa --type strip --host < addr > off --name 'Socket1'  # turns off socket named 'Socket1'
+        time.sleep(2)
+        kasa --type strip --host < addr > on --name 'Socket1'  # turns off socket named 'Socket1'
+
+    def filter_pump(self, filtering_time):
+
+            kasa --host < addr > off --name 'Socket1'  # turns off socket named 'Socket1'
+            time.sleep(filtering_time)
+            kasa --host < addr > on --name 'Socket1'  # turns off socket named 'Socket1'
 
     def ob1_end(self):
 
