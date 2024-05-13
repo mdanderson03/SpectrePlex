@@ -50,12 +50,11 @@ def col_row_nonzero(image):
 
     return row_nonzero, column_nonzero
 
-
 def fm_grid_readjuster(experiment_directory, x_frame_size):
     numpy_path = experiment_directory + r'\np_arrays'
     tissue_path = experiment_directory + r'\Tissue_Binary'
 
-    os.chdir(numpy_folder)
+    os.chdir(numpy_path)
     file_name = 'fm_array.npy'
     fm_array = np.load(file_name, allow_pickle=False)
 
@@ -71,8 +70,8 @@ def fm_grid_readjuster(experiment_directory, x_frame_size):
 
     found_upper_y = 0
     found_lower_y = 0
-    found_upper_x = 0
-    found_lower_x = 0
+    found_right_x = 0
+    found_left_x = 0
 
 
     # find upper and lower tissue containing tiles and what rows within them where the tissue starts showing up
@@ -84,9 +83,9 @@ def fm_grid_readjuster(experiment_directory, x_frame_size):
                 # populate row image
                 filename = 'x' + str(x) + '_y_' + str(y) + '_tissue.tif'
                 individual_image = io.imread(filename)
-                start_column = x * x_frame_size
-                end_column = start_column + x_frame_size
-                row_image[::, start_column:end_column] = individual_image
+                start = x * x_frame_size
+                end = start + x_frame_size
+                row_image[::, start:end] = individual_image
             row_array, col_array = col_row_nonzero(row_image)
             try:
                 row_indicies = np.nonzero(row_array)[0]
@@ -106,9 +105,9 @@ def fm_grid_readjuster(experiment_directory, x_frame_size):
                 # populate row image
                 filename = 'x' + str(x) + '_y_' + str(y) + '_tissue.tif'
                 individual_image = io.imread(filename)
-                start_column = x * x_frame_size
-                end_column = start_column + x_frame_size
-                row_image[::, start_column:end_column] = individual_image
+                start = x * x_frame_size
+                end = start + x_frame_size
+                row_image[::, start:end] = individual_image
 
             row_image = np.flipud(row_image)
             row_array, col_array = col_row_nonzero(row_image)
@@ -124,24 +123,24 @@ def fm_grid_readjuster(experiment_directory, x_frame_size):
             pass
 
 
-    #upper column
+    #right column
     for x in range(x_tiles - 1, -1, -1):
-        if found_upper_x == 0:
+        if found_right_x == 0:
             for y in range(0, y_tiles):
                 # populate row image
                 filename = 'x' + str(x) + '_y_' + str(y) + '_tissue.tif'
                 individual_image = io.imread(filename)
-                start_row = y * x_frame_size
-                end_row = start_row + 2960
-                col_image[start_row:end_row, ::] = individual_image
+                start = y * x_frame_size
+                end = start + 2960
+                col_image[start:end, ::] = individual_image
 
             col_image = np.fliplr(col_image)
             row_array, col_array = col_row_nonzero(col_image)
             try:
                 col_indicies = np.nonzero(col_array)[0]
-                upper_x_index = x_frame_size - col_indicies[0]
-                upper_x_tile = x
-                found_upper_x = 1
+                right_x_index = x_frame_size - col_indicies[0]
+                right_x_tile = x
+                found_right_x = 1
             except:
                 pass
 
@@ -150,21 +149,21 @@ def fm_grid_readjuster(experiment_directory, x_frame_size):
 
     #lower column
     for x in range(0, x_tiles):
-        if found_lower_x == 0:
+        if found_left_x == 0:
             for y in range(0, y_tiles):
                 # populate row image
                 filename = 'x' + str(x) + '_y_' + str(y) + '_tissue.tif'
                 individual_image = io.imread(filename)
-                start_row = y * x_frame_size
-                end_row = start_row + 2960
-                col_image[start_row:end_row, ::] = individual_image
+                start = y * x_frame_size
+                end = start + 2960
+                col_image[start:end, ::] = individual_image
 
             row_array, col_array = col_row_nonzero(col_image)
             try:
                 col_indicies = np.nonzero(col_array)[0]
-                lower_x_index = col_indicies[0]
-                lower_x_tile = x
-                found_lower_x = 1
+                left_x_index = col_indicies[0]
+                left_x_tile = x
+                found_left_x = 1
             except:
                 pass
 
@@ -172,24 +171,36 @@ def fm_grid_readjuster(experiment_directory, x_frame_size):
             pass
 
 
-    # determine new X and Y grid size
+    # determine new X and Y grid size (physical displacement in microns)
 
-    x_tile_range = fm_array[0][0][upper_x_tile] - fm_array[0][0][lower_x_tile] + (x_frame_size/2 - lower_x_index) * 0.204 + (upper_x_index - x_frame_size/2) * 0.204
+    x_tile_range = fm_array[0][0][right_x_tile] - fm_array[0][0][left_x_tile] + (x_frame_size/2 - left_x_index) * 0.204 + (right_x_index - x_frame_size/2) * 0.204
     y_tile_range = fm_array[1][lower_y_tile][0] - fm_array[1][upper_y_tile][0] + (2960 / 2 - upper_y_index) * 0.204 + (lower_y_index - 2960 / 2) * 0.204
 
     # determine min number tiles to encompass tissue
 
-    x_new_tiles = math.ceil(x_tile_range/(x_frame_size * 0.9 * 0.204))
-    y_new_tiles = math.ceil(y_tile_range / (2960 * 0.9 * 0.204))
+    x_new_tiles = math.ceil( ((x_tile_range/(x_frame_size * 0.204)) - 1)/0.9 + 1 )
+    y_new_tiles = math.ceil( ((y_tile_range/(2960 * 0.204)) - 1)/0.9 + 1 )
 
     # determine displacement vector for xy grid
     margin_frame_x_2_tissue = (((x_new_tiles - 1) * 0.9 + 1) * x_frame_size * 0.204 - x_tile_range)/2
-    displacement_x = (lower_x_index * 0.204 - margin_frame_x_2_tissue)
+    displacement_x = (margin_frame_x_2_tissue - left_x_index * 0.204)
 
     margin_frame_y_2_tissue = (((y_new_tiles - 1) * 0.9 + 1) * 2960 * 0.204 - y_tile_range) / 2
-    displacement_y = (upper_y_index * 0.204 - margin_frame_y_2_tissue)
+    displacement_y = (margin_frame_y_2_tissue - upper_y_index * 0.204)
+
+    #Alter fm_array tiles
+    fm_array_adjusted = fm_array[::][upper_y_tile:(upper_y_tile + y_new_tiles), left_x_tile:(left_x_tile + x_new_tiles)]
+
+    #add in display vector
+    fm_array_adjusted[1] = fm_array_adjusted[1] + displacement_x
+    fm_array_adjusted[0] = fm_array_adjusted[0] + displacement_y
+
+    #save fm_array
+
+    np.save(filename, fm_array_adjusted)
+
     print(displacement_x, displacement_y)
-    print(fm_array[0][upper_y_tile:y_new_tiles, lower_x_tile:x_new_tiles])
+    print(fm_array_adjusted[0])
 
 
 
