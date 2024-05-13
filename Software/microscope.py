@@ -24,12 +24,12 @@ from pywt import wavedecn, waverecn
 from scipy.ndimage import gaussian_filter
 from joblib import Parallel, delayed
 import multiprocessing
-import matplotlib.pyplot as plt
+
 
 
 magellan = Magellan()
 core = Core()
-studio = Studio()
+
 
 class cycif:
 
@@ -62,8 +62,12 @@ class cycif:
         b = image[:-derivative_jump, :]
         b = b.astype('float64')
         b = np.nan_to_num(b, posinf=65000)
-        c = (a - b)/((a+b)/2)
-        c = c / 1000 * c / 1000
+        a = np.log(a)
+        b = np.log(b)
+        c = a-b
+        c = c**2
+        #c = (a - b)/((a+b)/2)
+        #c = c / 1000 * c / 1000
         labels = labels[derivative_jump:, :]
         c = c * labels
         f_score_shadow = c.sum(dtype=np.float64)
@@ -101,13 +105,14 @@ class cycif:
     #########################################################
 
     def establish_fm_array(self, experiment_directory, desired_cycle_count, z_slices, off_array, initialize=0,
-                           x_frame_size=5056, autofocus=0, auto_expose=0):
+                           x_frame_size=5056, autofocus=0, auto_expose=0, focus_position = 'none'):
 
+        self.auto_f = autofocus
         self.file_structure(experiment_directory, desired_cycle_count)
 
         if initialize == 1:
             xy_points = self.tile_xy_pos('New Surface 1')
-            xyz_points = self.nonfocus_tile_DAPI(xy_points, experiment_directory)
+            xyz_points = self.nonfocus_tile_DAPI(xy_points, experiment_directory, focus_position=focus_position)
             self.tile_pattern(xyz_points, experiment_directory)
             self.fm_channel_initial(experiment_directory, off_array, z_slices)
             self.establish_exp_arrays(experiment_directory)
@@ -122,12 +127,18 @@ class cycif:
             pass
 
         if autofocus == 1 and auto_expose == 1:
-            self.recursive_stardist_autofocus(experiment_directory, desired_cycle_count)
+            if desired_cycle_count == 0:
+                self.recursive_stardist_autofocus(experiment_directory, desired_cycle_count)
+            else:
+                pass
             self.establish_exp_arrays(experiment_directory)
             self.auto_exposure(experiment_directory, x_frame_size, percentage_cut_off = 0.99, target_percentage = 0.25)
         if autofocus == 1 and auto_expose == 0:
             #self.DAPI_surface_autofocus(experiment_directory, 20, 2, x_frame_size)
-            self.recursive_stardist_autofocus(experiment_directory, desired_cycle_count)
+            if desired_cycle_count == 0:
+                self.recursive_stardist_autofocus(experiment_directory, desired_cycle_count)
+            else:
+                pass
             #self.fm_channel_initial(experiment_directory, off_array, z_slices, 2)
         if autofocus == 0 and auto_expose == 1:
             self.establish_exp_arrays(experiment_directory)
@@ -136,7 +147,10 @@ class cycif:
             self.establish_exp_arrays(experiment_directory)
             self.exp_predetermined(experiment_directory, desired_cycle_count)
         if autofocus == 1 and auto_expose == 2:
+            if desired_cycle_count == 0:
                 self.recursive_stardist_autofocus(experiment_directory, desired_cycle_count)
+            else:
+                pass
                 self.establish_exp_arrays(experiment_directory)
                 self.exp_predetermined(experiment_directory, desired_cycle_count)
         else:
@@ -801,7 +815,7 @@ class cycif:
 
         np.save('fm_array.npy', new_fm_array)
 
-    def nonfocus_tile_DAPI(self, full_array_no_pattern, experiment_directory):
+    def nonfocus_tile_DAPI(self, full_array_no_pattern, experiment_directory, focus_position = 'none'):
         '''
         Makes micromagellen z the focus position at each XY point for DAPI
         auto_focus and outputs the paired in focus z coordinate
@@ -816,7 +830,11 @@ class cycif:
         os.chdir(numpy_path)
         file_name = 'fm_array.npy'
 
-        z_pos = magellan.get_surface('New Surface 1').get_points().get(0).z
+        if focus_position == 'none':
+            z_pos = magellan.get_surface('New Surface 1').get_points().get(0).z
+        else:
+            z_pos = focus_position
+
         num = np.shape(full_array_no_pattern)[1]
         z_temp = []
         for q in range(0, num):
@@ -940,7 +958,7 @@ class cycif:
 
         return index
 
-    def generate_nuc_mask(self, experiment_directory):
+    def generate_nuc_mask(self, experiment_directory, cycle_number):
 
         model = StarDist2D.from_pretrained('2D_versatile_fluo')
 
@@ -948,14 +966,19 @@ class cycif:
         numpy_path = experiment_directory + '/' + 'np_arrays'
         os.chdir(numpy_path)
         full_array = np.load('fm_array.npy', allow_pickle=False)
+        tissue_fm = full_array[10]
 
         numpy_x = full_array[0]
         numpy_y = full_array[1]
 
         y_tile_count = numpy_x.shape[0]
         x_tile_count = numpy_y.shape[1]
-
-        dapi_im_path = experiment_directory + '/' + 'DAPI' '\Bleach\cy_' + str(0) + r'\Tiles'
+        if cycle_number == 0:
+            dapi_im_path = experiment_directory + '/' + 'DAPI' '\Bleach\cy_' + str(cycle_number) + r'\Tiles'
+        elif cycle_number == 1:
+            dapi_im_path = experiment_directory + '/' + 'DAPI' '\Bleach\cy_' + str(cycle_number - 1) + r'\Tiles'
+        else:
+            dapi_im_path = experiment_directory + '/' + 'DAPI' '\Stain\cy_' + str(cycle_number - 1) + r'\Tiles'
         os.chdir(experiment_directory)
         try:
             os.mkdir('Labelled_Nuc')
@@ -966,15 +989,18 @@ class cycif:
 
         for x in range(0, x_tile_count):
             for y in range(0, y_tile_count):
-                os.chdir(dapi_im_path)
-                file_name = 'z_' + str(4) + '_x' + str(x) + '_y_' + str(y) + '_c_DAPI.tif'
-                labelled_file_name = 'x' + str(x) + '_y_' + str(y) + '_c_DAPI.tif'
-                img = io.imread(file_name)
-                labels, _ = model.predict_instances(normalize(img))
-                labels[labels > 0] = 1
+                if tissue_fm[y][x] == 1:
+                    os.chdir(dapi_im_path)
+                    file_name = 'z_' + str(4) + '_x' + str(x) + '_y_' + str(y) + '_c_DAPI.tif'
+                    labelled_file_name = 'x' + str(x) + '_y_' + str(y) + '_c_DAPI.tif'
+                    img = io.imread(file_name)
+                    labels, _ = model.predict_instances(normalize(img))
+                    labels[labels > 0] = 1
 
-                os.chdir(labelled_path)
-                io.imsave(labelled_file_name, labels)
+                    os.chdir(labelled_path)
+                    io.imsave(labelled_file_name, labels)
+                else:
+                    pass
 
     def recursive_stardist_autofocus(self, experiment_directory, cycle, slice_gap=2):
         '''
@@ -988,21 +1014,21 @@ class cycif:
         :param cycle:
         :return:
         '''
+        starting_time = time.time()
+
         model = StarDist2D.from_pretrained('2D_versatile_fluo')
 
         labelled_path = experiment_directory + '/Labelled_Nuc'
-        if cycle == 1:
+        if cycle == 0:
+            dapi_im_path = experiment_directory + '/' + 'DAPI' '\Bleach\cy_' + str(0) + '\Tiles'
+        elif cycle == 1:
             dapi_im_path = experiment_directory + '/' + 'DAPI' '\Bleach\cy_' + str(cycle - 1) + '\Tiles'
         else:
             dapi_im_path = experiment_directory + '/' + 'DAPI' '\Stain\cy_' + str(cycle - 1) + '\Tiles'
 
-        # make nuclear masks if cycle 0
 
-        if cycle == 1:
-            self.generate_nuc_mask(experiment_directory)
-            self.tissue_region_identifier(experiment_directory)
-        else:
-            pass
+        self.generate_nuc_mask(experiment_directory, cycle)
+        #self.tissue_region_identifier(experiment_directory)
 
 
         # load numpy arrays in (focus map)
@@ -1022,15 +1048,26 @@ class cycif:
         z_middle = int(z_count / 2)  # if odd, z_count will round down. Since index counts from 0, it is the middle
 
         step_size = 17  # brenner score step size
-        x_axis = np.array([0,1,2,3,4,5,6,7,8])
+        x_axis = np.linspace(0,z_count, z_count)
 
 
         # make numpy array to hold scores in for each tile
         score_array = np.random.rand(z_count)
 
+        stain_time = 0
+
         # iterate through tiles and find index of slice most in focus
         for x in range(0, x_tile_count):
             for y in range(0, y_tile_count):
+
+                if cycle != 0:
+                    current_time = time.time()
+                    new_stain_time = math.floor((current_time - starting_time)/60)
+                    if new_stain_time != stain_time:
+                        print('Staining Time Elapsed ', new_stain_time)
+                        stain_time = new_stain_time
+                    else:
+                        pass
 
                 if tissue_fm[y][x] == 1:
 
@@ -1067,6 +1104,13 @@ class cycif:
         numpy_path = experiment_directory + '/' + 'np_arrays'
         os.chdir(numpy_path)
         np.save('fm_array.npy', fm_array)
+
+        ending_time = time.time()
+        total_time_elapsed = ending_time - starting_time
+        total_time_elapsed = int(total_time_elapsed)
+
+        return total_time_elapsed
+
 
     ############################################
     # Using core snap and not pycromanager acquire
@@ -1329,11 +1373,11 @@ class cycif:
         return
 
     def image_cycle_acquire(self, cycle_number, experiment_directory, z_slices, stain_bleach, offset_array, x_frame_size=5056, establish_fm_array=0, auto_focus_run=0, auto_expose_run=0,
-                            channels=['DAPI', 'A488', 'A555', 'A647']):
+                            channels=['DAPI', 'A488', 'A555', 'A647'], focus_position = 'none'):
 
         self.establish_fm_array(experiment_directory, cycle_number, z_slices, offset_array,
                                 initialize=establish_fm_array, x_frame_size=x_frame_size, autofocus=auto_focus_run,
-                                auto_expose=auto_expose_run)
+                                auto_expose=auto_expose_run, focus_position = focus_position)
 
 
         self.image_capture(experiment_directory, 'DAPI', 50, 0, 0, 0)  # wake up lumencor light engine
@@ -1361,18 +1405,19 @@ class cycif:
         # self.marker_excel_file_generation(experiment_directory, cycle_number)
 
 
-    def full_cycle(self, experiment_directory, cycle_number, offset_array, stain_valve, fluidics_object, z_slices, incub_val=45, x_frame_size=2960):
+    def full_cycle(self, experiment_directory, cycle_number, offset_array, stain_valve, fluidics_object, z_slices, incub_val=45, x_frame_size=2960, focus_position = 'none'):
 
         pump = fluidics_object
 
         if cycle_number == 0:
             self.image_cycle_acquire(cycle_number, experiment_directory, z_slices, 'Bleach', offset_array, x_frame_size=x_frame_size, establish_fm_array=1, auto_focus_run=0,
-                                     auto_expose_run=0)
+                                     auto_expose_run=0, channels = ['DAPI'], focus_position = focus_position)
+            self.image_cycle_acquire(cycle_number, experiment_directory, z_slices, 'Bleach', offset_array,x_frame_size=x_frame_size, establish_fm_array=0, auto_focus_run=1,auto_expose_run=0, focus_position=focus_position)
         else:
 
             # print(status_str)
             print('cycle', cycle_number)
-            pump.liquid_action('Stain', incub_val=incub_val, stain_valve=stain_valve)  # nuc is valve=7, pbs valve=8, bleach valve=1 (action, stain_valve, heater state (off = 0, on = 1))
+            pump.liquid_action('Stain', incub_val=incub_val, stain_valve=stain_valve,  microscope_object = self, experiment_directory=experiment_directory)  # nuc is valve=7, pbs valve=8, bleach valve=1 (action, stain_valve, heater state (off = 0, on = 1))
             # print(status_str)
             self.image_cycle_acquire(cycle_number, experiment_directory, z_slices, 'Stain', offset_array,x_frame_size=x_frame_size, establish_fm_array=0, auto_focus_run=1,
                                      auto_expose_run=2)
@@ -1513,7 +1558,7 @@ class cycif:
             else:
                 cycle_start_search = 1
         '''
-        cycle_end = 9
+        cycle_end = 8
         cycle_start = 1
 
         self.tissue_binary_generate(experiment_directory)
@@ -1525,9 +1570,9 @@ class cycif:
             self.excel_2_focus(experiment_directory, cycle_number)
             #self.infocus(experiment_directory, cycle_number, x_pixels, 1, 1)
             self.illumination_flattening(experiment_directory, cycle_number, rolling_ball)
-            #self.background_sub(experiment_directory, cycle_number, rolling_ball)
-            #self.illumination_flattening_per_tile(experiment_directory, cycle_number, rolling_ball)
             self.background_sub(experiment_directory, cycle_number, rolling_ball)
+            #self.illumination_flattening_per_tile(experiment_directory, cycle_number, rolling_ball)
+            #self.background_sub(experiment_directory, cycle_number, rolling_ball)
             #self.brightness_uniformer(experiment_directory, cycle_number)
             self.mcmicro_image_stack_generator(cycle_number, experiment_directory, x_pixels)
             self.stage_placement(experiment_directory, cycle_number, x_pixels)
@@ -1592,7 +1637,7 @@ class cycif:
         mcmicro_stack = np.random.rand(tile_count * 4, 2960, x_frame_size).astype('uint16')
 
         tile = 0
-        for x in range(1, x_tile_count):
+        for x in range(0, x_tile_count):
             for y in range(0, y_tile_count):
 
                 if tissue_exist[y][x] == 1:

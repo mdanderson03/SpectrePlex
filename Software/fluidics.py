@@ -1,5 +1,6 @@
 import datetime
 import os
+import math
 
 import numpy as np
 import time
@@ -40,7 +41,7 @@ class fluidics:
             set_channel_regulator = c_int32(set_channel_regulator)  # convert to c_int32
             set_channel_sensor = int(1)
             set_channel_sensor = c_int32(set_channel_sensor)  # convert to c_int32
-            PID_Add_Remote(Instr_ID.value, set_channel_regulator, Instr_ID.value, set_channel_sensor, 0.9, 0.004, 1)
+            PID_Add_Remote(Instr_ID.value, set_channel_regulator, Instr_ID.value, set_channel_sensor, 0.9/22.5, 0.004/.03846, 1)
         else:
             pass
 
@@ -300,11 +301,11 @@ class fluidics:
             plt.plot(time_points, flow_points, 'o', color='black')
             plt.show()
 
-    def liquid_action(self, action_type, stain_valve=0, incub_val=45, heater_state=0):
+    def liquid_action(self, action_type, stain_valve=0, incub_val=45, heater_state=0, microscope_object = 0, experiment_directory = 0):
 
         bleach_valve = 11
         pbs_valve = 12
-        bleach_time = 5  # minutes
+        bleach_time = 15  # minutes
         stain_flow_time = 45  # seconds
         if heater_state == 0:
             stain_inc_time = incub_val  # minutes
@@ -344,13 +345,27 @@ class fluidics:
 
         elif action_type == 'Stain':
 
+            stain_start = 0
+
             self.valve_select(stain_valve)
             self.flow(flow_rate)
             time.sleep(stain_flow_time)
             self.flow(flow_rate_stop)
             self.valve_select(pbs_valve)
 
-            for x in range(0, stain_inc_time):
+            if microscope_object != 0:
+                microscope = microscope_object
+
+                time_elapsed = microscope.recursive_stardist_autofocus(experiment_directory, stain_valve)  # int time in seconds
+                whole_minutes_elapsed = math.floor(time_elapsed/60)
+                seconds_remaining = time_elapsed % 60 # remainder in seconds of time remaining after dividing by 60
+                print(seconds_remaining)
+                time.sleep(seconds_remaining)
+                stain_start = int(whole_minutes_elapsed + 1)
+
+            for x in range(stain_start, stain_inc_time):
+
+
                 time.sleep(60)
                 print('Staining Time Elapsed ', x)
 
