@@ -1120,7 +1120,8 @@ class cycif:
 
                 super_image[start_y:end_y, start_x:end_x] = tile_image
 
-        io.imshow(super_image)
+        labelled_super = skimage.measure.label(super_image)
+        io.imshow(labelled_super)
         io.show()
 
 
