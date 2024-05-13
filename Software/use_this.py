@@ -41,9 +41,9 @@ focus_position = 85
 #for cycle in range(3, 9):
 #   microscope.full_cycle(experiment_directory, cycle, offset_array, cycle, pump, z_slices)
 
-microscope.fm_grid_readjuster(experiment_directory, x_frame_size)
+#microscope.fm_grid_readjuster(experiment_directory, x_frame_size)
 #microscope.post_acquisition_processor(experiment_directory, x_frame_size, rolling_ball=0)
-
+microscope.tissue_cluster_filter(experiment_directory, x_frame_size)
 
 
 

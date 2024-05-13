@@ -1113,10 +1113,10 @@ class cycif:
                 filename = 'x' + str(x) + '_y_' +str(y) + '_tissue.tif'
                 tile_image = io.imread(filename)
 
-                start_x = (x - 1) * x_frame_size
+                start_x = x * x_frame_size
                 end_x = start_x + x_frame_size
-                start_y = (y - 1) * 2960
-                end_y = y + 2960
+                start_y = y * 2960
+                end_y = start_y + 2960
 
                 super_image[start_y:end_y, start_x:end_x] = tile_image
 
