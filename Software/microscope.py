@@ -1083,11 +1083,13 @@ class cycif:
 
         return image_2
 
-    def tissue_cluster_filter(self, experiment_directory, x_frame_size):
+    def tissue_cluster_filter(self, experiment_directory, x_frame_size, number_clusters_retained = 1):
         '''
         Looks at tissue binary images, combines them and determines the largest x clusters in
         the joined image and removes the rest. In addition, this will fill in holes
         :param experiment_directory:
+        :param x_frame_size:
+        :param number_clusters_retained:
         :return:
         '''
 
@@ -1104,6 +1106,7 @@ class cycif:
 
         file_path = experiment_directory + '/Tissue_Binary'
         os.chdir(file_path)
+
 
         #make image that can hold individual images
         super_image = np.ones((y_tile_count * 2960, x_tile_count * x_frame_size))
@@ -1124,22 +1127,36 @@ class cycif:
         props = skimage.measure.regionprops(labelled_super)
 
         # find largest x number of clusters
-        cluster_area_index = np.zeros(2, number_clusters_retain)
+        cluster_area_index = np.zeros((2, number_clusters_retained))
 
-        for index in range(0, labelled_super.max()):
+
+
+
+
+        for index in range(0, np.max(labelled_super)):
             area = props[index]['area']
             array_min = np.min(cluster_area_index[0])
             if area > array_min:
-                min_index = np.where(cluster_area_index[0] == array_min)[0]
+                min_index = np.where(cluster_area_index[0] == array_min)[0][0]
                 cluster_area_index[0][min_index] = area
-                cluster_area_index[1][min_index] = index
+                cluster_area_index[1][min_index] = int(index + 1)
             else:
                 pass
 
-        print(cluster_area_index)
+        #make new binary image
+        new_image = labelled_super * super_image
+        first_index = cluster_area_index[1][0]
+        #scale all clusters to same number
+        for x in range(0, number_clusters_retained):
+            index_value = cluster_area_index[1][x]
+            new_image[new_image == index_value] = first_index
 
-        #io.imshow(labelled_super)
-        #io.show()
+        new_image[new_image != first_index] = 0
+        new_image[new_image == first_index] = 1
+
+
+        io.imshow(new_image)
+        io.show()
 
 
 
