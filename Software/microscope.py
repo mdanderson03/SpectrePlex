@@ -1154,9 +1154,18 @@ class cycif:
         new_image[new_image != first_index] = 0
         new_image[new_image == first_index] = 1
 
+        for y in range(0, y_tile_count):
+            for x in range(0, x_tile_count):
+                filename = 'x' + str(x) + '_y_' +str(y) + '_tissue.tif'
 
-        io.imshow(new_image)
-        io.show()
+                start_x = x * x_frame_size
+                end_x = start_x + x_frame_size
+                start_y = y * 2960
+                end_y = start_y + 2960
+
+                tile_image = super_image[start_y:end_y, start_x:end_x]
+
+                io.imsave(filename, tile_image)
 
 
 
