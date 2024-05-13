@@ -1122,8 +1122,22 @@ class cycif:
 
         labelled_super = skimage.measure.label(super_image)
         props = skimage.measure.regionprops(labelled_super)
-        print(getattr(props[0], 'area'))
-        print(props[0]['area'])
+
+        # find largest x number of clusters
+        cluster_area_index = np.zeros(2, number_clusters_retain)
+
+        for index in range(0, labelled_super.max()):
+            area = props[index]['area']
+            array_min = np.min(cluster_area_index[0])
+            if area > array_min:
+                min_index = np.where(cluster_area_index[0] == array_min)[0]
+                cluster_area_index[0][min_index] = area
+                cluster_area_index[1][min_index] = index
+            else:
+                pass
+
+        print(cluster_area_index)
+
         #io.imshow(labelled_super)
         #io.show()
 
