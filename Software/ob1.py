@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 from openpyxl import Workbook, load_workbook
 import sys
 from ctypes import *
+from KasaSmartPowerStrip import SmartPowerStrip
 
 sys.path.append(
     r'C:\Users\CyCIF PC\Documents\GitHub\AutoCIF\Python_64_elveflow\DLL64')  # add the path of the library here
@@ -40,7 +41,7 @@ class fluidics:
             set_channel_regulator = c_int32(set_channel_regulator)  # convert to c_int32
             set_channel_sensor = int(1)
             set_channel_sensor = c_int32(set_channel_sensor)  # convert to c_int32
-            PID_Add_Remote(Instr_ID.value, set_channel_regulator, Instr_ID.value, set_channel_sensor, 0.9, 0.004, 1)
+            PID_Add_Remote(Instr_ID.value, set_channel_regulator, Instr_ID.value, set_channel_sensor, 0.9/22.5, 0.004/.03846, 1)
         else:
             pass
 
@@ -175,6 +176,42 @@ class fluidics:
 
         os.chdir(numpy_path)
         np.save(file_name, fluid_array)
+
+    def flow_check(self):
+
+        # make ctypes structures
+        data_sens = c_double()
+        data_reg = c_double()
+        set_channel = int(1)  # convert to int
+        set_channel = c_int32(set_channel)  # convert to c_int32
+
+        # make triple value array
+        flows = np.zeros((3))
+        # populate with 3 values with second spacing
+        for x in range(0, 3):
+            error = OB1_Get_Remote_Data(self.pump_ID, set_channel, byref(data_reg), byref(data_sens))
+            current_flow_rate = data_sens.value
+            self.fluidics_logger('checking if frozen_' + str(OB1_Get_Remote_Data), error, current_flow_rate)
+            flows[x] = current_flow_rate
+
+        # determine if frozen, ie see how many unique values there are
+        unique_value_count = np.shape(np.unique(flows))[0]
+
+        if unique_value_count == 1:
+            print('reboot')
+            self.fluidics_logger('rebooting ob1', error, current_flow_rate)
+            self.ob1_reboot()
+        else:
+            pass
+
+    def ob1_reboot(self):
+
+        power_strip = SmartPowerStrip('10.3.141.157')
+        time.sleep(5)
+        power_strip.toggle_plug('off', plug_num=4)
+        time.sleep(5)
+        power_strip.toggle_plug('on', plug_num=4)  # turns off socket named 'Socket1'
+        time.sleep(5)
 
     def ob1_end(self):
 

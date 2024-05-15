@@ -996,7 +996,7 @@ class cycif:
         fm_array_adjusted[0] = fm_array_adjusted[0] + displacement_y
 
         # save fm_array
-
+        os.chdir(numpy_path)
         np.save(filename, fm_array_adjusted)
 
         print(displacement_x, displacement_y)
@@ -1153,6 +1153,10 @@ class cycif:
 
         new_image[new_image != first_index] = 0
         new_image[new_image == first_index] = 1
+        new_image = new_image.astype('int16')
+
+        # fill small holes
+        new_image = skimage.morphology.remove_small_holes(new_image, area_threshold=5000)
 
         for y in range(0, y_tile_count):
             for x in range(0, x_tile_count):
@@ -1163,13 +1167,19 @@ class cycif:
                 start_y = y * 2960
                 end_y = start_y + 2960
 
-                tile_image = super_image[start_y:end_y, start_x:end_x]
+                tile_image = new_image[start_y:end_y, start_x:end_x]
+                tile_image = skimage.util.img_as_uint(tile_image)
+                tile_image = tile_image/65535
 
                 io.imsave(filename, tile_image)
 
+        super_image = skimage.util.img_as_uint(super_image)
+        new_image = skimage.util.img_as_uint(new_image)
 
+        io.imsave('whole_tissue.tif', super_image)
+        io.imsave('whole_tissue_filtered.tif', new_image)
 
-    def tissue_binary_generate(self, experiment_directory):
+    def tissue_binary_generate(self, experiment_directory, x_frame_size = 2960):
         '''
         Generates tissue binary maps from star dist binary maps
 
@@ -1212,6 +1222,8 @@ class cycif:
                 os.chdir(tissue_path)
                 tissue_binary_name = 'x' + str(x) + '_y_' + str(y) + '_tissue.tif'
                 io.imsave(tissue_binary_name, filtered_image)
+
+        #self.tissue_binary_generate(experiment_directory, x_frame_size)
 
     #recursize autofocusfunctions#####################################
 
@@ -1301,7 +1313,11 @@ class cycif:
 
 
         self.generate_nuc_mask(experiment_directory, cycle)
-        #self.tissue_region_identifier(experiment_directory)
+
+        if cycle == 0:
+            self.tissue_region_identifier(experiment_directory)
+        else:
+            pass
 
 
         # load numpy arrays in (focus map)
@@ -1831,7 +1847,7 @@ class cycif:
             else:
                 cycle_start_search = 1
         '''
-        cycle_end = 8
+        cycle_end = 9
         cycle_start = 1
 
         self.tissue_binary_generate(experiment_directory)
@@ -1843,9 +1859,9 @@ class cycif:
             self.excel_2_focus(experiment_directory, cycle_number)
             #self.infocus(experiment_directory, cycle_number, x_pixels, 1, 1)
             self.illumination_flattening(experiment_directory, cycle_number, rolling_ball)
-            self.background_sub(experiment_directory, cycle_number, rolling_ball)
-            #self.illumination_flattening_per_tile(experiment_directory, cycle_number, rolling_ball)
             #self.background_sub(experiment_directory, cycle_number, rolling_ball)
+            #self.illumination_flattening_per_tile(experiment_directory, cycle_number, rolling_ball)
+            self.background_sub(experiment_directory, cycle_number, rolling_ball)
             #self.brightness_uniformer(experiment_directory, cycle_number)
             self.mcmicro_image_stack_generator(cycle_number, experiment_directory, x_pixels)
             self.stage_placement(experiment_directory, cycle_number, x_pixels)
@@ -1928,7 +1944,7 @@ class cycif:
                     except:
                         image = cv2.imread(dapi_file_name)[::, ::, 0]
 
-                    image[image > 65500] = 65500
+                    image = np.nan_to_num(image, posinf=65500)
                     mcmicro_stack[base_count_number_stack + 0] = image
 
                     os.chdir(a488_im_path)
@@ -2082,6 +2098,8 @@ class cycif:
                     image = io.imread(filename)
                 except:
                     image = cv2.imread(filename)[::,::,0]
+
+                image = np.nan_to_num(image, posinf=65500)
 
                 # define subsection of large array that fits dimensions of single FOV
                 # x_center = numpy_x_pixels[y][x]

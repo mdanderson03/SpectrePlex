@@ -1,7 +1,7 @@
 import datetime
 import os
 import math
-import kasa
+from KasaSmartPowerStrip import SmartPowerStrip
 import numpy as np
 import time
 import matplotlib.pyplot as plt
@@ -238,15 +238,17 @@ class fluidics:
 
     def ob1_reboot(self):
 
-        kasa --type strip --host < addr > off --name 'Socket1'  # turns off socket named 'Socket1'
+        power_strip = SmartPowerStrip('10.3.141.157')
+        power_strip.toggle_plug('off', plug_num=4)
         time.sleep(2)
-        kasa --type strip --host < addr > on --name 'Socket1'  # turns off socket named 'Socket1'
+        power_strip.toggle_plug('on', plug_num=4)  # turns off socket named 'Socket1'
 
     def filter_pump(self, filtering_time):
 
-            kasa --host < addr > off --name 'Socket1'  # turns off socket named 'Socket1'
-            time.sleep(filtering_time)
-            kasa --host < addr > on --name 'Socket1'  # turns off socket named 'Socket1'
+        power_strip = SmartPowerStrip('10.3.141.157')
+        power_strip.toggle_plug('off', plug_num=5)
+        time.sleep(2)
+        power_strip.toggle_plug('on', plug_num=5)  # turns off socket named 'Socket1'
 
     def ob1_end(self):
 

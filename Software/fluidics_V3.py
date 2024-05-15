@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 from openpyxl import Workbook, load_workbook
 import sys
 from ctypes import *
+import math
 
 sys.path.append(
     r'C:\Users\CyCIF PC\Documents\GitHub\AutoCIF\Python_64_elveflow\DLL64')  # add the path of the library here
@@ -196,7 +197,9 @@ class fluidics:
             else:
                 pass
 
+    def flow_checker(self):
 
+        self.file_run('flow_check.py')
 
     def ob1_end(self):
 
@@ -282,11 +285,11 @@ class fluidics:
             rerun = fluid_array[2]
             print('rerun', rerun)
 
-    def liquid_action(self, action_type, stain_valve=0, incub_val=45, heater_state=0):
+    def liquid_action(self, action_type, stain_valve=0, incub_val=45, heater_state=0, microscope_object = 0, experiment_directory = 0):
 
         bleach_valve = 11
         pbs_valve = 12
-        bleach_time = 12  # minutes
+        bleach_time = 15  # minutes
         stain_flow_time = 45  # seconds
         if heater_state == 0:
             stain_inc_time = incub_val  # minutes
@@ -311,24 +314,40 @@ class fluidics:
         if action_type == 'Bleach':
 
             self.valve_select(bleach_valve)
+            self.flow_checker()
             self.file_run('bleach.py')
 
             for x in range(0, bleach_time):
                 time.sleep(60)
 
             self.valve_select(pbs_valve)
+            self.flow_checker()
             self.file_run('wash.py')
 
         elif action_type == 'Stain':
 
+            stain_start = 0
+
             self.valve_select(stain_valve)
+            self.flow_checker()
             self.file_run('stain.py')
             self.valve_select(pbs_valve)
 
-            for x in range(0, stain_inc_time):
+            if microscope_object != 0:
+                microscope = microscope_object
+
+                time_elapsed = microscope.recursive_stardist_autofocus(experiment_directory, stain_valve)  # int time in seconds
+                whole_minutes_elapsed = math.floor(time_elapsed/60)
+                seconds_remaining = time_elapsed % 60 # remainder in seconds of time remaining after dividing by 60
+                print(seconds_remaining)
+                time.sleep(seconds_remaining)
+                stain_start = int(whole_minutes_elapsed + 1)
+
+            for x in range(stain_start, stain_inc_time):
                 time.sleep(60)
                 print('Staining Time Elapsed ', x)
 
+            self.flow_checker()
             self.file_run('wash.py')
 
 
@@ -343,6 +362,7 @@ class fluidics:
         elif action_type == "Wash":
 
             self.valve_select(pbs_valve)
+            self.flow_checker()
             self.file_run('wash.py')
 
 

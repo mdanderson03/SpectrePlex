@@ -4,15 +4,17 @@ import os
 from autocyplex import *
 from optparse import OptionParser
 microscope = cycif() # initialize cycif object
-experiment_directory = r'E:\delete'
-#pump = fluidics(experiment_directory, 6, 13, flow_control=1)
+experiment_directory = r'E:\15-5-24 healthy'
+pump = fluidics(experiment_directory, 6, 13, flow_control=1)
 
 z_slices = 7
 x_frame_size = 2960
 offset_array = [0, -8, -7, -7]
-focus_position = 85
+focus_position = 92
 
 
+
+#pump.liquid_action('Stain', stain_valve=12, incub_val=1)
 
 #microscope.establish_fm_array(experiment_directory, 1,z_slices, off_array= offset_array, initialize=1, x_frame_size=x_frame_size)
 
@@ -36,14 +38,14 @@ focus_position = 85
 #microscope.image_cycle_acquire(2, experiment_directory, z_slices, 'Stain', offset_array, x_frame_size=x_frame_size, establish_fm_array=0, auto_focus_run=0, auto_expose_run=2)
 #pump.liquid_action('Bleach')
 #microscope.image_cycle_acquire(2, experiment_directory, z_slices, 'Bleach', offset_array, x_frame_size=x_frame_size, establish_fm_array=0, auto_focus_run=0, auto_expose_run=0)
-
-
-#for cycle in range(3, 9):
+#microscope.image_cycle_acquire(0, experiment_directory, z_slices, 'Bleach', offset_array, x_frame_size=x_frame_size, establish_fm_array=1, auto_focus_run=0,auto_expose_run=0, channels = ['DAPI'], focus_position = focus_position)
+#microscope.image_cycle_acquire(0, experiment_directory, z_slices, 'Bleach', offset_array,x_frame_size=x_frame_size, fm_array_adjuster=0, establish_fm_array=0, auto_focus_run=1,auto_expose_run=0, focus_position=focus_position)
+#for cycle in range(1, 9):
 #   microscope.full_cycle(experiment_directory, cycle, offset_array, cycle, pump, z_slices)
 
 #microscope.fm_grid_readjuster(experiment_directory, x_frame_size)
 #microscope.post_acquisition_processor(experiment_directory, x_frame_size, rolling_ball=0)
-microscope.tissue_cluster_filter(experiment_directory, x_frame_size)
+#microscope.tissue_binary_generate(experiment_directory)
 
 
 

@@ -2,7 +2,7 @@ import ob1
 import time
 
 # OB1 initialize
-experiment_path = r'E:\8-5-24 Healthy'
+experiment_path = r'E:\14-5-24 healthy'
 ob1_com_port = 13
 flow_control = 1
 
