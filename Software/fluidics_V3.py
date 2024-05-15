@@ -31,6 +31,10 @@ class fluidics:
         file_name = 'fluid_info_array.npy'
         np.save(file_name, fluid_info_array)
 
+        fluid_info_array = np.array(experiment_path)
+        file_name = 'fluid_info_array.npy'
+        np.save(file_name, fluid_info_array)
+
         # MUX intiialize
         path = 'ASRL' + str(mux_com_port) + '::INSTR'
         mux_Instr_ID = c_int32()
@@ -261,7 +265,7 @@ class fluidics:
 
         #run fluidics function
         os.chdir(r'C:\Users\CyCIF PC\Documents\GitHub\AutoCIF\Software')
-        call(["python", file_name])
+        call(["python", file_name, 'passed in'])
 
         # load in data structures
         os.chdir(numpy_path)
