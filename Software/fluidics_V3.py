@@ -25,13 +25,18 @@ class fluidics:
 
         # load in data structures
         numpy_path = experiment_path + '/' + 'np_arrays'
-        os.chdir(numpy_path)
+        try:
+            os.chdir(numpy_path)
+        except:
+            os.mkdir(numpy_path)
+            os.chdir(numpy_path)
+
 
         fluid_info_array = np.zeros(3)
         file_name = 'fluid_info_array.npy'
         np.save(file_name, fluid_info_array)
 
-        fluid_info_array = np.array(experiment_path)
+        fluid_info_array = np.zeros(3)
         file_name = 'fluid_info_array.npy'
         np.save(file_name, fluid_info_array)
 
@@ -259,19 +264,19 @@ class fluidics:
         np_file_name = 'fluid_info_array.npy'
         fluid_array = np.load(np_file_name, allow_pickle=False)
 
+
         #set initial value to 0 which indicates that no failure has happened
         fluid_array[2] = 0
         np.save(np_file_name, fluid_array)
 
         #run fluidics function
         os.chdir(r'C:\Users\CyCIF PC\Documents\GitHub\AutoCIF\Software')
-        call(["python", file_name, 'passed in'])
+        call(["python", file_name, self.experiment_directory])
 
         # load in data structures
         os.chdir(numpy_path)
         fluid_array = np.load(np_file_name, allow_pickle=False)
         rerun = fluid_array[2]
-        print('rerun', rerun)
 
         while rerun == 1:
 
@@ -281,7 +286,7 @@ class fluidics:
             np.save(np_file_name, fluid_array)
 
             os.chdir(r'C:\Users\CyCIF PC\Documents\GitHub\AutoCIF\Software')
-            call(["python", file_name])
+            call(["python", file_name, self.experiment_directory])
 
             # load in data structures
             os.chdir(numpy_path)

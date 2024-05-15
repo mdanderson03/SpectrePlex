@@ -1,8 +1,9 @@
 import ob1
 import time
+import sys
 
 # OB1 initialize
-experiment_path = r'E:\14-5-24 healthy'
+experiment_path = sys.argv[1]
 ob1_com_port = 13
 flow_control = 1
 

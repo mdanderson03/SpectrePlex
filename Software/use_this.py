@@ -18,7 +18,7 @@ focus_position = 92
 
 #microscope.establish_fm_array(experiment_directory, 1,z_slices, off_array= offset_array, initialize=1, x_frame_size=x_frame_size)
 
-#pump.liquid_action('Wash')
+
 #pump.liquid_action('Stain', stain_valve=4)
 #microscope.image_cycle_acquire(0, experiment_directory, z_slices, 'Bleach', offset_array, x_frame_size=x_frame_size, establish_fm_array=0, auto_focus_run=0, auto_expose_run=0)
 #pump.liquid_action('Bleach')
