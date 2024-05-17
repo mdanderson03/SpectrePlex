@@ -1035,7 +1035,7 @@ class cycif:
 
     #functions for itdentifying is tissue is present or not###################
 
-    def tissue_region_identifier(self, experiment_directory):
+    def tissue_region_identifier(self, experiment_directory, x_frame_size = 2960, clusters_retained = 1):
         '''
         Looks at tissue binary images and updates fm object to encode information
         :return:
@@ -1052,7 +1052,7 @@ class cycif:
         y_tiles = np.shape(fm_array[0])[0]
 
         #make tissue binary images
-        self.tissue_binary_generate(experiment_directory)
+        self.tissue_binary_generate(experiment_directory, x_frame_size, clusters_retained)
         tissue_path = experiment_directory + '/Tissue_Binary'
         os.chdir(tissue_path)
 
@@ -1179,7 +1179,7 @@ class cycif:
         io.imsave('whole_tissue.tif', super_image)
         io.imsave('whole_tissue_filtered.tif', new_image)
 
-    def tissue_binary_generate(self, experiment_directory, x_frame_size = 2960):
+    def tissue_binary_generate(self, experiment_directory, x_frame_size = 2960, clusters_retained = 1):
         '''
         Generates tissue binary maps from star dist binary maps
 
@@ -1223,7 +1223,7 @@ class cycif:
                 tissue_binary_name = 'x' + str(x) + '_y_' + str(y) + '_tissue.tif'
                 io.imsave(tissue_binary_name, filtered_image)
 
-        #self.tissue_binary_generate(experiment_directory, x_frame_size)
+        self.tissue_cluster_filter(experiment_directory, x_frame_size, clusters_retained)
 
     #recursize autofocusfunctions#####################################
 
@@ -1315,7 +1315,7 @@ class cycif:
         self.generate_nuc_mask(experiment_directory, cycle)
 
         if cycle == 0:
-            self.tissue_region_identifier(experiment_directory)
+            self.tissue_region_identifier(experiment_directory, x_frame_size=2960, clusters_retained=1)
         else:
             pass
 
@@ -1692,6 +1692,24 @@ class cycif:
         self.exp_logbook(experiment_directory, cycle_number)
         self.multi_channel_z_stack_capture(experiment_directory, cycle_number, stain_bleach,x_pixels=x_frame_size, slice_gap=2, channels=channels)
         # self.marker_excel_file_generation(experiment_directory, cycle_number)
+    def initialize(self, experiment_directory, offset_array, z_slices, x_frame_size=2960, focus_position = 'none'):
+        '''initialization section. Takes DAPI images, cluster filters tissue, minimally frames sampling grid, acquires all channels.
+
+        :param experiment_directory:
+        :param cycle_number:
+        :param offset_array:
+        :param z_slices:
+        :param x_frame_size:
+        :param focus_position:
+        :return:
+        '''
+
+        self.image_cycle_acquire(0, experiment_directory, z_slices, 'Bleach', offset_array,x_frame_size=x_frame_size, establish_fm_array=1, auto_focus_run=0,auto_expose_run=0, channels=['DAPI'], focus_position=focus_position)
+        self.image_cycle_acquire(0, experiment_directory, z_slices, 'Bleach', offset_array,x_frame_size=x_frame_size, fm_array_adjuster=1, establish_fm_array=0, auto_focus_run=1,auto_expose_run=0, focus_position=focus_position)
+        self.generate_nuc_mask(experiment_directory, cycle_number=0)
+        self.tissue_region_identifier(experiment_directory)
+
+
 
 
     def full_cycle(self, experiment_directory, cycle_number, offset_array, stain_valve, fluidics_object, z_slices, incub_val=45, x_frame_size=2960, focus_position = 'none'):
@@ -1699,9 +1717,7 @@ class cycif:
         pump = fluidics_object
 
         if cycle_number == 0:
-            self.image_cycle_acquire(cycle_number, experiment_directory, z_slices, 'Bleach', offset_array, x_frame_size=x_frame_size, establish_fm_array=1, auto_focus_run=0,
-                                     auto_expose_run=0, channels = ['DAPI'], focus_position = focus_position)
-            self.image_cycle_acquire(cycle_number, experiment_directory, z_slices, 'Bleach', offset_array,x_frame_size=x_frame_size, fm_array_adjuster=1, establish_fm_array=0, auto_focus_run=1,auto_expose_run=0, focus_position=focus_position)
+            self.initialize(experiment_directory, offset_array, z_slices, x_frame_size=2960, focus_position = 'none')
         else:
 
             # print(status_str)
