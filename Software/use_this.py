@@ -55,17 +55,17 @@ focus_position = 105
 
 
 
-for cycle in range(6, 9):
-    microscope.full_cycle(experiment_directory, cycle, offset_array, cycle, pump, z_slices, focus_position=focus_position)
+#for cycle in range(6, 9):
+#    microscope.full_cycle(experiment_directory, cycle, offset_array, cycle, pump, z_slices, focus_position=focus_position)
 
 #microscope.fm_grid_readjuster(experiment_directory, x_frame_size)
 #microscope.post_acquisition_processor(experiment_directory, x_frame_size, rolling_ball=0)
 #microscope.tissue_binary_generate(experiment_directory)
 
-
+microscope.tissue_cluster_filter(experiment_directory,x_frame_size=x_frame_size, number_clusters_retained=1)
 
 #pump.liquid_action('Wash')
 
 #microscope.establish_fm_array(experiment_directory, 1, z_slices, offset_array, initialize=0, x_frame_size=x_frame_size, autofocus=1, auto_expose=1)
 #microscope.image_cycle_acquire(1, experiment_directory, z_slices, 'Stain', offset_array, x_frame_size=x_frame_size, establish_fm_array=0, auto_focus_run=0,auto_expose_run=1)
-microscope.post_acquisition_processor(experiment_directory, x_frame_size, rolling_ball=0)
+#microscope.post_acquisition_processor(experiment_directory, x_frame_size, rolling_ball=0)
