@@ -1848,7 +1848,7 @@ class cycif:
                 cycle_start_search = 1
         '''
         cycle_end = 9
-        cycle_start = 1
+        cycle_start = 6
 
         self.tissue_binary_generate(experiment_directory)
         self.tissue_exist_array_generate(experiment_directory)
