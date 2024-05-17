@@ -178,7 +178,7 @@ class cycif:
         x_tiles = np.shape(fm_array[0])[1]
 
         exp_calc_array = np.random.rand(4, 3, y_tiles, x_tiles)
-        exp_array = [50, 50, 50, 50]
+        exp_array = [100, 50, 50, 50]
         exp_calc_array[::, 0, ::, ::] = 100
 
         file_name = 'exp_calc_array.npy'
@@ -855,7 +855,7 @@ class cycif:
         tissue_path = experiment_directory + r'\Tissue_Binary'
 
         os.chdir(numpy_path)
-        file_name = 'fm_array.npy'
+        fm_file_name = 'fm_array.npy'
         fm_array = np.load(file_name, allow_pickle=False)
 
         # find tile counts
@@ -997,7 +997,7 @@ class cycif:
 
         # save fm_array
         os.chdir(numpy_path)
-        np.save(filename, fm_array_adjusted)
+        np.save(fm_filename, fm_array_adjusted)
 
         print(displacement_x, displacement_y)
         print(fm_array_adjusted[0])
@@ -1207,7 +1207,7 @@ class cycif:
             os.chdir(experiment_directory)
             os.mkdir('Tissue_Binary')
 
-        foot_print = morphology.disk(70, decomposition='sequence')
+        foot_print = morphology.disk(100, decomposition='sequence')
 
         for x in range(0, x_tile_count):
             for y in range(0, y_tile_count):
