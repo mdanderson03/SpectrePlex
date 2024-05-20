@@ -856,7 +856,7 @@ class cycif:
 
         os.chdir(numpy_path)
         fm_file_name = 'fm_array.npy'
-        fm_array = np.load(file_name, allow_pickle=False)
+        fm_array = np.load(fm_file_name, allow_pickle=False)
 
         # find tile counts
         x_tiles = np.shape(fm_array[0])[1]
@@ -983,8 +983,8 @@ class cycif:
 
         # determine min number tiles to encompass tissue
 
-        x_new_tiles = math.ceil(((x_tile_range / (x_frame_size * 0.204)) - 1) / 0.9 + 1)
-        y_new_tiles = math.ceil(((y_tile_range / (2960 * 0.204)) - 1) / 0.9 + 1)
+        x_new_tiles = math.ceil(((x_tile_range / (x_frame_size * 0.204*0.9)) - 1) / 0.9 + 1)
+        y_new_tiles = math.ceil(((y_tile_range / (2960 * 0.204*0.9)) - 1) / 0.9 + 1)
 
         # determine displacement vector for xy grid
         margin_frame_x_2_tissue = (((x_new_tiles - 1) + 1) * x_frame_size * 0.204 - x_tile_range) / 2
@@ -994,16 +994,21 @@ class cycif:
         displacement_y = (margin_frame_y_2_tissue - upper_y_index * 0.204)
 
         # Alter fm_array tiles
-        fm_array_adjusted = fm_array[::][upper_y_tile:(upper_y_tile + y_new_tiles),
-                            left_x_tile:(left_x_tile + x_new_tiles)]
+        fm_array_adjusted = fm_array[::, upper_y_tile:(upper_y_tile + y_new_tiles), left_x_tile:(left_x_tile + x_new_tiles)]
+
+        print(margin_frame_x_2_tissue, margin_frame_y_2_tissue, x_tile_range, y_tile_range)
+        print('y tiles', upper_y_tile, y_new_tiles, 'x tiles', left_x_tile, x_new_tiles)
+
+        print('dis', displacement_x, displacement_y)
 
         # add in display vector
-        fm_array_adjusted[1] = fm_array_adjusted[1] + displacement_x
-        fm_array_adjusted[0] = fm_array_adjusted[0] + displacement_y
+        fm_array_adjusted[0] = fm_array_adjusted[0] - displacement_x
+        fm_array_adjusted[1] = fm_array_adjusted[1] - displacement_y
+        print(fm_array_adjusted[1])
 
         # save fm_array
         os.chdir(numpy_path)
-        np.save(fm_filename, fm_array_adjusted)
+        np.save(fm_file_name, fm_array_adjusted)
 
         print(displacement_x, displacement_y)
         print(fm_array_adjusted[0])
@@ -1710,7 +1715,7 @@ class cycif:
         :return:
         '''
 
-        self.image_cycle_acquire(0, experiment_directory, z_slices, 'Bleach', offset_array,x_frame_size=x_frame_size, establish_fm_array=1, auto_focus_run=0,auto_expose_run=0, channels=['DAPI'], focus_position=focus_position)
+        self.image_cycle_acquire(0, experiment_directory, z_slices, 'Bleach', offset_array,x_frame_size=x_frame_size, establish_fm_array=0, auto_focus_run=0,auto_expose_run=0, channels=['DAPI'], focus_position=focus_position)
         self.image_cycle_acquire(0, experiment_directory, z_slices, 'Bleach', offset_array,x_frame_size=x_frame_size, fm_array_adjuster=1, establish_fm_array=0, auto_focus_run=1,auto_expose_run=0, focus_position=focus_position)
         self.generate_nuc_mask(experiment_directory, cycle_number=0)
         self.tissue_region_identifier(experiment_directory)
