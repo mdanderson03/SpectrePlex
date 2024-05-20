@@ -975,16 +975,22 @@ class cycif:
         y_tile_range = fm_array[1][lower_y_tile][0] - fm_array[1][upper_y_tile][0] + (
                     2960 / 2 - upper_y_index) * 0.204 + (lower_y_index - 2960 / 2) * 0.204
 
+        #add in margins. This will add in new tiles if the tissue is close to the frame edge which makes it
+        # so that it still fits if the actual tissue is a tad larger than the segmented version
+
+        x_tile_range = x_tile_range * 1.05
+        y_tile_range = y_tile_range * 1.05
+
         # determine min number tiles to encompass tissue
 
         x_new_tiles = math.ceil(((x_tile_range / (x_frame_size * 0.204)) - 1) / 0.9 + 1)
         y_new_tiles = math.ceil(((y_tile_range / (2960 * 0.204)) - 1) / 0.9 + 1)
 
         # determine displacement vector for xy grid
-        margin_frame_x_2_tissue = (((x_new_tiles - 1) * 0.9 + 1) * x_frame_size * 0.204 - x_tile_range) / 2
+        margin_frame_x_2_tissue = (((x_new_tiles - 1) + 1) * x_frame_size * 0.204 - x_tile_range) / 2
         displacement_x = (margin_frame_x_2_tissue - left_x_index * 0.204)
 
-        margin_frame_y_2_tissue = (((y_new_tiles - 1) * 0.9 + 1) * 2960 * 0.204 - y_tile_range) / 2
+        margin_frame_y_2_tissue = (((y_new_tiles - 1) + 1) * 2960 * 0.204 - y_tile_range) / 2
         displacement_y = (margin_frame_y_2_tissue - upper_y_index * 0.204)
 
         # Alter fm_array tiles
