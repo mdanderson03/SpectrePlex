@@ -1716,7 +1716,7 @@ class cycif:
         '''
 
         self.image_cycle_acquire(0, experiment_directory, z_slices, 'Bleach', offset_array,x_frame_size=x_frame_size, establish_fm_array=0, auto_focus_run=0,auto_expose_run=0, channels=['DAPI'], focus_position=focus_position)
-        self.image_cycle_acquire(0, experiment_directory, z_slices, 'Bleach', offset_array,x_frame_size=x_frame_size, fm_array_adjuster=1, establish_fm_array=0, auto_focus_run=1,auto_expose_run=0, focus_position=focus_position)
+        self.image_cycle_acquire(0, experiment_directory, z_slices, 'Bleach', offset_array,x_frame_size=x_frame_size, fm_array_adjuster=0, establish_fm_array=0, auto_focus_run=1,auto_expose_run=0, focus_position=focus_position)
         self.generate_nuc_mask(experiment_directory, cycle_number=0)
         self.tissue_region_identifier(experiment_directory)
 
