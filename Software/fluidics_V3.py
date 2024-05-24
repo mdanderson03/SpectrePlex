@@ -322,6 +322,7 @@ class fluidics:
 
         if action_type == 'Bleach':
 
+
             self.valve_select(bleach_valve)
             self.flow_checker()
             self.file_run('bleach.py')

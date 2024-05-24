@@ -538,7 +538,7 @@ class cycif:
         number_channels = len(channels[0])
 
         #load in exp excel sheet
-        exp_path = experiment_directory + '/' + 'exposure_times'
+        exp_path = r'C:\Users\CyCIF PC\Documents\GitHub\AutoCIF\Software\predetermined_exposure_times\gutage'
         os.chdir(exp_path)
         wb = load_workbook('Exp.xlsx')
         ws = wb.active
@@ -1715,20 +1715,24 @@ class cycif:
         :return:
         '''
 
-        self.image_cycle_acquire(0, experiment_directory, z_slices, 'Bleach', offset_array,x_frame_size=x_frame_size, establish_fm_array=0, auto_focus_run=0,auto_expose_run=0, channels=['DAPI'], focus_position=focus_position)
+        #make parent folder for experiment if it isnt made
+        os.chdir(r'E:/')
+        try:
+            os.mkdir(experiment_directory)
+        except:
+            pass
+
+        self.image_cycle_acquire(0, experiment_directory, z_slices, 'Bleach', offset_array,x_frame_size=x_frame_size, establish_fm_array=1, auto_focus_run=0,auto_expose_run=0, channels=['DAPI'], focus_position=focus_position)
         self.image_cycle_acquire(0, experiment_directory, z_slices, 'Bleach', offset_array,x_frame_size=x_frame_size, fm_array_adjuster=0, establish_fm_array=0, auto_focus_run=1,auto_expose_run=0, focus_position=focus_position)
         self.generate_nuc_mask(experiment_directory, cycle_number=0)
         self.tissue_region_identifier(experiment_directory)
-
-
-
 
     def full_cycle(self, experiment_directory, cycle_number, offset_array, stain_valve, fluidics_object, z_slices, incub_val=45, x_frame_size=2960, focus_position = 'none'):
 
         pump = fluidics_object
 
         if cycle_number == 0:
-            self.initialize(experiment_directory, offset_array, z_slices, x_frame_size=2960, focus_position = 'none')
+            self.initialize(experiment_directory, offset_array, z_slices, x_frame_size=x_frame_size, focus_position = focus_position)
         else:
 
             # print(status_str)
@@ -1875,7 +1879,7 @@ class cycif:
                 cycle_start_search = 1
         '''
         cycle_end = 9
-        cycle_start = 6
+        cycle_start = 1
 
         self.tissue_binary_generate(experiment_directory)
         self.tissue_exist_array_generate(experiment_directory)
