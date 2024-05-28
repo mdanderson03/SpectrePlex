@@ -1716,7 +1716,7 @@ class cycif:
         '''
 
         #make parent folder for experiment if it isnt made
-        os.chdir(r'E:/')
+        os.chdir(r'E:')
         try:
             os.mkdir(experiment_directory)
         except:
