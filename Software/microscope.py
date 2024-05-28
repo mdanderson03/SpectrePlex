@@ -1975,7 +1975,10 @@ class cycif:
                     except:
                         image = cv2.imread(dapi_file_name)[::, ::, 0]
 
+                    print('before', np.max(image))
+                    image[image > 65500] = 65500
                     image = np.nan_to_num(image, posinf=65500)
+                    print('after', np.max(image))
                     mcmicro_stack[base_count_number_stack + 0] = image
 
                     os.chdir(a488_im_path)
@@ -1985,6 +1988,7 @@ class cycif:
                         image = cv2.imread(a488_file_name)[::, ::, 0]
 
                     image[image > 65500] = 65500
+                    image = np.nan_to_num(image, posinf=65500)
                     mcmicro_stack[base_count_number_stack + 1] = image
 
                     os.chdir(a555_im_path)
@@ -1994,6 +1998,7 @@ class cycif:
                         image = cv2.imread(a555_file_name)[::, ::, 0]
 
                     image[image > 65500] = 65500
+                    image = np.nan_to_num(image, posinf=65500)
                     mcmicro_stack[base_count_number_stack + 2] = image
 
                     os.chdir(a647_im_path)
@@ -2003,6 +2008,7 @@ class cycif:
                         image = cv2.imread(a647_file_name)[::, ::, 0]
 
                     image[image > 65500] = 65500
+                    image = np.nan_to_num(image, posinf=65500)
                     mcmicro_stack[base_count_number_stack + 3] = image
 
                     tile += 1
