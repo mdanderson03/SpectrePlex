@@ -25,9 +25,13 @@ class fluidics:
 
         # load in data structures
         numpy_path = experiment_path + '/' + 'np_arrays'
+
+
+
         try:
             os.chdir(numpy_path)
         except:
+            os.mkdir(experiment_path)
             os.mkdir(numpy_path)
             os.chdir(numpy_path)
 
