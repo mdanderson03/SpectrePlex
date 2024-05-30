@@ -1,7 +1,7 @@
 from autocyplex import *
 from optparse import OptionParser
 microscope = cycif() # initialize cycif object
-experiment_directory = r'E:\28-5-24 celiac'
+experiment_directory = r'E:\45-5-24 celiac'
 pump = fluidics(experiment_directory, 6, 13, flow_control=1)
 
 z_slices = 7

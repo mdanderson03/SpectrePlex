@@ -209,9 +209,9 @@ class fluidics:
         power_strip = SmartPowerStrip('10.3.141.157')
         time.sleep(5)
         power_strip.toggle_plug('off', plug_num=4)
-        time.sleep(5)
+        time.sleep(7)
         power_strip.toggle_plug('on', plug_num=4)  # turns off socket named 'Socket1'
-        time.sleep(5)
+        time.sleep(8)
 
     def ob1_end(self):
 
