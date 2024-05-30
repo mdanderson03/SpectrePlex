@@ -1298,7 +1298,7 @@ class cycif:
                 else:
                     pass
 
-    def recursive_stardist_autofocus(self, experiment_directory, cycle, slice_gap=2):
+    def recursive_stardist_autofocus(self, experiment_directory, cycle, slice_gap=2, remake_nuc_binary = 1):
         '''
         Finds center of dapi z stack for each tile and updates focus map to center it.
         Cycle 1 uses cycle 0 dapi z stacks. So cycle n-1 informs focus map for cycle n.
@@ -1323,7 +1323,10 @@ class cycif:
             dapi_im_path = experiment_directory + '/' + 'DAPI' '\Stain\cy_' + str(cycle - 1) + '\Tiles'
 
 
-        self.generate_nuc_mask(experiment_directory, cycle)
+        if remake_nuc_binary == 1:
+            self.generate_nuc_mask(experiment_directory, cycle)
+        else:
+            pass
 
         if cycle == 0:
             self.tissue_region_identifier(experiment_directory, x_frame_size=2960, clusters_retained=1)
@@ -1410,6 +1413,20 @@ class cycif:
         total_time_elapsed = int(total_time_elapsed)
 
         return total_time_elapsed
+
+    def reacquire_run_autofocus(self, experiment_directory, cycle, z_slices, offset_array, x_frame_size):
+        '''
+        Acquires dapi images for a cycle and then runs recursive_stardist_autofocus on them with the previously generated masks
+        :param experiment_directory:
+        :param cycle:
+        :param z_slices:
+        :param offset_array:
+        :param x_frame_size:
+        :return:
+        '''
+
+        self.image_cycle_acquire(cycle, experiment_directory, z_slices, 'Stain', offset_array, x_frame_size=x_frame_size,establish_fm_array=0, auto_focus_run=0, auto_expose_run=0, channels=['DAPI'])
+        self.recursive_stardist_autofocus(experiment_directory, cycle + 1, remake_nuc_binary = 0)
 
 
     ############################################
@@ -1738,6 +1755,7 @@ class cycif:
             # print(status_str)
             print('cycle', cycle_number)
             pump.liquid_action('Stain', incub_val=incub_val, stain_valve=stain_valve,  microscope_object = self, experiment_directory=experiment_directory)  # nuc is valve=7, pbs valve=8, bleach valve=1 (action, stain_valve, heater state (off = 0, on = 1))
+            self.reacquire_run_autofocus(experiment_directory, cycle_number, z_slices, offset_array, x_frame_size)
             # print(status_str)
             self.image_cycle_acquire(cycle_number, experiment_directory, z_slices, 'Stain', offset_array,x_frame_size=x_frame_size, establish_fm_array=0, auto_focus_run=1,
                                      auto_expose_run=2)
