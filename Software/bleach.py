@@ -2,6 +2,7 @@ import ob1
 import time
 import sys
 import os
+import numpy as np
 
 # OB1 initialize
 experiment_path = sys.argv[1]

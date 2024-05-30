@@ -2,6 +2,7 @@ import os
 import ob1
 import time
 import sys
+import numpy as np
 from KasaSmartPowerStrip import SmartPowerStrip
 
 
