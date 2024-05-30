@@ -1,6 +1,5 @@
 import datetime
 import os
-
 import numpy as np
 import time
 import matplotlib.pyplot as plt
@@ -186,18 +185,19 @@ class fluidics:
         set_channel = c_int32(set_channel)  # convert to c_int32
 
         # make triple value array
-        flows = np.zeros((3))
+        flows = np.zeros((5))
         # populate with 3 values with second spacing
-        for x in range(0, 3):
+        for x in range(0, 5):
             error = OB1_Get_Remote_Data(self.pump_ID, set_channel, byref(data_reg), byref(data_sens))
             current_flow_rate = data_sens.value
             self.fluidics_logger('checking if frozen_' + str(OB1_Get_Remote_Data), error, current_flow_rate)
             flows[x] = current_flow_rate
+            time.sleep(0.5)
 
         # determine if frozen, ie see how many unique values there are
         unique_value_count = np.shape(np.unique(flows))[0]
 
-        if unique_value_count == 1:
+        if unique_value_count <= 2:
             print('reboot')
             self.fluidics_logger('rebooting ob1', error, current_flow_rate)
             self.ob1_reboot()
