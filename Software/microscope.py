@@ -1383,9 +1383,16 @@ class cycif:
                         os.chdir(dapi_im_path)
                         file_name = 'z_' + str(z) + '_x' + str(x) + '_y_' + str(y) + '_c_DAPI.tif'
                         img = io.imread(file_name)
+
                         #apply stardist to image
-                        labels, _ = model.predict_instances(normalize(img))
-                        labels[labels > 0] = 1
+                        if remake_nuc_binary == 1:
+                            labels, _ = model.predict_instances(normalize(img))
+                            labels[labels > 0] = 1
+                        else:
+                            os.chdir(labelled_path)
+                            file_name = 'x' + str(x) + '_y_' + str(y) + '_c_DAPI.tif'
+                            labels = io.imread(file_name)
+
                         # apply mask to image and find brenner score
                         score = self.focus_score(img, step_size, labels)
                         score_array[z] = score

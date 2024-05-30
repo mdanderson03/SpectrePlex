@@ -4,14 +4,16 @@ microscope = cycif() # initialize cycif object
 experiment_directory = r'E:\45-5-24 celiac'
 pump = fluidics(experiment_directory, 6, 13, flow_control=1)
 
-z_slices = 7
+z_slices = 5
 x_frame_size = 2960
-offset_array = [0, -8, -7, -7]
-focus_position = 168
+offset_array = [0, -7, -7, -6]
+focus_position = 163
 
 
-for cycle in range(0, 1):
-    microscope.full_cycle(experiment_directory, cycle, offset_array, cycle, pump, z_slices, focus_position=focus_position)
-
+#for cycle in range(0, 1):
+#    microscope.full_cycle(experiment_directory, cycle, offset_array, cycle, pump, z_slices, focus_position=focus_position)
+time_start = time.time()
+microscope.reacquire_run_autofocus(experiment_directory, 1, z_slices, offset_array, x_frame_size)
+print(time.time() - time_start)
 #microscope.post_acquisition_processor(experiment_directory, x_frame_size, rolling_ball=0)
 
