@@ -26,15 +26,12 @@ class fluidics:
         # load in data structures
         numpy_path = experiment_path + '/' + 'np_arrays'
 
-
-
         try:
             os.chdir(numpy_path)
         except:
             os.mkdir(experiment_path)
             os.mkdir(numpy_path)
             os.chdir(numpy_path)
-
 
         fluid_info_array = np.zeros(3)
         file_name = 'fluid_info_array.npy'
@@ -273,6 +270,10 @@ class fluidics:
         fluid_array[2] = 0
         np.save(np_file_name, fluid_array)
 
+        # set value to 0 indicating that the file has not been run yet
+        fluid_array[1] = 0
+        np.save(np_file_name, fluid_array)
+
         #run fluidics function
         os.chdir(r'C:\Users\CyCIF PC\Documents\GitHub\AutoCIF\Software')
         call(["python", file_name, self.experiment_directory])
@@ -281,12 +282,17 @@ class fluidics:
         os.chdir(numpy_path)
         fluid_array = np.load(np_file_name, allow_pickle=False)
         rerun = fluid_array[2]
+        file_run = fluid_array[1]
 
-        while rerun == 1:
+        while rerun == 1 or file_run == 0:
 
             # set initial value to 0 which indicates that no failure has happened
             os.chdir(numpy_path)
             fluid_array[2] = 0
+            np.save(np_file_name, fluid_array)
+
+            # set value to 0 indicating that the file has not been run yet
+            fluid_array[1] = 0
             np.save(np_file_name, fluid_array)
 
             os.chdir(r'C:\Users\CyCIF PC\Documents\GitHub\AutoCIF\Software')
@@ -296,6 +302,7 @@ class fluidics:
             os.chdir(numpy_path)
             fluid_array = np.load(np_file_name, allow_pickle=False)
             rerun = fluid_array[2]
+            file_run = fluid_array[1]
             print('rerun', rerun)
 
     def liquid_action(self, action_type, stain_valve=0, incub_val=45, heater_state=0, microscope_object = 0, experiment_directory = 0):
