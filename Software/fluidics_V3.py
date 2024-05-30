@@ -284,7 +284,7 @@ class fluidics:
         rerun = fluid_array[2]
         file_run = fluid_array[1]
 
-        while rerun == 1 and file_run == 0:
+        while rerun == 1 or file_run == 0:
 
             # set initial value to 0 which indicates that no failure has happened
             os.chdir(numpy_path)
