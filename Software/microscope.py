@@ -538,7 +538,8 @@ class cycif:
         number_channels = len(channels[0])
 
         #load in exp excel sheet
-        exp_path = r'C:\Users\CyCIF PC\Documents\GitHub\AutoCIF\Software\predetermined_exposure_times\gutage'
+        #exp_path = r'C:\Users\CyCIF PC\Documents\GitHub\AutoCIF\Software\predetermined_exposure_times\gutage'
+        exp_path = r'C:\Users\CyCIF PC\Documents\GitHub\AutoCIF\Software\predetermined_exposure_times\marco'
         os.chdir(exp_path)
         wb = load_workbook('Exp.xlsx')
         ws = wb.active
@@ -1762,7 +1763,7 @@ class cycif:
             # print(status_str)
             print('cycle', cycle_number)
             pump.liquid_action('Stain', incub_val=incub_val, stain_valve=stain_valve,  microscope_object = self, experiment_directory=experiment_directory)  # nuc is valve=7, pbs valve=8, bleach valve=1 (action, stain_valve, heater state (off = 0, on = 1))
-            self.reacquire_run_autofocus(experiment_directory, cycle_number, z_slices, offset_array, x_frame_size)
+            #self.reacquire_run_autofocus(experiment_directory, cycle_number, z_slices, offset_array, x_frame_size)
             # print(status_str)
             self.image_cycle_acquire(cycle_number, experiment_directory, z_slices, 'Stain', offset_array,x_frame_size=x_frame_size, establish_fm_array=0, auto_focus_run=1,
                                      auto_expose_run=2)
@@ -1903,7 +1904,7 @@ class cycif:
             else:
                 cycle_start_search = 1
         '''
-        cycle_end = 9
+        cycle_end = 7
         cycle_start = 1
 
         self.tissue_binary_generate(experiment_directory)
@@ -2000,10 +2001,8 @@ class cycif:
                     except:
                         image = cv2.imread(dapi_file_name)[::, ::, 0]
 
-                    print('before', np.max(image))
                     image[image > 65500] = 65500
                     image = np.nan_to_num(image, posinf=65500)
-                    print('after', np.max(image))
                     mcmicro_stack[base_count_number_stack + 0] = image
 
                     os.chdir(a488_im_path)
@@ -2674,7 +2673,7 @@ class cycif:
         y_tile_count = numpy_x.shape[0]
         x_tile_count = numpy_y.shape[1]
 
-        z_slice_count = 7
+        z_slice_count = 5
 
         #load in excel file
         os.chdir(experiment_directory + r'/' + excel_folder_name)
@@ -2832,7 +2831,7 @@ class cycif:
         #y_sections = np.shape(reconstruct_array)[0]
         #x_sections = np.shape(reconstruct_array)[1]
 
-        cycle_types = ['Stain', 'Bleach']
+        cycle_types = ['Stain']
 
         for cycle_type in cycle_types:
 
