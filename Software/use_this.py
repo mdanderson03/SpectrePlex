@@ -13,10 +13,10 @@ focus_position = 138
 #pump.liquid_action('Wash')
 
 
-for cycle in range(5, 6):
-    microscope.full_cycle(experiment_directory, cycle, offset_array, cycle, pump, z_slices, focus_position=focus_position)
+#for cycle in range(5, 6):
+#    microscope.full_cycle(experiment_directory, cycle, offset_array, cycle, pump, z_slices, focus_position=focus_position)
 #time_start = time.time()
 #microscope.reacquire_run_autofocus(experiment_directory, 1, z_slices, offset_array, x_frame_size)
 #print(time.time() - time_start)
-#microscope.post_acquisition_processor(experiment_directory, x_frame_size, rolling_ball=0)
+microscope.post_acquisition_processor(experiment_directory, x_frame_size, rolling_ball=0)
 #pump.liquid_action('Wash')
