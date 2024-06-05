@@ -135,7 +135,8 @@ class fluidics:
             error = OB1_Get_Remote_Data(self.pump_ID, set_channel, byref(data_reg), byref(data_sens))
 
             if self.flow_control == 1:
-                current_flow_rate = data_sens.value
+                current_flow_rate = 0
+                #current_flow_rate = data_sens.value
             else:
                 current_flow_rate = data_reg.value
 
