@@ -2831,7 +2831,7 @@ class cycif:
         #y_sections = np.shape(reconstruct_array)[0]
         #x_sections = np.shape(reconstruct_array)[1]
 
-        cycle_types = ['Stain']
+        cycle_types = ['Stain', 'Bleach']
 
         for cycle_type in cycle_types:
 
