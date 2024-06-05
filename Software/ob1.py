@@ -150,6 +150,9 @@ class fluidics:
 
                 if set_target > 400 and current_flow_rate < 0.25 * set_target:
                     print('flow failed')
+                    zero_target = c_double(self.flow_off)
+
+                    OB1_Set_Remote_Target(self.pump_ID, set_channel, zero_target)
                     # self.flow_control = 0
 
                     # set_channel = int(1)
@@ -174,6 +177,7 @@ class fluidics:
             else:
                 pass
 
+        print('before save', fluid_array[2])
         os.chdir(numpy_path)
         np.save(file_name, fluid_array)
 
