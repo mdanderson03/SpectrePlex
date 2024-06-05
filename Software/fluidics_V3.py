@@ -278,13 +278,15 @@ class fluidics:
         os.chdir(r'C:\Users\CyCIF PC\Documents\GitHub\AutoCIF\Software')
         call(["python", file_name, self.experiment_directory])
 
+        time.sleep(10)
+
         # load in data structures
         os.chdir(numpy_path)
         fluid_array = np.load(np_file_name, allow_pickle=False)
         rerun = fluid_array[2]
         file_run = fluid_array[1]
 
-        print('rerun', rerun)
+        print('rerun first print', rerun)
 
         while rerun == 1 or file_run == 0:
 
