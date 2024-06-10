@@ -3197,6 +3197,8 @@ class cycif:
 
             while keep_looping == 1:
 
+                print('cycle', cycle_count)
+
                 #extend to a generic process of finding next cycle images and ratioing them
 
                 #make new data structure to hold previous cycle tiles and clear other
