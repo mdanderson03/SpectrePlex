@@ -3007,8 +3007,8 @@ class cycif:
         file_name = 'fm_array.npy'
         fm_array = np.load(file_name, allow_pickle=False)
         tissue_exist = np.load('tissue_exist.npy', allow_pickle=False)
-        #channels = ['DAPI', 'A488', 'A555', 'A647']
-        channels = ['A488']
+        channels = ['DAPI', 'A488', 'A555', 'A647']
+        #channels = ['A488']
 
         #opposite direction list. opposite_direction[index] = opposite index
         #ie south index = 1, north index = 0, opposite_direction[1] = 0, opposite_direction[0] = 1
@@ -3311,21 +3311,21 @@ class cycif:
                 time.sleep(3)
 
 
-        #make new folder and save brightness uniformed images
-        for x in range(0, x_tiles):
-            for y in range(0, y_tiles):
-                if tissue_exist[y][x] == 1:
-                    os.chdir(channel_file_path)
-                    filename = 'x' + str(x) + '_y_' + str(y) + '_c_' + channel + '.tif'
-                    color_im = io.imread(filename)
-                    color_im = np.nan_to_num(color_im, posinf=65500)
-                    color_im = color_im * bright_array[y][x][5]
-                    color_im[color_im > 65500] = 65500
-                    os.chdir(channel_output_path)
-                    io.imsave(filename, color_im)
+            #make new folder and save brightness uniformed images
+            for x in range(0, x_tiles):
+                for y in range(0, y_tiles):
+                    if tissue_exist[y][x] == 1:
+                        os.chdir(channel_file_path)
+                        filename = 'x' + str(x) + '_y_' + str(y) + '_c_' + channel + '.tif'
+                        color_im = io.imread(filename)
+                        color_im = np.nan_to_num(color_im, posinf=65500)
+                        color_im = color_im * bright_array[y][x][5]
+                        color_im[color_im > 65500] = 65500
+                        os.chdir(channel_output_path)
+                        io.imsave(filename, color_im)
 
-                else:
-                    pass
+                    else:
+                        pass
 
 
 
