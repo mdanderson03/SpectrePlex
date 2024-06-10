@@ -3197,8 +3197,6 @@ class cycif:
 
             while keep_looping == 1:
 
-                print('cycle', cycle_count)
-
                 #extend to a generic process of finding next cycle images and ratioing them
 
                 #make new data structure to hold previous cycle tiles and clear other
@@ -3256,7 +3254,6 @@ class cycif:
 
                 #determine if cycle should be broken.
                 #if no tiles are in list, then all tiles have been identified and program is finished
-                print(len(cycle_tiles))
                 if len(cycle_tiles) > 0:
                     # find ratio for cycle N tiles
                     for tile in range(0, len(cycle_tiles)):
@@ -3308,10 +3305,21 @@ class cycif:
                 time.sleep(3)
 
 
-        io.imshow(bright_array[::,::,5])
-        io.show()
-        io.imshow(bright_array[::, ::, 4])
-        io.show()
+        #make new folder and save brightness uniformed images
+        for x in range(0, x_tiles):
+            for y in range(0, y_tiles):
+                if tissue_exist[y][x] == 1:
+                    os.chdir(stain_color_path)
+                    filename = 'x' + str(x) + '_y_' + str(y) + '_c_' + channel + '.tif'
+                    color_im = io.imread(filename)
+                    color_im = np.nan_to_num(color_im, posinf=65500)
+                    color_im = color_im * bright_array[y][x][5]
+                    color_im[color_im > 65500] = 65500
+                    os.chdir(channel_output_path)
+                    io.imsave(filename, color_im)
+
+                else:
+                    pass
 
 
 
