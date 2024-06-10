@@ -3022,7 +3022,7 @@ class cycif:
             tissue_path = experiment_directory + '/Tissue_Binary'
             channel_output_path = experiment_directory + '/' + channel + '/Stain/cy_' + str(cycle_number) + '/Tiles/focused_basic_brightness_corrected'
             #make array to store brightness information in
-            bright_array = np.zeroes((y_tiles, x_tiles, 6))
+            bright_array = np.zeros((y_tiles, x_tiles, 6))
 
             os.chdir(channel_file_path)
 
@@ -3126,8 +3126,9 @@ class cycif:
                 else:
                     column_found = x
 
-            #indicate left most upper tile designation with cycle number 1
+            #indicate left most upper tile designation with cycle number 1 and starting ratio of 1
             bright_array[row_found][column_found][4] = 1
+            bright_array[row_found][column_found][5] = 1
 
             #find cycle 2 tiles (Y an X coordinates in that order)
             cycle_tiles = []
@@ -3149,43 +3150,47 @@ class cycif:
             #find ratio for cycle 2 tiles
             for tile in range(0, len(cycle_tiles)):
 
-                indices = [i for i, x in enumerate(list[tile]) if x == 1]
+                indices = [i for i, x in enumerate(cycle_overlaps[tile]) if x == 1]
                 #make array to hold overlap regions for all desired tiles
-                temp_sum_array = np.zeros((len(indices, 2)))
+                temp_sum_array = np.zeros((len(indices), 2))
                 for overlap_region_number in range(0, len(indices)):
                     # index 0 in temp_sum_array = higher cycle # tile
                     #current Y and X coords
-                    y_coord = cycle_tiles[0]
-                    x_coord = cycle_tiles[1]
+                    y_coord = cycle_tiles[tile][0]
+                    x_coord = cycle_tiles[tile][1]
                     directionality_index = indices[overlap_region_number]
                     temp_sum_array[overlap_region_number][0] = bright_array[y_coord][x_coord][directionality_index]
 
                     #find previous cycles overlapped region
                     if directionality_index == 0:
-                        prev_y_coord = cycle_tiles[0] - 1
-                        prev_x_coord = cycle_tiles[1]
+                        prev_y_coord = y_coord - 1
+                        prev_x_coord = x_coord
                     if directionality_index == 1:
-                        prev_y_coord = cycle_tiles[0] + 1
-                        prev_x_coord = cycle_tiles[1]
+                        prev_y_coord = y_coord + 1
+                        prev_x_coord = x_coord
                     if directionality_index == 2:
-                        prev_y_coord = cycle_tiles[0]
-                        prev_x_coord = cycle_tiles[1] + 1
+                        prev_y_coord = y_coord
+                        prev_x_coord = x_coord + 1
                     if directionality_index == 3:
-                        prev_y_coord = cycle_tiles[0]
-                        prev_x_coord = cycle_tiles[1] - 1
+                        prev_y_coord = y_coord
+                        prev_x_coord = x_coord - 1
                     #find opposite directionality index
                     opposite_index = opposite_direction[directionality_index]
                     # add to summing array
                     temp_sum_array[overlap_region_number][1] = bright_array[prev_y_coord][prev_x_coord][opposite_index]
 
                 #find ratios of all overlap regions and find average ratio
-                ratios = temp_sum_array[::][0]/temp_sum_array[::][1]
+                ratios = temp_sum_array[::,1]/temp_sum_array[::,0]
                 average_ratio = np.average(ratios)
                 #add to bright_image array and denote tile cycle number
                 bright_array[y_coord][x_coord][5] = average_ratio
                 bright_array[y_coord][x_coord][4] = 2
                 #propogate ratio through overlapped regions of tile
                 bright_array[y_coord][x_coord][0:3] = bright_array[y_coord][x_coord][0:3] * average_ratio
+
+        io.imshow(bright_array[::,::, 5])
+        io.show()
+
 
 
 

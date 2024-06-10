@@ -14,5 +14,5 @@ focus_position = 155
 #for cycle in range(6, 7):
 #    microscope.full_cycle(experiment_directory, cycle, offset_array, cycle, pump, z_slices, focus_position=focus_position)
 
-microscope.post_acquisition_processor(experiment_directory, x_frame_size, rolling_ball=0)
-
+#microscope.post_acquisition_processor(experiment_directory, x_frame_size, rolling_ball=0)
+microscope.brightness_uniformer(experiment_directory, cycle_number=1)
