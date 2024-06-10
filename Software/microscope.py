@@ -3309,7 +3309,7 @@ class cycif:
         for x in range(0, x_tiles):
             for y in range(0, y_tiles):
                 if tissue_exist[y][x] == 1:
-                    os.chdir(stain_color_path)
+                    os.chdir(channel_file_path)
                     filename = 'x' + str(x) + '_y_' + str(y) + '_c_' + channel + '.tif'
                     color_im = io.imread(filename)
                     color_im = np.nan_to_num(color_im, posinf=65500)
