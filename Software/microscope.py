@@ -3191,105 +3191,122 @@ class cycif:
                 #propogate ratio through overlapped regions of tile
                 bright_array[y_coord][x_coord][0:3] = bright_array[y_coord][x_coord][0:3] * average_ratio
 
-            #extend to a generic process of finding next cycle images and ratioing them
+            # if keep_looping = 0, the cycle will break
+            keep_looping = 1
+            cycle_count = 3
 
-            #make new data structure to hold previous cycle tiles and clear other
-            previous_cycle_tiles = copy.deepcopy(cycle_tiles)
-            cycle_tiles.clear()
-            cycle_overlaps.clear()
+            while keep_looping == 1:
 
-            #iterate through previous cycle tiles and identify which tiles touch them
-            for tile in range(0, len(previous_cycle_tiles)):
+                #extend to a generic process of finding next cycle images and ratioing them
 
-                y_coord = previous_cycle_tiles[tile][0]
-                x_coord = previous_cycle_tiles[tile][1]
+                #make new data structure to hold previous cycle tiles and clear other
+                previous_cycle_tiles = copy.deepcopy(cycle_tiles)
+                cycle_tiles.clear()
+                cycle_overlaps.clear()
 
-                for directionality_index in range(0, 4):
-                    overlapped_brightness = bright_array[y_coord][x_coord][directionality_index]
-                    #determine if tile has non zero overlapped region
-                    if overlapped_brightness > 0:
-                        # find previous cycles overlapped region
-                        if directionality_index == 0:
-                            next_y_coord = y_coord - 1
-                            next_x_coord = x_coord
-                        if directionality_index == 1:
-                            next_y_coord = y_coord + 1
-                            next_x_coord = x_coord
-                        if directionality_index == 2:
-                            next_y_coord = y_coord
-                            next_x_coord = x_coord + 1
-                        if directionality_index == 3:
-                            next_y_coord = y_coord
-                            next_x_coord = x_coord - 1
+                #iterate through previous cycle tiles and identify which tiles touch them
+                for tile in range(0, len(previous_cycle_tiles)):
+
+                    y_coord = previous_cycle_tiles[tile][0]
+                    x_coord = previous_cycle_tiles[tile][1]
+
+                    for directionality_index in range(0, 4):
+                        overlapped_brightness = bright_array[y_coord][x_coord][directionality_index]
+                        #determine if tile has non zero overlapped region
+                        if overlapped_brightness > 0:
+                            # find previous cycles overlapped region
+                            if directionality_index == 0:
+                                next_y_coord = y_coord - 1
+                                next_x_coord = x_coord
+                            if directionality_index == 1:
+                                next_y_coord = y_coord + 1
+                                next_x_coord = x_coord
+                            if directionality_index == 2:
+                                next_y_coord = y_coord
+                                next_x_coord = x_coord + 1
+                            if directionality_index == 3:
+                                next_y_coord = y_coord
+                                next_x_coord = x_coord - 1
 
 
-                        #determine if valid coordinates exist for bordering tile
-                        if ((next_y_coord and next_x_coord >= 0) and (next_x_coord <= x_tiles - 1) and (next_y_coord <= y_tiles - 1)):
+                            #determine if valid coordinates exist for bordering tile
+                            if ((next_y_coord and next_x_coord >= 0) and (next_x_coord <= x_tiles - 1) and (next_y_coord <= y_tiles - 1)):
 
-                            #determine if tile has been registered before
-                            if bright_array[next_y_coord][next_x_coord][4] == 0:
+                                #determine if tile has been registered before
+                                if bright_array[next_y_coord][next_x_coord][4] == 0:
 
-                                #find index of tile entry and add it if doesnt exist
-                                #enter directionality into list as well
-                                opposite_directionality = opposite_direction[directionality_index]
-                                try:
-                                    cycle_tile_index= cycle_tiles.index([next_y_coord, next_x_coord])
-                                    cycle_overlaps[cycle_tile_index][opposite_directionality] = 1
-                                except:
-                                    cycle_tiles.append([next_y_coord, next_x_coord])
-                                    cycle_overlaps.append([0,0,0,0])
-                                    cycle_tile_index = cycle_tiles.index([next_y_coord, next_x_coord])
-                                    cycle_overlaps[cycle_tile_index][opposite_directionality] = 1
+                                    #find index of tile entry and add it if doesnt exist
+                                    #enter directionality into list as well
+                                    opposite_directionality = opposite_direction[directionality_index]
+                                    try:
+                                        cycle_tile_index= cycle_tiles.index([next_y_coord, next_x_coord])
+                                        cycle_overlaps[cycle_tile_index][opposite_directionality] = 1
+                                    except:
+                                        cycle_tiles.append([next_y_coord, next_x_coord])
+                                        cycle_overlaps.append([0,0,0,0])
+                                        cycle_tile_index = cycle_tiles.index([next_y_coord, next_x_coord])
+                                        cycle_overlaps[cycle_tile_index][opposite_directionality] = 1
 
+                                else:
+                                    pass
                             else:
                                 pass
-                        else:
-                            pass
 
-            # find ratio for cycle N tiles
-            for tile in range(0, len(cycle_tiles)):
+                #determine if cycle should be broken.
+                #if no tiles are in list, then all tiles have been identified and program is finished
+                try:
+                    len(cycle_tiles)
+                    # find ratio for cycle N tiles
+                    for tile in range(0, len(cycle_tiles)):
 
-                indices = [i for i, x in enumerate(cycle_overlaps[tile]) if x == 1]
-                # make array to hold overlap regions for all desired tiles
-                temp_sum_array = np.zeros((len(indices), 2))
-                for overlap_region_number in range(0, len(indices)):
-                    # index 0 in temp_sum_array = higher cycle # tile
-                    # current Y and X coords
-                    y_coord = cycle_tiles[tile][0]
-                    x_coord = cycle_tiles[tile][1]
-                    directionality_index = indices[overlap_region_number]
-                    temp_sum_array[overlap_region_number][0] = bright_array[y_coord][x_coord][
-                        directionality_index]
+                        indices = [i for i, x in enumerate(cycle_overlaps[tile]) if x == 1]
+                        # make array to hold overlap regions for all desired tiles
+                        temp_sum_array = np.zeros((len(indices), 2))
+                        for overlap_region_number in range(0, len(indices)):
+                            # index 0 in temp_sum_array = higher cycle # tile
+                            # current Y and X coords
+                            y_coord = cycle_tiles[tile][0]
+                            x_coord = cycle_tiles[tile][1]
+                            directionality_index = indices[overlap_region_number]
+                            temp_sum_array[overlap_region_number][0] = bright_array[y_coord][x_coord][
+                                directionality_index]
 
-                    # find previous cycles overlapped region
-                    if directionality_index == 0:
-                        prev_y_coord = y_coord - 1
-                        prev_x_coord = x_coord
-                    if directionality_index == 1:
-                        prev_y_coord = y_coord + 1
-                        prev_x_coord = x_coord
-                    if directionality_index == 2:
-                        prev_y_coord = y_coord
-                        prev_x_coord = x_coord + 1
-                    if directionality_index == 3:
-                        prev_y_coord = y_coord
-                        prev_x_coord = x_coord - 1
-                    # find opposite directionality index
-                    opposite_index = opposite_direction[directionality_index]
-                    # add to summing array
-                    temp_sum_array[overlap_region_number][1] = bright_array[prev_y_coord][prev_x_coord][
-                        opposite_index]
+                            # find previous cycles overlapped region
+                            if directionality_index == 0:
+                                prev_y_coord = y_coord - 1
+                                prev_x_coord = x_coord
+                            if directionality_index == 1:
+                                prev_y_coord = y_coord + 1
+                                prev_x_coord = x_coord
+                            if directionality_index == 2:
+                                prev_y_coord = y_coord
+                                prev_x_coord = x_coord + 1
+                            if directionality_index == 3:
+                                prev_y_coord = y_coord
+                                prev_x_coord = x_coord - 1
+                            # find opposite directionality index
+                            opposite_index = opposite_direction[directionality_index]
+                            # add to summing array
+                            temp_sum_array[overlap_region_number][1] = bright_array[prev_y_coord][prev_x_coord][
+                                opposite_index]
 
-                # find ratios of all overlap regions and find average ratio
-                ratios = temp_sum_array[::, 1] / temp_sum_array[::, 0]
-                average_ratio = np.average(ratios)
-                # add to bright_image array and denote tile cycle number
-                bright_array[y_coord][x_coord][5] = average_ratio
-                bright_array[y_coord][x_coord][4] = 3
-                # propogate ratio through overlapped regions of tile
-                bright_array[y_coord][x_coord][0:3] = bright_array[y_coord][x_coord][0:3] * average_ratio
+                        # find ratios of all overlap regions and find average ratio
+                        ratios = temp_sum_array[::, 1] / temp_sum_array[::, 0]
+                        average_ratio = np.average(ratios)
+                        # add to bright_image array and denote tile cycle number
+                        bright_array[y_coord][x_coord][5] = average_ratio
+                        bright_array[y_coord][x_coord][4] = cycle_count
+                        # propogate ratio through overlapped regions of tile
+                        bright_array[y_coord][x_coord][0:3] = bright_array[y_coord][x_coord][0:3] * average_ratio
+                        # increase cycle counter by 1
+                    cycle_count += 1
+                except:
+                    keep_looping = 0
+
 
         io.imshow(bright_array[::,::,5])
+        io.show()
+        io.imshow(bright_array[::, ::, 4])
         io.show()
 
 
