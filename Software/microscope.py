@@ -3225,13 +3225,13 @@ class cycif:
 
                         #determine if valid coordinates exist for bordering tile
                         if next_y_coord and next_x_coord >= 0:
-                            
+
                             #determine if tile has been registered before
                             if bright_array[next_y_coord][next_x_coord][4] == 0:
 
                                 #find index of tile entry and add it if doesnt exist
                                 #enter directionality into list as well
-                                opposite_directionality = opposite_index[directionality_index]
+                                opposite_directionality = opposite_direction[directionality_index]
                                 try:
                                     cycle_tile_index= cycle_tiles.index([next_y_coord, next_x_coord])
                                     cycle_overlaps[cycle_tile_index][opposite_directionality] = 1
