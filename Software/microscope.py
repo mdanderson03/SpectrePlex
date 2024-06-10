@@ -3257,7 +3257,7 @@ class cycif:
                 #determine if cycle should be broken.
                 #if no tiles are in list, then all tiles have been identified and program is finished
                 try:
-                    len(cycle_tiles)
+                    print('number tiles', cycle_tiles)
                     # find ratio for cycle N tiles
                     for tile in range(0, len(cycle_tiles)):
 
@@ -3304,6 +3304,8 @@ class cycif:
                     cycle_count += 1
                 except:
                     keep_looping = 0
+
+                time.sleep(3)
 
 
         io.imshow(bright_array[::,::,5])
