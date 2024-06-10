@@ -1906,7 +1906,7 @@ class cycif:
             else:
                 cycle_start_search = 1
         '''
-        cycle_end = 2
+        cycle_end = 7
         cycle_start = 1
 
         #self.tissue_binary_generate(experiment_directory)
@@ -1972,13 +1972,13 @@ class cycif:
         tile_count = int(tissue_exist.sum())
 
         dapi_im_path = experiment_directory + '\DAPI\Stain\cy_' + str(
-            cycle_number) + '\Tiles' + '/focused_basic_corrected'
+            cycle_number) + '\Tiles' + '/focused_basic_corrected_brightness_corrected'
         a488_im_path = experiment_directory + '\A488\Stain\cy_' + str(
-            cycle_number) + '\Tiles' + '/focused_flattened_subbed'
+            cycle_number) + '\Tiles' + '/focused_flattened_subbed_brightness'
         a555_im_path = experiment_directory + '\A555\Stain\cy_' + str(
-            cycle_number) + '\Tiles' + '/focused_flattened_subbed'
+            cycle_number) + '\Tiles' + '/focused_flattened_subbed_brightness'
         a647_im_path = experiment_directory + '\A647\Stain\cy_' + str(
-            cycle_number) + '\Tiles' + '/focused_flattened_subbed'
+            cycle_number) + '\Tiles' + '/focused_flattened_subbed_brightness'
 
         mcmicro_path = experiment_directory + r'\mcmicro\raw'
 
