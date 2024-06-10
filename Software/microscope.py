@@ -1917,12 +1917,12 @@ class cycif:
             #self.in_focus_excel_populate(experiment_directory, cycle_number, x_pixels)
             #self.excel_2_focus(experiment_directory, cycle_number)
             #self.infocus(experiment_directory, cycle_number, x_pixels, 1, 1)
-            self.illumination_flattening(experiment_directory, cycle_number, rolling_ball)
+            #self.illumination_flattening(experiment_directory, cycle_number, rolling_ball)
             #self.background_sub(experiment_directory, cycle_number, rolling_ball)
             #self.illumination_flattening_per_tile(experiment_directory, cycle_number, rolling_ball)
-            self.background_sub(experiment_directory, cycle_number, rolling_ball)
-            #self.brightness_uniformer(experiment_directory, cycle_number)
-            self.mcmicro_image_stack_generator(cycle_number, experiment_directory, x_pixels)
+            #self.background_sub(experiment_directory, cycle_number, rolling_ball)
+            self.brightness_uniformer(experiment_directory, cycle_number)
+            #self.mcmicro_image_stack_generator(cycle_number, experiment_directory, x_pixels)
             self.stage_placement(experiment_directory, cycle_number, x_pixels)
 
     def post_acquisition_processor_experimental(self, experiment_directory, x_pixels, rolling_ball = 1):
@@ -1939,8 +1939,8 @@ class cycif:
             else:
                 cycle_start_search = 1
         '''
-        cycle_end = 9
-        cycle_start = 3
+        cycle_end = 2
+        cycle_start = 1
 
         #self.tissue_binary_generate(experiment_directory)
         #self.tissue_exist_array_generate(experiment_directory)
@@ -2248,10 +2248,10 @@ class cycif:
                 if type == 'Stain':
                     if channel == 'DAPI':
                         im_path = experiment_directory + '/' + channel + "/" + type + '\cy_' + str(
-                            cycle_number) + '\Tiles' + r'\focused_basic_corrected'
+                            cycle_number) + '\Tiles' + r'\focused_basic_brightness_corrected'
                     else:
                         im_path = experiment_directory + '/' + channel + "/" + type + '\cy_' + str(
-                            cycle_number) + '\Tiles' + '/focused_flattened_subbed'
+                            cycle_number) + '\Tiles' + '/focused_flattened_subbed_brightness'
                 elif type == 'Bleach':
                     im_path = experiment_directory + '/' + channel + "/" + type + '\cy_' + str(
                         cycle_number) + '\Tiles' + '/focused_basic_corrected'
@@ -3007,8 +3007,8 @@ class cycif:
         file_name = 'fm_array.npy'
         fm_array = np.load(file_name, allow_pickle=False)
         tissue_exist = np.load('tissue_exist.npy', allow_pickle=False)
-        #channels = ['DAPI', 'A488', 'A555', 'A647']
-        channels = ['A647']
+        channels = ['DAPI', 'A488', 'A555', 'A647']
+        #channels = ['A647']
 
         #opposite direction list. opposite_direction[index] = opposite index
         #ie south index = 1, north index = 0, opposite_direction[1] = 0, opposite_direction[0] = 1
@@ -3020,9 +3020,15 @@ class cycif:
             x_tiles = np.shape(fm_array[0])[1]
             y_tiles = np.shape(fm_array[0])[0]
             #paths to needed folders
-            channel_file_path = experiment_directory + '/' + channel + '/Stain/cy_' + str(cycle_number) + '/Tiles/focused_basic_corrected'
+            if channel == 'DAPI':
+                channel_file_path = experiment_directory + '/' + channel + '/Stain/cy_' + str(cycle_number) + '/Tiles/focused_basic_corrected'
+            else:
+                channel_file_path = experiment_directory + '/' + channel + '/Stain/cy_' + str(cycle_number) + '/Tiles/focused_flattened_subbed'
             tissue_path = experiment_directory + '/Tissue_Binary'
-            channel_output_path = experiment_directory + '/' + channel + '/Stain/cy_' + str(cycle_number) + '/Tiles/focused_basic_brightness_corrected'
+            if channel == 'DAPI':
+                channel_output_path = experiment_directory + '/' + channel + '/Stain/cy_' + str(cycle_number) + '/Tiles/focused_basic_brightness_corrected'
+            else:
+                channel_output_path = experiment_directory + '/' + channel + '/Stain/cy_' + str(cycle_number) + '/Tiles/focused_flattened_subbed_brightness'
             #make array to store brightness information in
             bright_array = np.zeros((y_tiles, x_tiles, 6))
 
