@@ -1909,8 +1909,8 @@ class cycif:
         cycle_end = 2
         cycle_start = 1
 
-        self.tissue_binary_generate(experiment_directory)
-        self.tissue_exist_array_generate(experiment_directory)
+        #self.tissue_binary_generate(experiment_directory)
+        #self.tissue_exist_array_generate(experiment_directory)
 
         for cycle_number in range(cycle_start, cycle_end):
             #self.focus_excel_creation(experiment_directory, cycle_number)
@@ -1923,7 +1923,7 @@ class cycif:
             #self.background_sub(experiment_directory, cycle_number, rolling_ball)
             self.brightness_uniformer(experiment_directory, cycle_number)
             #self.mcmicro_image_stack_generator(cycle_number, experiment_directory, x_pixels)
-            self.stage_placement(experiment_directory, cycle_number, x_pixels)
+            #self.stage_placement(experiment_directory, cycle_number, x_pixels)
 
     def post_acquisition_processor_experimental(self, experiment_directory, x_pixels, rolling_ball = 1):
 
@@ -3007,8 +3007,8 @@ class cycif:
         file_name = 'fm_array.npy'
         fm_array = np.load(file_name, allow_pickle=False)
         tissue_exist = np.load('tissue_exist.npy', allow_pickle=False)
-        channels = ['DAPI', 'A488', 'A555', 'A647']
-        #channels = ['A647']
+        #channels = ['DAPI', 'A488', 'A555', 'A647']
+        channels = ['DAPI']
 
         #opposite direction list. opposite_direction[index] = opposite index
         #ie south index = 1, north index = 0, opposite_direction[1] = 0, opposite_direction[0] = 1
