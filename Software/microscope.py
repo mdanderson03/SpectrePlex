@@ -1904,16 +1904,16 @@ class cycif:
             else:
                 cycle_start_search = 1
         '''
-        cycle_end = 7
+        cycle_end = 2
         cycle_start = 1
 
         self.tissue_binary_generate(experiment_directory)
         self.tissue_exist_array_generate(experiment_directory)
 
         for cycle_number in range(cycle_start, cycle_end):
-            self.focus_excel_creation(experiment_directory, cycle_number)
-            self.in_focus_excel_populate(experiment_directory, cycle_number, x_pixels)
-            self.excel_2_focus(experiment_directory, cycle_number)
+            #self.focus_excel_creation(experiment_directory, cycle_number)
+            #self.in_focus_excel_populate(experiment_directory, cycle_number, x_pixels)
+            #self.excel_2_focus(experiment_directory, cycle_number)
             #self.infocus(experiment_directory, cycle_number, x_pixels, 1, 1)
             self.illumination_flattening(experiment_directory, cycle_number, rolling_ball)
             #self.background_sub(experiment_directory, cycle_number, rolling_ball)
@@ -2356,9 +2356,10 @@ class cycif:
             except:
                 pass
 
+
             #resave images without NaN or infinity values
-            self.nan_folder_conversion(stain_directory)
-            self.nan_folder_conversion(bleach_directory)
+            #self.nan_folder_conversion(stain_directory)
+            #self.nan_folder_conversion(bleach_directory)
 
             epsilon = 1e-06
             optimizer = shading_correction.BaSiC(stain_directory)

@@ -286,8 +286,6 @@ class fluidics:
         rerun = fluid_array[2]
         file_run = fluid_array[1]
 
-        print('rerun first print', rerun)
-
         while rerun == 1 or file_run == 0:
 
             # set initial value to 0 which indicates that no failure has happened
@@ -387,7 +385,7 @@ class fluidics:
         elif action_type == "Wash":
 
             self.valve_select(pbs_valve)
-            self.flow_checker()
+            #self.flow_checker()
             self.file_run('wash.py')
 
 
