@@ -3224,7 +3224,7 @@ class cycif:
 
 
                         #determine if valid coordinates exist for bordering tile
-                        if next_y_coord and next_x_coord >= 0:
+                        if ((next_y_coord and next_x_coord >= 0) and (next_x_coord <= x_tiles - 1) and (next_y_coord <= y_tiles - 1)):
 
                             #determine if tile has been registered before
                             if bright_array[next_y_coord][next_x_coord][4] == 0:
