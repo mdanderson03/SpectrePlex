@@ -3007,8 +3007,8 @@ class cycif:
         file_name = 'fm_array.npy'
         fm_array = np.load(file_name, allow_pickle=False)
         tissue_exist = np.load('tissue_exist.npy', allow_pickle=False)
-        channels = ['DAPI', 'A488', 'A555', 'A647']
-        #channels = ['DAPI']
+        #channels = ['DAPI', 'A488', 'A555', 'A647']
+        channels = ['A488']
 
         #opposite direction list. opposite_direction[index] = opposite index
         #ie south index = 1, north index = 0, opposite_direction[1] = 0, opposite_direction[0] = 1
