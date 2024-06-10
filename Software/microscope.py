@@ -3222,12 +3222,13 @@ class cycif:
                             next_y_coord = y_coord
                             next_x_coord = x_coord - 1
 
-                        print('ny', next_y_coord, 'nx', next_x_coord)
 
                         #determine if valid coordinates exist for bordering tile
                         if next_y_coord and next_x_coord >= 0:
+                            
                             #determine if tile has been registered before
-                            if bright_array[next_y_coord][next_x_coord][4] != 0:
+                            if bright_array[next_y_coord][next_x_coord][4] == 0:
+
                                 #find index of tile entry and add it if doesnt exist
                                 #enter directionality into list as well
                                 opposite_directionality = opposite_index[directionality_index]
