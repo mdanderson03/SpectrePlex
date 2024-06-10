@@ -3005,7 +3005,12 @@ class cycif:
         file_name = 'fm_array.npy'
         fm_array = np.load(file_name, allow_pickle=False)
         tissue_exist = np.load('tissue_exist.npy', allow_pickle=False)
-        channels = ['DAPI', 'A488', 'A555', 'A647']
+        #channels = ['DAPI', 'A488', 'A555', 'A647']
+        channels = ['A647']
+
+        #opposite direction list. opposite_direction[index] = opposite index
+        #ie south index = 1, north index = 0, opposite_direction[1] = 0, opposite_direction[0] = 1
+        opposite_direction = [1,0,3,2]
 
         for channel in channels:
 
@@ -3017,7 +3022,7 @@ class cycif:
             tissue_path = experiment_directory + '/Tissue_Binary'
             channel_output_path = experiment_directory + '/' + channel + '/Stain/cy_' + str(cycle_number) + '/Tiles/focused_basic_brightness_corrected'
             #make array to store brightness information in
-            bright_array = np.ones((y_tiles, x_tiles, 5))
+            bright_array = np.zeroes((y_tiles, x_tiles, 6))
 
             os.chdir(channel_file_path)
 
@@ -3036,11 +3041,11 @@ class cycif:
                         image = io.imread(filename)
                         image[image < 0] = 0
 
-                        #os.chdir(tissue_path)
-                        #tissue_name = 'x' + str(x) +'_y_' + str(y) +'_tissue.tif'
-                        #tissue_mask = io.imread(tissue_name)
+                        os.chdir(tissue_path)
+                        tissue_name = 'x' + str(x) +'_y_' + str(y) +'_tissue.tif'
+                        tissue_mask = io.imread(tissue_name)
 
-                        #image = image * tissue_mask
+                        image = image * tissue_mask
 
                         #find dimensions
                         x_pixels = np.shape(image)[1]
@@ -3052,35 +3057,39 @@ class cycif:
 
                         west_image = image[::, 0:overlap_x_pixel_length]
                         sum = np.sum(west_image)
-                        non_zero_count = np.count_nonzero(west_image)
-                        west = sum / non_zero_count
-                        west = np.nan_to_num(west, nan=1)
+                        if sum == 0:
+                            west = 0
+                        else:
+                            non_zero_count = np.count_nonzero(west_image)
+                            west = sum / non_zero_count
+                            west = np.nan_to_num(west, nan=0)
 
                         east_image = image[::, (x_pixels - overlap_x_pixel_length):x_pixels]
                         sum = np.sum(east_image)
-                        non_zero_count = np.count_nonzero(east_image)
-                        east = sum/non_zero_count
-                        east = np.nan_to_num(east, nan= 1)
+                        if sum == 0:
+                            east = 0
+                        else:
+                            non_zero_count = np.count_nonzero(east_image)
+                            east = sum/non_zero_count
+                            east = np.nan_to_num(east, nan= 0)
 
                         north_image = image[0:overlap_y_pixel_length, ::]
                         sum = np.sum(north_image)
-                        non_zero_count = np.count_nonzero(north_image)
-                        north = sum/non_zero_count
-                        north = np.nan_to_num(north, nan= 1)
+                        if sum == 0:
+                            north = 0
+                        else:
+                            non_zero_count = np.count_nonzero(north_image)
+                            north = sum/non_zero_count
+                            north = np.nan_to_num(north, nan= 0)
 
                         south_image = image[(y_tiles - overlap_y_pixel_length):y_pixels, ::]
                         sum = np.sum(south_image)
-                        non_zero_count = np.count_nonzero(south_image)
-                        south = sum/non_zero_count
-                        south = np.nan_to_num(south, nan= 1)
-
-
-
-
-
-                        #east = np.mean(image[::, (x_pixels - overlap_x_pixel_length):x_pixels]) + 1
-                        #north = np.mean(image[0:overlap_y_pixel_length, ::]) + 1
-                        #south = np.mean(image[(y_tiles - overlap_y_pixel_length):y_pixels, ::]) + 1
+                        if sum == 0:
+                            south = 0
+                        else:
+                            non_zero_count = np.count_nonzero(south_image)
+                            south = sum/non_zero_count
+                            south = np.nan_to_num(south, nan= 0)
 
                         #populate brightness array
                         bright_array[y][x][0] = north
@@ -3088,71 +3097,98 @@ class cycif:
                         bright_array[y][x][2] = east
                         bright_array[y][x][3] = west
 
-
                     else:
                         pass
 
-            #find max value and set south on tile 0,0 to that value
-            max_value = np.max(bright_array)
-            ratio = max_value / bright_array[0][0][1]
-            bright_array[0][0][4] = ratio
-            bright_array[0][0][1] = ratio * bright_array[0][0][1]
-            bright_array[0][0][2] = ratio * bright_array[0][0][2]
-
-            #propogate max value to column 1 from top to bottom
-            for y in range(0, y_tiles - 1):
-                ratio = bright_array[y][0][1]/bright_array[y + 1][0][0]
-                bright_array[y + 1][0][4] = ratio
-                bright_array[y + 1][0][1] = ratio * bright_array[y + 1][0][1]
-                bright_array[y + 1][0][2] = ratio * bright_array[y + 1][0][2]
-                bright_array[y + 1][0][3] = ratio * bright_array[y + 1][0][3]
-                bright_array[y + 1][0][0] = ratio * bright_array[y + 1][0][0]
 
 
-            #Propgate row 1 values
-            for x in range(0, x_tiles - 1):
+            #Identify tile that is topmost left
 
-                bright_tile_west = bright_array[y][x]
-                bright_tile_east = bright_array[y][x + 1]
-                ratio = bright_tile_west[2]/bright_tile_east[3]
-                print('x', x, 'y', y, 'tile 1 east', bright_tile_west[2], 'tile 2 west', bright_tile_east[3])
-                bright_array[0][x + 1][1] = ratio * bright_array[0][x + 1][1]
-                bright_array[0][x + 1][2] = ratio * bright_array[0][x + 1][2]
-                bright_array[0][x + 1][3] = ratio * bright_array[0][x + 1][3]
-                bright_array[0][x + 1][0] = ratio * bright_array[0][x + 1][0]
-                bright_array[0][x + 1][4] = ratio * bright_array[0][x + 1][4]
+            #find upper row with data in it
+            row_found = -1
+            y = 0
+            while row_found == -1:
 
-            #Propgate row 1 values
-            for y in range(1, y_tiles):
-                for x in range(1, x_tiles):
+                row_sum = np.sum(bright_array[y][::][0:3])
+                if row_sum == 0:
+                    y += 1
+                else:
+                    row_found = y
 
-                    bright_tile_north = bright_array[y - 1][x]
-                    bright_tile_west = bright_array[y][x - 1]
-                    bright_tile_center = bright_array[y][x]
-                    ratio = (bright_tile_north[1] + bright_tile_west[2])/(bright_tile_center[0] + bright_tile_center[3])
-                    bright_array[y][x][1] = ratio * bright_array[y][x][1]
-                    bright_array[y][x][2] = ratio * bright_array[y][x][2]
-                    bright_array[y][x][3] = ratio * bright_array[y][x][3]
-                    bright_array[y][x][0] = ratio * bright_array[y][x][0]
-                    bright_array[y][x][4] = ratio * bright_array[y][x][4]
+            #find leftmost column in top row that has data in it
+            column_found = -1
+            x = 0
+            while column_found == -1:
 
-            for y in range(0, y_tiles):
-                for x in range(0, x_tiles):
-                    if tissue_exist[y][x] == 1:
-                        # load in image
-                        os.chdir(channel_file_path)
-                        filename = 'x' + str(x) + '_y_' + str(y) + '_c_' + channel + '.tif'
-                        image = io.imread(filename)
-                        image[image < 0] = 0
-                        print('x', x, 'y', y, 'ratio', bright_array[y][x][4])
-                        image = bright_array[y][x][4] * image
+                pixel_sum = np.sum(bright_array[row_found][x][0:3])
+                if pixel_sum == 0:
+                    x += 1
+                else:
+                    column_found = x
 
-                        #save image
-                        os.chdir(channel_output_path)
-                        io.imsave(filename, image)
+            #indicate left most upper tile designation with cycle number 1
+            bright_array[row_found][column_found][4] = 1
 
-                    else:
-                        pass
+            #find cycle 2 tiles (Y an X coordinates in that order)
+            cycle_tiles = []
+            cycle_overlaps = []
+
+            if bright_array[row_found][column_found][1] > 0:
+                #append tile coords
+                cycle_tiles.append([row_found + 1, column_found])
+                #append region where overlapped with cycle 1 tile from cycle 2 perspective
+                #ie, if south on tile 1, it will be denoted as north in this cycle
+                #arrangement is [N,S,E,W]
+                cycle_overlaps.append([1, 0, 0, 0])
+            if bright_array[row_found][column_found][2] > 0:
+                cycle_tiles.append([row_found, column_found + 1])
+                cycle_overlaps.append([0, 0, 0, 1])
+            else:
+                pass
+
+            #find ratio for cycle 2 tiles
+            for tile in range(0, len(cycle_tiles)):
+
+                indices = [i for i, x in enumerate(list[tile]) if x == 1]
+                #make array to hold overlap regions for all desired tiles
+                temp_sum_array = np.zeros((len(indices, 2)))
+                for overlap_region_number in range(0, len(indices)):
+                    # index 0 in temp_sum_array = higher cycle # tile
+                    #current Y and X coords
+                    y_coord = cycle_tiles[0]
+                    x_coord = cycle_tiles[1]
+                    directionality_index = indices[overlap_region_number]
+                    temp_sum_array[overlap_region_number][0] = bright_array[y_coord][x_coord][directionality_index]
+
+                    #find previous cycles overlapped region
+                    if directionality_index == 0:
+                        prev_y_coord = cycle_tiles[0] - 1
+                        prev_x_coord = cycle_tiles[1]
+                    if directionality_index == 1:
+                        prev_y_coord = cycle_tiles[0] + 1
+                        prev_x_coord = cycle_tiles[1]
+                    if directionality_index == 2:
+                        prev_y_coord = cycle_tiles[0]
+                        prev_x_coord = cycle_tiles[1] + 1
+                    if directionality_index == 3:
+                        prev_y_coord = cycle_tiles[0]
+                        prev_x_coord = cycle_tiles[1] - 1
+                    #find opposite directionality index
+                    opposite_index = opposite_direction[directionality_index]
+                    # add to summing array
+                    temp_sum_array[overlap_region_number][1] = bright_array[prev_y_coord][prev_x_coord][opposite_index]
+
+                #find ratios of all overlap regions and find average ratio
+                ratios = temp_sum_array[::][0]/temp_sum_array[::][1]
+                average_ratio = np.average(ratios)
+                #add to bright_image array and denote tile cycle number
+                bright_array[y_coord][x_coord][5] = average_ratio
+                bright_array[y_coord][x_coord][4] = 2
+                #propogate ratio through overlapped regions of tile
+                bright_array[y_coord][x_coord][0:3] = bright_array[y_coord][x_coord][0:3] * average_ratio
+
+
+
 
     def max_projector(self, experiment_directory, cycle_number, x_frame_size):
 
