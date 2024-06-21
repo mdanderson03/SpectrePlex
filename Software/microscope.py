@@ -1906,7 +1906,7 @@ class cycif:
             else:
                 cycle_start_search = 1
         '''
-        cycle_end = 7
+        cycle_end = 2
         cycle_start = 1
 
         #self.tissue_binary_generate(experiment_directory)
@@ -1917,10 +1917,10 @@ class cycif:
             #self.in_focus_excel_populate(experiment_directory, cycle_number, x_pixels)
             #self.excel_2_focus(experiment_directory, cycle_number)
             #self.infocus(experiment_directory, cycle_number, x_pixels, 1, 1)
-            #self.illumination_flattening(experiment_directory, cycle_number, rolling_ball)
+            self.illumination_flattening(experiment_directory, cycle_number, rolling_ball)
             #self.background_sub(experiment_directory, cycle_number, rolling_ball)
-            #self.illumination_flattening_per_tile(experiment_directory, cycle_number, rolling_ball)
-            #self.background_sub(experiment_directory, cycle_number, rolling_ball)
+            s#elf.illumination_flattening_per_tile(experiment_directory, cycle_number, rolling_ball)
+            self.background_sub(experiment_directory, cycle_number, rolling_ball)
             self.brightness_uniformer(experiment_directory, cycle_number)
             #self.mcmicro_image_stack_generator(cycle_number, experiment_directory, x_pixels)
             self.stage_placement(experiment_directory, cycle_number, x_pixels)
@@ -2362,9 +2362,11 @@ class cycif:
             #resave images without NaN or infinity values
             #self.nan_folder_conversion(stain_directory)
             #self.nan_folder_conversion(bleach_directory)
+            ff_directory = r'C:\Users\CyCIF PC\Desktop\new A647 FF'
 
             epsilon = 1e-06
             optimizer = shading_correction.BaSiC(stain_directory)
+            #optimizer = shading_correction.BaSiC(ff_directory)
             optimizer.prepare()
             optimizer.run()
             # Save the estimated fields (only if the profiles were estimated)
@@ -2414,7 +2416,7 @@ class cycif:
                     bleach_directory = directory_start + channel_name + '\Bleach\cy_' + str(cycle_number) + r'\Tiles\focused'
                 if rolling_ball == 1:
                     directory = directory_start + channel_name + '\Stain\cy_' + str(cycle_number) + r'\Tiles\focused\background_subbed_rolling'
-            stain_output_directory = directory_start + channel_name + '\Stain\cy_' + str(cycle_number) + r'\Tiles\focused_basic_corrected'
+            stain_output_directory = directory_start + channel_name + '\Stain\cy_' + str(cycle_number) + r'\Tiles\focused_flattened_subbed'
             #bleach_output_directory = directory_start + channel_name + '\Bleach\cy_' + str(cycle_number) + r'\Tiles\focused_basic_corrected'
 
             #stain_temp_directory = directory_start + channel_name + '\Stain\cy_' + str(cycle_number) + r'\Tiles\background_subbed\temp'
@@ -2924,7 +2926,8 @@ class cycif:
                         # apply translation to other color channels
 
                         for channel in channels:
-                            stain_color_path = experiment_directory + channel + r'/Stain/cy_' + str(cycle) + '\Tiles/focused_basic_corrected'
+                            #stain_color_path = experiment_directory + channel + r'/Stain/cy_' + str(cycle) + '\Tiles/focused_basic_corrected'
+                            stain_color_path = experiment_directory + channel + r'/Stain/cy_' + str(cycle) + '\Tiles/focused'
                             os.chdir(stain_color_path)
                             filename = 'x' + str(x) + '_y_' + str(y) + '_c_' + channel + '.tif'
                             color_im = io.imread(filename)
@@ -2933,7 +2936,8 @@ class cycif:
                             color_factor = color_im
 
                             # sub background color channels
-                            bleach_color_path = experiment_directory + channel + r'/Bleach/cy_' + str(cycle) + '\Tiles/focused_basic_corrected'
+                            #bleach_color_path = experiment_directory + channel + r'/Bleach/cy_' + str(cycle) + '\Tiles/focused_basic_corrected'
+                            bleach_color_path = experiment_directory + channel + r'/Bleach/cy_' + str(cycle) + '\Tiles/focused'
                             os.chdir(bleach_color_path)
                             color_bleach = io.imread(filename)
                             color_bleach_factor = color_bleach
@@ -2947,7 +2951,8 @@ class cycif:
 
                             # save
 
-                            save_path = experiment_directory + channel + r'/Stain/cy_' + str(cycle) + '\Tiles/focused_flattened_subbed'
+                            #save_path = experiment_directory + channel + r'/Stain/cy_' + str(cycle) + '\Tiles/focused_flattened_subbed'
+                            save_path = experiment_directory + channel + r'/Stain/cy_' + str(cycle) + '\Tiles/background_subbed'
                             try:
                                 os.chdir(save_path)
                             except:
