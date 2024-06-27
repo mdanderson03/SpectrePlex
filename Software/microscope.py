@@ -37,6 +37,8 @@ class cycif:
 
     def __init__(self):
 
+        self.hdr_exp_times = np.array([])
+        self.hdr = 0
         return
 
     ####################################################################
@@ -60,10 +62,11 @@ class cycif:
 
         a = image[derivative_jump:, :]
         a = a.astype('float64')
-        a = np.nan_to_num(a, posinf=65500, nan=65550)
+        posinf_nan = np.median(a)
+        a = np.nan_to_num(a, posinf=posinf_nan, nan=posinf_nan)
         b = image[:-derivative_jump, :]
         b = b.astype('float64')
-        b = np.nan_to_num(b, posinf=65500, nan=65550)
+        b = np.nan_to_num(b, posinf=posinf_nan, nan=posinf_nan)
         a = np.log(a)
         b = np.log(b)
         c = a-b
@@ -72,6 +75,7 @@ class cycif:
         #c = c / 1000 * c / 1000
         labels = labels[derivative_jump:, :]
         c = c * labels
+        c = np.nan_to_num(c, posinf=0)
         f_score_shadow = c.sum(dtype=np.float64)
 
         return f_score_shadow
@@ -118,6 +122,7 @@ class cycif:
             self.tile_pattern(xyz_points, experiment_directory)
             self.fm_channel_initial(experiment_directory, off_array, z_slices)
             self.establish_exp_arrays(experiment_directory)
+            self.hdr_exp_generator(experiment_directory, threshold_level=10000, max_exp=700, min_exp=20)
 
             if x_frame_size != 5056:
                 self.x_overlap_adjuster(x_frame_size, experiment_directory)
@@ -155,6 +160,11 @@ class cycif:
                 pass
                 self.establish_exp_arrays(experiment_directory)
                 self.exp_predetermined(experiment_directory, desired_cycle_count)
+        if autofocus == 0 and auto_expose == 3:
+            self.hdr = 1
+        if autofocus == 1 and auto_expose == 3:
+            self.recursive_stardist_autofocus(experiment_directory, desired_cycle_count)
+            self.hdr = 1
         else:
             pass
 
@@ -454,8 +464,11 @@ class cycif:
 
         wb.save('HDR_Exp.xlsx')
 
-    def hdr_fuser(self, hdr_images, hdr_times):
+        self.hdr_exp_times = hdr_exp_list
 
+    def hdr_fuser(self, hdr_images):
+
+        hdr_times = self.hdr_exp_times
         max_hdr_time = np.max(hdr_times)
         hdr_array = hdr_images
         weight_array = deepcopy(hdr_array)
@@ -1629,8 +1642,8 @@ class cycif:
             averaged_image = np.average(average_array, axis = 0)
         if hdr ==1:
 
-            hdr_frame_count = 3
-            hdr_times = np.array([20,158, 700])
+            hdr_times = self.hdr_exp_times
+            hdr_frame_count = np.shape(hdr_times)[0]
 
             # make array to hold images in
             hdr_array = np.random.rand(hdr_frame_count, 2960, x_frame_size).astype('float32')
@@ -1650,7 +1663,7 @@ class cycif:
                 hdr_array[x] = pixels[::, side_pixel_count:side_pixel_count + x_frame_size]
 
             # find array average and return averaged image
-            averaged_image = self.hdr_fuser(hdr_array, hdr_times)
+            averaged_image = self.hdr_fuser(hdr_array)
 
         return averaged_image
 
@@ -1671,6 +1684,7 @@ class cycif:
         '''
 
         core = Core()
+        hdr_value = self.hdr
 
         # load in focus map and exp array
         numpy_path = experiment_directory + '/' + 'np_arrays'
@@ -1750,7 +1764,7 @@ class cycif:
                             for z in range(z_start, z_end, slice_gap):
                                 core.set_position(z)
                                 time.sleep(0.1)
-                                pixels = self.core_capture(experiment_directory,x_pixels, channel, hdr=1)
+                                pixels = self.core_capture(experiment_directory,x_pixels, channel, hdr=hdr_value)
                                 zc_tif_stack[zc_index][z_counter] = pixels
 
                                 image_number_counter += 1
@@ -1813,7 +1827,7 @@ class cycif:
                                 core.set_position(z)
                                 time.sleep(0.1)
 
-                                pixels = self.core_capture(experiment_directory, x_pixels, channel, hdr=1)
+                                pixels = self.core_capture(experiment_directory, x_pixels, channel, hdr=hdr_value)
                                 zc_tif_stack[zc_index][z_counter] = pixels
 
                                 image_number_counter += 1
