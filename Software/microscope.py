@@ -60,10 +60,10 @@ class cycif:
 
         a = image[derivative_jump:, :]
         a = a.astype('float64')
-        a = np.nan_to_num(a, posinf=65000)
+        a = np.nan_to_num(a, posinf=65500, nan=65550)
         b = image[:-derivative_jump, :]
         b = b.astype('float64')
-        b = np.nan_to_num(b, posinf=65000)
+        b = np.nan_to_num(b, posinf=65500, nan=65550)
         a = np.log(a)
         b = np.log(b)
         c = a-b
@@ -390,6 +390,103 @@ class cycif:
         print(exp_array)
         np.save('exp_array.npy', exp_array)
         np.save('fm_array.npy', fm_array)
+
+    def hdr_exp_generator(self, experiment_directory, threshold_level, max_exp, min_exp):
+        '''
+        generates exp list for HDR auto exposure.
+        :param experiment_directory:
+        :param threshold_level:
+        :param max_exp:
+        :param min_exp:
+        :return:
+        '''
+
+        # add on exp offset
+        exp_offset = 27.43
+        max_exp += exp_offset
+        min_exp += exp_offset
+
+        # calculate number of images needed for threshold and real threshold
+        M = 65536 / threshold_level
+        n = math.ceil(np.log(max_exp / min_exp) / np.log(M) + 1)
+        M_real = np.power(max_exp / min_exp, 1 / (n - 1))
+        T_real = 65536 / M_real
+
+        # create and populate hdr exp array with min and max values
+        hdr_exp_list = np.zeros(n)
+        hdr_exp_list[0] = min_exp - exp_offset
+        hdr_exp_list[n - 1] = max_exp - exp_offset
+
+        for x in range(1, n - 1):
+            hdr_exp_list[x] = int(min_exp * np.power(M_real, x) - exp_offset)
+
+        # import exp_calc_array
+        exp_path = experiment_directory + '/' + 'exposure_times'
+        os.chdir(exp_path)
+
+        # create or open workbook
+
+        if os.path.isfile('HDR_Exp.xlsx') == False:
+            wb = Workbook()
+            ws = wb.active
+
+            # populate headers
+            ws.cell(row=1, column=1).value = 'image count'
+            ws.cell(row=1, column=2).value = 'exposure time 1'
+            ws.cell(row=1, column=3).value = 'exposure time 2'
+            ws.cell(row=1, column=4).value = 'exposure time 3'
+            ws.cell(row=1, column=5).value = 'threshold real'
+            ws.cell(row=4, column=1).value = 'Cycle'
+            ws.cell(row=4, column=2).value = 'Max Int A488'
+            ws.cell(row=4, column=3).value = 'Max Int A555'
+            ws.cell(row=4, column=4).value = 'Max Int A647'
+
+        if os.path.isfile('HDR_Exp.xlsx') == True:
+            wb = load_workbook('HDR_Exp.xlsx')
+            ws = wb.active
+
+        # populate columns with times and cycle count
+        ws.cell(row=2, column=1).value = n
+        ws.cell(row=2, column=2).value = hdr_exp_list[0] + exp_offset
+        ws.cell(row=2, column=3).value = hdr_exp_list[1] + exp_offset
+        ws.cell(row=2, column=4).value = hdr_exp_list[2] + exp_offset
+        ws.cell(row=2, column=5).value = T_real
+
+        wb.save('HDR_Exp.xlsx')
+
+    def hdr_fuser(self, hdr_images, hdr_times):
+
+        max_hdr_time = np.max(hdr_times)
+        hdr_array = hdr_images
+        weight_array = deepcopy(hdr_array)
+
+        # subtract linear offset
+        hdr_array = hdr_array - 300
+
+        # populate weight array
+        for index in range(0, 3):
+            exp_offset = 27.43
+            mag = (max_hdr_time + exp_offset) / (hdr_times[index] + exp_offset)
+            del_offset = 1.2 * (max_hdr_time - hdr_times[index]) / (hdr_times[index] + exp_offset) ** 2
+
+            im = copy.deepcopy(hdr_array[index])
+
+            scaled_im = mag * im
+            hdr_array[index] = scaled_im
+            im[im > 65234] = 0
+
+            del_I = np.sqrt(im)
+
+            weight_array[index] = del_I / scaled_im + del_offset / mag
+
+        total_weight_array = np.sum(weight_array, axis=0)
+        scaled_weight_array = np.divide(weight_array, total_weight_array)
+
+        hdr_im = hdr_array[0] * scaled_weight_array[0]
+        for x in range(1, np.shape(hdr_array)[0]):
+            hdr_im += hdr_array[x] * scaled_weight_array[x]
+
+        return hdr_im
 
     def autof_factor_estimator(self, image, autof_image, num_images=2):
         top_range = 10
@@ -1270,6 +1367,8 @@ class cycif:
         numpy_x = full_array[0]
         numpy_y = full_array[1]
 
+        z_center_index = math.floor(full_array[3][0][0]/2)
+
         y_tile_count = numpy_x.shape[0]
         x_tile_count = numpy_y.shape[1]
         if cycle_number == 0:
@@ -1290,9 +1389,11 @@ class cycif:
             for y in range(0, y_tile_count):
                 if tissue_fm[y][x] == 1:
                     os.chdir(dapi_im_path)
-                    file_name = 'z_' + str(4) + '_x' + str(x) + '_y_' + str(y) + '_c_DAPI.tif'
+                    file_name = 'z_' + str(z_center_index) + '_x' + str(x) + '_y_' + str(y) + '_c_DAPI.tif'
                     labelled_file_name = 'x' + str(x) + '_y_' + str(y) + '_c_DAPI.tif'
                     img = io.imread(file_name)
+                    img = img.astype('int32')
+                    #img = skimage.util.img_as_uint(img)
                     labels, _ = model.predict_instances(normalize(img))
                     labels[labels > 0] = 1
 
@@ -1351,14 +1452,14 @@ class cycif:
         #y_tile_count = 1
         #x_tile_count = 1
         z_count = int(fm_array[3][0][0])
-        z_middle = int(z_count / 2)  # if odd, z_count will round down. Since index counts from 0, it is the middle
+        z_middle = math.floor(z_count / 2)  # if odd, z_count will round down. Since index counts from 0, it is the middle
 
         step_size = 17  # brenner score step size
         x_axis = np.linspace(0,z_count, z_count)
 
 
         # make numpy array to hold scores in for each tile
-        score_array = np.random.rand(z_count)
+        score_array = np.zeros(z_count)
 
         stain_time = 0
 
@@ -1395,6 +1496,7 @@ class cycif:
                             os.chdir(labelled_path)
                             file_name = 'x' + str(x) + '_y_' + str(y) + '_c_DAPI.tif'
                             labels = io.imread(file_name)
+
 
                         # apply mask to image and find brenner score
                         score = self.focus_score(img, step_size, labels)
@@ -1477,7 +1579,7 @@ class cycif:
 
         return pixels
 
-    def core_capture(self, experiment_directory, x_frame_size, channel):
+    def core_capture(self, experiment_directory, x_frame_size, channel, hdr=1):
         '''
         uses core capture to take images with parameters set by the focus map. Has thr ability to average over frames.
         Will not alter XYZ location, channel or exp time. Only captures and averages frames.
@@ -1487,42 +1589,68 @@ class cycif:
         :return:
         '''
 
-        # load in focus map and exp array
-        numpy_path = experiment_directory + '/' + 'np_arrays'
-        os.chdir(numpy_path)
-        fm_array = np.load('fm_array.npy', allow_pickle=False)
         side_pixel_count = int((5056 - x_frame_size)/2)
 
+        if hdr ==0:
 
-        # determine proper frame count to average
+            # load in focus map and exp array
+            numpy_path = experiment_directory + '/' + 'np_arrays'
+            os.chdir(numpy_path)
+            fm_array = np.load('fm_array.npy', allow_pickle=False)
 
-        if channel == 'DAPI':
-            frame_count_index = 11
-        if channel == 'A488':
-            frame_count_index = 12
-        if channel == 'A555':
-            frame_count_index = 13
-        if channel == 'A647':
-            frame_count_index = 14
+            # determine proper frame count to average
 
-        frame_count = fm_array[frame_count_index][0][0]
-        frame_count = int(frame_count)
+            if channel == 'DAPI':
+                frame_count_index = 11
+            if channel == 'A488':
+                frame_count_index = 12
+            if channel == 'A555':
+                frame_count_index = 13
+            if channel == 'A647':
+                frame_count_index = 14
 
-        # make array to hold images in
-        average_array = np.random.rand(frame_count, 2960, x_frame_size).astype('float16')
+            frame_count = fm_array[frame_count_index][0][0]
+            frame_count = int(frame_count)
 
-        # acquire and populate array
-        for x in range(0, frame_count):
-            time.sleep(0.1)
-            core.set_config("amp", 'high')
-            core.snap_image()
-            tagged_image = core.get_tagged_image()
-            pixels = np.reshape(tagged_image.pix,newshape=[tagged_image.tags["Height"], tagged_image.tags["Width"]])
-            pixels = np.nan_to_num(pixels, posinf=65500)
-            average_array[x] = pixels[::, side_pixel_count:side_pixel_count + x_frame_size]
+            # make array to hold images in
+            average_array = np.random.rand(frame_count, 2960, x_frame_size).astype('float32')
 
-        #find array average and return averaged image
-        averaged_image = np.average(average_array, axis = 0)
+            # acquire and populate array
+            for x in range(0, frame_count):
+                time.sleep(0.1)
+                core.set_config("amp", 'high')
+                core.snap_image()
+                tagged_image = core.get_tagged_image()
+                pixels = np.reshape(tagged_image.pix,newshape=[tagged_image.tags["Height"], tagged_image.tags["Width"]])
+                pixels = np.nan_to_num(pixels, posinf=65500)
+                average_array[x] = pixels[::, side_pixel_count:side_pixel_count + x_frame_size]
+
+            #find array average and return averaged image
+            averaged_image = np.average(average_array, axis = 0)
+        if hdr ==1:
+
+            hdr_frame_count = 3
+            hdr_times = np.array([20,158, 700])
+
+            # make array to hold images in
+            hdr_array = np.random.rand(hdr_frame_count, 2960, x_frame_size).astype('float32')
+
+            # acquire and populate array
+            for x in range(0, hdr_frame_count):
+                exp_time = int(hdr_times[x])
+                core.set_exposure(exp_time)
+                core.set_config("amp", 'high')
+                core.snap_image()
+                tagged_image = core.get_tagged_image()
+                pixels = np.reshape(tagged_image.pix,
+                                    newshape=[tagged_image.tags["Height"], tagged_image.tags["Width"]])
+                pixels = np.nan_to_num(pixels, posinf=65535, nan=65535)
+                pixels[pixels > 65535] = 65535
+                pixels = pixels.astype('float32')
+                hdr_array[x] = pixels[::, side_pixel_count:side_pixel_count + x_frame_size]
+
+            # find array average and return averaged image
+            averaged_image = self.hdr_fuser(hdr_array, hdr_times)
 
         return averaged_image
 
@@ -1571,7 +1699,7 @@ class cycif:
         core.set_xy_position(numpy_x[0][0], numpy_y[0][0])
         time.sleep(1)
         # generate numpy data structure
-        zc_tif_stack = np.random.rand(4, int(z_slices), height_pixels, width_pixels).astype('float16')
+        zc_tif_stack = np.random.rand(4, int(z_slices), height_pixels, width_pixels).astype('float32')
 
         image_number_counter = 0
 
@@ -1622,7 +1750,7 @@ class cycif:
                             for z in range(z_start, z_end, slice_gap):
                                 core.set_position(z)
                                 time.sleep(0.1)
-                                pixels = self.core_capture(experiment_directory,x_pixels, channel)
+                                pixels = self.core_capture(experiment_directory,x_pixels, channel, hdr=1)
                                 zc_tif_stack[zc_index][z_counter] = pixels
 
                                 image_number_counter += 1
@@ -1685,7 +1813,7 @@ class cycif:
                                 core.set_position(z)
                                 time.sleep(0.1)
 
-                                pixels = self.core_capture(experiment_directory, x_pixels, channel)
+                                pixels = self.core_capture(experiment_directory, x_pixels, channel, hdr=1)
                                 zc_tif_stack[zc_index][z_counter] = pixels
 
                                 image_number_counter += 1
@@ -1728,7 +1856,10 @@ class cycif:
 
         '''
         self.exp_logbook(experiment_directory, cycle_number)
+        start = time.time()
         self.multi_channel_z_stack_capture(experiment_directory, cycle_number, stain_bleach,x_pixels=x_frame_size, slice_gap=2, channels=channels)
+        end = time.time()
+        print('acquistion time', end - start)
         # self.marker_excel_file_generation(experiment_directory, cycle_number)
     def initialize(self, experiment_directory, offset_array, z_slices, x_frame_size=2960, focus_position = 'none'):
         '''initialization section. Takes DAPI images, cluster filters tissue, minimally frames sampling grid, acquires all channels.
@@ -1892,7 +2023,7 @@ class cycif:
     #####################################################################################################
     ##########Saving/File Generation Methods#############################################################################
 
-    def post_acquisition_processor(self, experiment_directory, x_pixels, rolling_ball = 1):
+    def post_acquisition_processor(self, experiment_directory, x_pixels, rolling_ball = 0):
 
         mcmicro_path = experiment_directory + r'\mcmicro\raw'
         cycle_start = 1
@@ -1909,8 +2040,8 @@ class cycif:
         cycle_end = 2
         cycle_start = 1
 
-        #self.tissue_binary_generate(experiment_directory)
-        #self.tissue_exist_array_generate(experiment_directory)
+        self.tissue_binary_generate(experiment_directory)
+        self.tissue_exist_array_generate(experiment_directory)
 
         for cycle_number in range(cycle_start, cycle_end):
             #self.focus_excel_creation(experiment_directory, cycle_number)
@@ -1919,8 +2050,8 @@ class cycif:
             #self.infocus(experiment_directory, cycle_number, x_pixels, 1, 1)
             self.illumination_flattening(experiment_directory, cycle_number, rolling_ball)
             #self.background_sub(experiment_directory, cycle_number, rolling_ball)
-            s#elf.illumination_flattening_per_tile(experiment_directory, cycle_number, rolling_ball)
-            self.background_sub(experiment_directory, cycle_number, rolling_ball)
+            #self.illumination_flattening_per_tile(experiment_directory, cycle_number, rolling_ball)
+            #self.background_sub(experiment_directory, cycle_number, rolling_ball)
             self.brightness_uniformer(experiment_directory, cycle_number)
             #self.mcmicro_image_stack_generator(cycle_number, experiment_directory, x_pixels)
             self.stage_placement(experiment_directory, cycle_number, x_pixels)
@@ -2251,7 +2382,7 @@ class cycif:
                             cycle_number) + '\Tiles' + r'\focused_basic_brightness_corrected'
                     else:
                         im_path = experiment_directory + '/' + channel + "/" + type + '\cy_' + str(
-                            cycle_number) + '\Tiles' + '/focused_flattened_subbed_brightness'
+                            cycle_number) + '\Tiles' + '/focused_basic_brightness_corrected'
                 elif type == 'Bleach':
                     im_path = experiment_directory + '/' + channel + "/" + type + '\cy_' + str(
                         cycle_number) + '\Tiles' + '/focused_basic_corrected'
@@ -2360,7 +2491,7 @@ class cycif:
 
 
             #resave images without NaN or infinity values
-            #self.nan_folder_conversion(stain_directory)
+            self.nan_folder_conversion(stain_directory)
             #self.nan_folder_conversion(bleach_directory)
             ff_directory = r'C:\Users\CyCIF PC\Desktop\new A647 FF'
 
@@ -2377,11 +2508,12 @@ class cycif:
             cv2.imwrite(str(darkfield_name), optimizer.darkfield_fullsize.astype(np.float32))
             optimizer.write_images(stain_output_directory, epsilon=epsilon)
 
+
             # run same ff on bleached images
-            optimizer.directory = bleach_directory
-            optimizer._sniff_input()
-            optimizer._load_images()
-            optimizer.write_images(bleach_output_directory, epsilon=epsilon)
+            #optimizer.directory = bleach_directory
+            #optimizer._sniff_input()
+            #optimizer._load_images()
+            #optimizer.write_images(bleach_output_directory, epsilon=epsilon)
 
     def illumination_flattening_per_tile(self, experiment_directory, cycle_number, rolling_ball = 1):
 
@@ -2836,7 +2968,8 @@ class cycif:
         #y_sections = np.shape(reconstruct_array)[0]
         #x_sections = np.shape(reconstruct_array)[1]
 
-        cycle_types = ['Stain', 'Bleach']
+        #cycle_types = ['Stain', 'Bleach']
+        cycle_types = ['Stain']
 
         for cycle_type in cycle_types:
 
@@ -3028,12 +3161,12 @@ class cycif:
             if channel == 'DAPI':
                 channel_file_path = experiment_directory + '/' + channel + '/Stain/cy_' + str(cycle_number) + '/Tiles/focused_basic_corrected'
             else:
-                channel_file_path = experiment_directory + '/' + channel + '/Stain/cy_' + str(cycle_number) + '/Tiles/focused_flattened_subbed'
+                channel_file_path = experiment_directory + '/' + channel + '/Stain/cy_' + str(cycle_number) + '/Tiles/focused_basic_corrected'
             tissue_path = experiment_directory + '/Tissue_Binary'
             if channel == 'DAPI':
                 channel_output_path = experiment_directory + '/' + channel + '/Stain/cy_' + str(cycle_number) + '/Tiles/focused_basic_brightness_corrected'
             else:
-                channel_output_path = experiment_directory + '/' + channel + '/Stain/cy_' + str(cycle_number) + '/Tiles/focused_flattened_subbed_brightness'
+                channel_output_path = experiment_directory + '/' + channel + '/Stain/cy_' + str(cycle_number) + '/Tiles/focused_basic_brightness_corrected'
             #make array to store brightness information in
             bright_array = np.zeros((y_tiles, x_tiles, 6))
 
