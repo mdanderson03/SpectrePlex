@@ -468,6 +468,113 @@ class cycif:
 
         self.hdr_exp_times = hdr_exp_list
 
+    def hdr_compression(self, experiment_directory, cycle_number, apply_2_subbed = 1, apply_2_bleached = 1, channels = ['DAPI', 'A488', 'A555', 'A647']):
+        '''
+        Looks through all tiles and compresses 32bit images into 16 bit based on 2^16 = highest pixel in any tile.
+        By standard, will apply to raw stained tiles. Can be extended to raw bleached tiles and subbed tiles.
+        :param experiment_directory:
+        :param cycle_number:
+        :param apply_2_subbed: 0 = dont compress subbed images, 1= compress
+        :param apply_2_bleached: 0 = dont compress raw bleached tiles, 1= compress
+        :return:
+        '''
+
+        # import fm_array and establish tissue exists array
+        numpy_path = experiment_directory + '/' + 'np_arrays'
+        os.chdir(numpy_path)
+        fm_array = np.load('fm_array.npy', allow_pickle=False)
+        tissue_fm = full_array[10]
+
+        #import HDR Exp.xlsx
+        exp_path = experiment_directory + '/' + 'exposure_times'
+        os.chdir(exp_path)
+        wb = load_workbook('HDR Exp.xlsx')
+        ws = wb.active
+
+        #find tile counts
+        y_tile_count = np.shape(fm_array[0])[0]
+        x_tile_count = np.shape(fm_array[0])[1]
+        z_tiles = fm_array[3][0][0]
+
+        #determine all types of data to be applied on
+        types = ['Stain']
+        if apply_2_bleached == 1:
+            types.append('Bleach')
+        if apply_2_subbed == 1:
+            #make anything beyond Stain and Bleach all lower case
+            types.append('subbed')
+
+        for channel in channels:
+            for type in types:
+                if type == 'Stain':
+                    type_path = experiment_directory + r'//' + channel + r'//' + type + r'//cy_' + str(cycle_number) + r'//Tiles'
+                elif type == 'Bleach':
+                    type_path = experiment_directory + r'//' + channel + r'//' + type + r'//cy_' + str(cycle_number - 1) + r'//Tiles'
+                else:
+                    type_path = experiment_directory + r'//' + channel + r'//Stain//cy_' + str(cycle_number) + r'//Tiles/' + type
+
+                os.chdir(type_path)
+                if channel == 'Stain':
+                    highest_intensity = 0
+                    #Find max intensity
+                    for x in range(0, x_tile_count):
+                        for y in range(0, y_tile_count):
+                            if tissue_fm[y][x] == 1:
+                                for z in range(0, z_tiles):
+                                    file_name = r'z_' +str(z) + '_x' + str(x) + '_y_' + str(y) + '_c_' + channel + '.tif'
+                                    im = io.imread(file_name)
+                                    max_tile_int = np.max(im)
+                                    if max_tile_int > highest_intensity:
+                                        highest_intensity = max_tile_int
+                                    else:
+                                        pass
+
+                    #record highest intensity in exp hdr logbook
+                    row = cycle_number + 4
+                    ws.cell(row=row, column=1).value = cycle_number
+                    if channel == 'DAPI':
+                        channel_col_index = 2
+                    if channel == 'A488':
+                        channel_col_index = 3
+                    if channel == 'A555':
+                        channel_col_index = 4
+                    if channel == 'A647':
+                        channel_col_index = 5
+                    ws.cell(row=row, column=channel_col_index).value = max_tile_int
+                    wb.save('HDR Exp.xlsx')
+
+                    #resave compressed versions of Stain tiles
+                    for x in range(0, x_tile_count):
+                        for y in range(0, y_tile_count):
+                            if tissue_fm[y][x] == 1:
+                                for z in range(0, z_tiles):
+                                    file_name = r'z_' +str(z) + '_x' + str(x) + '_y_' + str(y) + '_c_' + channel + '.tif'
+                                    im = io.imread(file_name)
+                                    im = im/max_tile_int
+                                    im = skimage.util.img_as_uint(im)
+                                    io.imsave(file_name, im)
+
+                elif channel == 'DAPI' and type != 'Stain' or 'Bleach':
+                    pass
+                else:
+                    #Max int came from Stain loop above this section
+                    for x in range(0, x_tile_count):
+                        for y in range(0, y_tile_count):
+                            if tissue_fm[y][x] == 1:
+                                for z in range(0, z_tiles):
+                                    file_name = r'z_' + str(z) + '_x' + str(x) + '_y_' + str(y) + '_c_' + channel + '.tif'
+                                    im = io.imread(file_name)
+                                    im = im / max_tile_int
+                                    im = skimage.util.img_as_uint(im)
+                                    io.imsave(file_name, im)
+                            else:
+                                pass
+
+
+
+
+
+
     def hdr_fuser(self, hdr_images):
 
         hdr_times = self.hdr_exp_times
