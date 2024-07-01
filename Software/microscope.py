@@ -2517,7 +2517,7 @@ class cycif:
                                 cycle_number) + '\Tiles' + '/focused_basic_brightness_corrected'
                     if hdr_sub == 1:
                         if channel == 'DAPI':
-                            im_path = experiment_directory + '/' + channel + "/" + type + '\cy_' + str(cycle_number) + '\Tiles' + r'\subbed_focused_basic_brightness_corrected'
+                            im_path = experiment_directory + '/' + channel + "/" + type + '\cy_' + str(cycle_number) + '\Tiles' + r'\subbed_focused_basic_corrected'
                         else:
                             im_path = experiment_directory + '/' + channel + "/" + type + '\cy_' + str(cycle_number) + '\Tiles' + '/subbed_focused_basic_brightness_corrected'
                 elif type == 'Bleach':
