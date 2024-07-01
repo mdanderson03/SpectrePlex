@@ -2172,7 +2172,7 @@ class cycif:
             #self.excel_2_focus(experiment_directory, cycle_number, hdr_sub=1)
             self.illumination_flattening(experiment_directory, cycle_number, rolling_ball, hdr_sub=1)
             self.brightness_uniformer(experiment_directory, cycle_number, hdr_sub = 1)
-            #self.mcmicro_image_stack_generator(cycle_number, experiment_directory, x_pixels)
+            self.mcmicro_image_stack_generator(cycle_number, experiment_directory, x_pixels, hdr_sub=1)
             self.stage_placement(experiment_directory, cycle_number, x_pixels, hdr_sub = 1)
 
     def post_acquisition_processor_experimental(self, experiment_directory, x_pixels, rolling_ball = 1):
@@ -2204,7 +2204,7 @@ class cycif:
             self.mcmicro_image_stack_generator(cycle_number, experiment_directory, x_pixels)
             self.stage_placement(experiment_directory, cycle_number, x_pixels)
 
-    def mcmicro_image_stack_generator(self, cycle_number, experiment_directory, x_frame_size):
+    def mcmicro_image_stack_generator(self, cycle_number, experiment_directory, x_frame_size, hdr_sub = 1):
 
         numpy_path = experiment_directory + '/' + 'np_arrays'
         os.chdir(numpy_path)
@@ -2221,14 +2221,24 @@ class cycif:
         x_tile_count = numpy_y.shape[1]
         tile_count = int(tissue_exist.sum())
 
-        dapi_im_path = experiment_directory + '\DAPI\Stain\cy_' + str(
-            cycle_number) + '\Tiles' + '/focused_basic_corrected_brightness_corrected'
-        a488_im_path = experiment_directory + '\A488\Stain\cy_' + str(
-            cycle_number) + '\Tiles' + '/focused_flattened_subbed_brightness'
-        a555_im_path = experiment_directory + '\A555\Stain\cy_' + str(
-            cycle_number) + '\Tiles' + '/focused_flattened_subbed_brightness'
-        a647_im_path = experiment_directory + '\A647\Stain\cy_' + str(
-            cycle_number) + '\Tiles' + '/focused_flattened_subbed_brightness'
+        if hdr_sub == 0:
+            dapi_im_path = experiment_directory + '\DAPI\Stain\cy_' + str(
+                cycle_number) + '\Tiles' + '/focused_basic_corrected_brightness_corrected'
+            a488_im_path = experiment_directory + '\A488\Stain\cy_' + str(
+                cycle_number) + '\Tiles' + '/focused_flattened_subbed_brightness'
+            a555_im_path = experiment_directory + '\A555\Stain\cy_' + str(
+                cycle_number) + '\Tiles' + '/focused_flattened_subbed_brightness'
+            a647_im_path = experiment_directory + '\A647\Stain\cy_' + str(
+                cycle_number) + '\Tiles' + '/focused_flattened_subbed_brightness'
+        if hdr_sub == 1:
+            dapi_im_path = experiment_directory + '\DAPI\Stain\cy_' + str(
+                cycle_number) + '\Tiles' + r'\subbed_focused_basic_brightness_corrected'
+            a488_im_path = experiment_directory + '\A488\Stain\cy_' + str(
+                cycle_number) + '\Tiles' + r'\subbed_focused_basic_brightness_corrected'
+            a555_im_path = experiment_directory + '\A555\Stain\cy_' + str(
+                cycle_number) + '\Tiles' + r'\subbed_focused_basic_brightness_corrected'
+            a647_im_path = experiment_directory + '\A647\Stain\cy_' + str(
+                cycle_number) + '\Tiles' + r'\subbed_focused_basic_brightness_corrected'
 
         mcmicro_path = experiment_directory + r'\mcmicro\raw'
 
