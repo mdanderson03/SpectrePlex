@@ -483,18 +483,18 @@ class cycif:
         numpy_path = experiment_directory + '/' + 'np_arrays'
         os.chdir(numpy_path)
         fm_array = np.load('fm_array.npy', allow_pickle=False)
-        tissue_fm = full_array[10]
+        tissue_fm = fm_array[10]
 
         #import HDR Exp.xlsx
         exp_path = experiment_directory + '/' + 'exposure_times'
         os.chdir(exp_path)
-        wb = load_workbook('HDR Exp.xlsx')
+        wb = load_workbook('HDR_Exp.xlsx')
         ws = wb.active
 
         #find tile counts
         y_tile_count = np.shape(fm_array[0])[0]
         x_tile_count = np.shape(fm_array[0])[1]
-        z_tiles = fm_array[3][0][0]
+        z_tiles = int(fm_array[3][0][0])
 
         #determine all types of data to be applied on
         types = ['Stain']
@@ -514,7 +514,7 @@ class cycif:
                     type_path = experiment_directory + r'//' + channel + r'//Stain//cy_' + str(cycle_number) + r'//Tiles/' + type
 
                 os.chdir(type_path)
-                if channel == 'Stain':
+                if type == 'Stain':
                     highest_intensity = 0
                     #Find max intensity
                     for x in range(0, x_tile_count):
@@ -540,17 +540,19 @@ class cycif:
                         channel_col_index = 4
                     if channel == 'A647':
                         channel_col_index = 5
-                    ws.cell(row=row, column=channel_col_index).value = max_tile_int
-                    wb.save('HDR Exp.xlsx')
+                    ws.cell(row=row, column=channel_col_index).value = highest_intensity
+                    os.chdir(exp_path)
+                    wb.save('HDR_Exp.xlsx')
 
                     #resave compressed versions of Stain tiles
+                    os.chdir(type_path)
                     for x in range(0, x_tile_count):
                         for y in range(0, y_tile_count):
                             if tissue_fm[y][x] == 1:
                                 for z in range(0, z_tiles):
                                     file_name = r'z_' +str(z) + '_x' + str(x) + '_y_' + str(y) + '_c_' + channel + '.tif'
                                     im = io.imread(file_name)
-                                    im = im/max_tile_int
+                                    im = im/highest_intensity
                                     im = skimage.util.img_as_uint(im)
                                     #io.imsave(file_name, im)
 
