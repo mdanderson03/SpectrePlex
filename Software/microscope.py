@@ -2957,6 +2957,11 @@ class cycif:
 
             # generate imstack of z slices for tile
             im_path = experiment_directory + '/' + channel + '\Stain\cy_' + str(cycle_number) + '\Tiles'
+            if hdr_sub == 1 and channel != 'DAPI':
+                im_path = experiment_directory + '/' + channel + '\Stain\cy_' + str(cycle_number) + '\Tiles\subbed'
+            else:
+                pass
+
             os.chdir(im_path)
 
             z_stack = np.random.rand(z_slice_count, 2960, x_frame_size).astype('float32')
@@ -3013,7 +3018,7 @@ class cycif:
         print('saving')
         wb.save(excel_file_name)
 
-    def excel_2_focus(self, experiment_directory, cycle_number, x_frame_size = 2960):
+    def excel_2_focus(self, experiment_directory, cycle_number, x_frame_size = 2960, hdr_sub = 1):
 
         # load numpy arrays in
         numpy_path = experiment_directory + '/' + 'np_arrays'
@@ -3044,7 +3049,7 @@ class cycif:
                     if tissue_exist[y][x] == 1:
 
                         slice_number = ws.cell(row= (y+1), column = (x + 1)).value
-                        self.image_reconstructor(experiment_directory, slice_number, channel, cycle_number,x_frame_size, y, x)
+                        self.image_reconstructor(experiment_directory, slice_number, channel, cycle_number,x_frame_size, y, x, hdr_sub = hdr_sub)
 
                     else:
                         pass
@@ -3083,7 +3088,7 @@ class cycif:
         return reconstruct_array
 
     def image_reconstructor(self, experiment_directory, reconstruct_array, channel, cycle_number, x_frame_size,
-                            y_tile_number, x_tile_number):
+                            y_tile_number, x_tile_number, hdr_sub = 1):
 
         #y_sections = np.shape(reconstruct_array)[0]
         #x_sections = np.shape(reconstruct_array)[1]
@@ -3093,15 +3098,25 @@ class cycif:
 
         for cycle_type in cycle_types:
 
-            im_path = experiment_directory + '/' + channel + '/' + cycle_type + '\cy_' + str(cycle_number) + '\Tiles'
-            os.chdir(im_path)
-            try:
-                os.mkdir('focused')
-            except:
-                pass
+            if hdr_sub == 0:
+                im_path = experiment_directory + '/' + channel + '/' + cycle_type + '\cy_' + str(cycle_number) + '\Tiles'
+                os.chdir(im_path)
+                try:
+                    os.mkdir('focused')
+                except:
+                    pass
+            if hdr_sub == 1:
+                im_path = experiment_directory + '/' + channel + '/' + cycle_type + '\cy_' + str(cycle_number) + '\Tiles'
+                os.chdir(im_path)
+                try:
+                    os.mkdir('subbed_focused')
+                except:
+                    pass
+                im_path = experiment_directory + '/' + channel + '/' + cycle_type + '\cy_' + str(cycle_number) + '\Tiles\subbed'
+                os.chdir(im_path)
 
             # rebuilt image container
-            rebuilt_image = np.random.rand(2960, x_frame_size).astype('float32')
+            #rebuilt_image = np.random.rand(2960, x_frame_size).astype('float32')
 
             #for y in range(0, y_sections):
             #    for x in range(0, x_sections):
@@ -3120,9 +3135,6 @@ class cycif:
             image = tf.imread(file_name)
             #rebuilt_image[y_start:y_end, x_start:x_end] = image[y_start:y_end, x_start:x_end]
 
-            reconstruct_path = experiment_directory + '/' + channel + '/' + cycle_type + '\cy_' + str(
-                cycle_number) + '\Tiles' + '/focused'
-            os.chdir(reconstruct_path)
             filename = 'x' + str(x_tile_number) + '_y_' + str(y_tile_number) + '_c_' + str(channel) + '.tif'
             tf.imwrite(filename, image)
 
