@@ -2530,6 +2530,7 @@ class cycif:
                     for y in range(0, y_tile_count):
 
                         if tissue_exist[y][x] == 1:
+                            print('x', x, 'y', y)
                             filename = 'x' + str(x) + '_y_' + str(y) + '_c_' + channel + '.tif'
                             try:
                                 image = io.imread(filename)
