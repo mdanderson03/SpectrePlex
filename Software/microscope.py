@@ -2168,13 +2168,13 @@ class cycif:
             #self.in_focus_excel_populate(experiment_directory, cycle_number, x_pixels)
             #self.excel_2_focus(experiment_directory, cycle_number)
             #self.infocus(experiment_directory, cycle_number, x_pixels, 1, 1)
-            self.illumination_flattening(experiment_directory, cycle_number, rolling_ball)
-            #self.background_sub(experiment_directory, cycle_number, rolling_ball)
+            #self.illumination_flattening(experiment_directory, cycle_number, rolling_ball)
+            self.background_sub(experiment_directory, cycle_number, hdr_sub= 1,rolling_ball= 0)
             #self.illumination_flattening_per_tile(experiment_directory, cycle_number, rolling_ball)
             #self.background_sub(experiment_directory, cycle_number, rolling_ball)
-            self.brightness_uniformer(experiment_directory, cycle_number)
+            #self.brightness_uniformer(experiment_directory, cycle_number)
             #self.mcmicro_image_stack_generator(cycle_number, experiment_directory, x_pixels)
-            self.stage_placement(experiment_directory, cycle_number, x_pixels)
+            #self.stage_placement(experiment_directory, cycle_number, x_pixels)
 
     def post_acquisition_processor_experimental(self, experiment_directory, x_pixels, rolling_ball = 1):
 
@@ -3233,7 +3233,7 @@ class cycif:
 
                                     # sub background color channels
                                     # bleach_color_path = experiment_directory + channel + r'/Bleach/cy_' + str(cycle) + '\Tiles/focused_basic_corrected'
-                                    bleach_color_path = experiment_directory + channel + r'/Bleach/cy_' + str(cycle) + '\Tiles'
+                                    bleach_color_path = experiment_directory + channel + r'/Bleach/cy_' + str(cycle - 1) + '\Tiles'
                                     os.chdir(bleach_color_path)
                                     color_bleach = io.imread(filename)
                                     color_bleach_factor = color_bleach
@@ -3255,7 +3255,7 @@ class cycif:
                                         os.mkdir(save_path)
                                         os.chdir(save_path)
 
-                                    subbed_filename = 'x' + str(x) + '_y_' + str(y) + '_c_' + channel + '.tif'
+                                    subbed_filename = 'z_' + str(z) + '_x' + str(x) + '_y_' + str(y) + '_c_' + channel + '.tif'
                                     # bleach_filename ='x' + str(x) + '_y_' + str(y) + '_c_' + channel + '_bleach.tif'
                                     # reg_filename = 'x' + str(x) + '_y_' + str(y) + '_c_' + channel + '_registered.tif'
                                     tf.imwrite(subbed_filename, color_subbed)

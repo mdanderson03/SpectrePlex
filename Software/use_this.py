@@ -19,6 +19,6 @@ focus_position = 187
 #microscope.brightness_uniformer(experiment_directory, cycle_number=1)
 #microscope.tissue_region_identifier(experiment_directory)
 #microscope.recursive_stardist_autofocus(experiment_directory, 0,remake_nuc_binary=0)
-#microscope.post_acquisition_processor(experiment_directory, x_pixels=x_frame_size)
-microscope.hdr_compression(experiment_directory, cycle_number=1, apply_2_subbed=0, apply_2_bleached=1)
+microscope.post_acquisition_processor(experiment_directory, x_pixels=x_frame_size)
+#microscope.hdr_compression(experiment_directory, cycle_number=1, apply_2_subbed=0, apply_2_bleached=1)
 
