@@ -3392,7 +3392,6 @@ class cycif:
                 bright_array = np.zeros((y_tiles, x_tiles, 6))
 
                 os.chdir(channel_file_path)
-            if hdr_sub == 1:
 
 
             try:
