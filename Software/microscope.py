@@ -2160,16 +2160,16 @@ class cycif:
         cycle_end = 2
         cycle_start = 1
 
-        self.tissue_binary_generate(experiment_directory)
-        self.tissue_exist_array_generate(experiment_directory)
+        #self.tissue_binary_generate(experiment_directory)
+        #self.tissue_exist_array_generate(experiment_directory)
 
         for cycle_number in range(cycle_start, cycle_end):
-            #self.focus_excel_creation(experiment_directory, cycle_number)
-            #self.in_focus_excel_populate(experiment_directory, cycle_number, x_pixels)
-            #self.excel_2_focus(experiment_directory, cycle_number)
-            #self.infocus(experiment_directory, cycle_number, x_pixels, 1, 1)
+
             #self.illumination_flattening(experiment_directory, cycle_number, rolling_ball)
-            self.background_sub(experiment_directory, cycle_number, hdr_sub= 1,rolling_ball= 0)
+            #self.background_sub(experiment_directory, cycle_number, hdr_sub= 1,rolling_ball= 0)
+            self.focus_excel_creation(experiment_directory, cycle_number)
+            self.in_focus_excel_populate(experiment_directory, cycle_number, x_pixels, hdr_sub=1)
+            self.excel_2_focus(experiment_directory, cycle_number, hdr_sub=1)
             #self.illumination_flattening_per_tile(experiment_directory, cycle_number, rolling_ball)
             #self.background_sub(experiment_directory, cycle_number, rolling_ball)
             #self.brightness_uniformer(experiment_directory, cycle_number)
@@ -2930,7 +2930,7 @@ class cycif:
         y_tile_count = numpy_x.shape[0]
         x_tile_count = numpy_y.shape[1]
 
-        z_slice_count = 5
+        z_slice_count = int(full_array[3][0][0])
 
         #load in excel file
         os.chdir(experiment_directory + r'/' + excel_folder_name)
@@ -3106,14 +3106,20 @@ class cycif:
                 except:
                     pass
             if hdr_sub == 1:
+
                 im_path = experiment_directory + '/' + channel + '/' + cycle_type + '\cy_' + str(cycle_number) + '\Tiles'
                 os.chdir(im_path)
                 try:
                     os.mkdir('subbed_focused')
                 except:
                     pass
-                im_path = experiment_directory + '/' + channel + '/' + cycle_type + '\cy_' + str(cycle_number) + '\Tiles\subbed'
-                os.chdir(im_path)
+                saving_path = experiment_directory + '/' + channel + '/' + cycle_type + '\cy_' + str(cycle_number) + '\Tiles\subbed_focused'
+                if channel == 'DAPI':
+                    im_path = experiment_directory + '/' + channel + '/' + cycle_type + '\cy_' + str(cycle_number) + '\Tiles'
+                else:
+                    im_path = experiment_directory + '/' + channel + '/' + cycle_type + '\cy_' + str(cycle_number) + '\Tiles\subbed'
+
+            os.chdir(im_path)
 
             # rebuilt image container
             #rebuilt_image = np.random.rand(2960, x_frame_size).astype('float32')
@@ -3136,6 +3142,7 @@ class cycif:
             #rebuilt_image[y_start:y_end, x_start:x_end] = image[y_start:y_end, x_start:x_end]
 
             filename = 'x' + str(x_tile_number) + '_y_' + str(y_tile_number) + '_c_' + str(channel) + '.tif'
+            os.chdir(saving_path)
             tf.imwrite(filename, image)
 
     def background_sub(self, experiment_directory, cycle, hdr_sub = 1, rolling_ball = 1):
