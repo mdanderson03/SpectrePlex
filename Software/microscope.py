@@ -2167,14 +2167,13 @@ class cycif:
 
             #self.illumination_flattening(experiment_directory, cycle_number, rolling_ball)
             #self.background_sub(experiment_directory, cycle_number, hdr_sub= 1,rolling_ball= 0)
-            self.focus_excel_creation(experiment_directory, cycle_number)
-            self.in_focus_excel_populate(experiment_directory, cycle_number, x_pixels, hdr_sub=1)
-            self.excel_2_focus(experiment_directory, cycle_number, hdr_sub=1)
-            #self.illumination_flattening_per_tile(experiment_directory, cycle_number, rolling_ball)
-            #self.background_sub(experiment_directory, cycle_number, rolling_ball)
-            #self.brightness_uniformer(experiment_directory, cycle_number)
+            #self.focus_excel_creation(experiment_directory, cycle_number)
+            #self.in_focus_excel_populate(experiment_directory, cycle_number, x_pixels, hdr_sub=1)
+            #self.excel_2_focus(experiment_directory, cycle_number, hdr_sub=1)
+            self.illumination_flattening(experiment_directory, cycle_number, rolling_ball, hdr_sub=1)
+            self.brightness_uniformer(experiment_directory, cycle_number, hdr_sub = 1)
             #self.mcmicro_image_stack_generator(cycle_number, experiment_directory, x_pixels)
-            #self.stage_placement(experiment_directory, cycle_number, x_pixels)
+            self.stage_placement(experiment_directory, cycle_number, x_pixels, hdr_sub = 1)
 
     def post_acquisition_processor_experimental(self, experiment_directory, x_pixels, rolling_ball = 1):
 
@@ -2442,7 +2441,7 @@ class cycif:
         os.chdir(star_dist_path)
         tf.imwrite('star_dist_placed.tif', placed_image)
 
-    def stage_placement(self, experiment_directory, cycle_number, x_pixels):
+    def stage_placement(self, experiment_directory, cycle_number, x_pixels, hdr_sub = 1):
         '''
         Goal to place images via rough stage coords in a larger image. WIll have nonsense borders
         '''
@@ -2490,19 +2489,27 @@ class cycif:
         # load images into python
 
         channels = ['DAPI', 'A488', 'A555', 'A647']
-        types = ['Stain', 'Bleach']
-        #types = ['Stain']
+        if hdr_sub == 0:
+            types = ['Stain', 'Bleach']
+        if hdr_sub == 1:
+            types = ['Stain']
 
         for type in types:
             for channel in channels:
 
                 if type == 'Stain':
-                    if channel == 'DAPI':
-                        im_path = experiment_directory + '/' + channel + "/" + type + '\cy_' + str(
-                            cycle_number) + '\Tiles' + r'\focused_basic_brightness_corrected'
-                    else:
-                        im_path = experiment_directory + '/' + channel + "/" + type + '\cy_' + str(
-                            cycle_number) + '\Tiles' + '/focused_basic_brightness_corrected'
+                    if hdr_sub == 0:
+                        if channel == 'DAPI':
+                            im_path = experiment_directory + '/' + channel + "/" + type + '\cy_' + str(
+                                cycle_number) + '\Tiles' + r'\focused_basic_brightness_corrected'
+                        else:
+                            im_path = experiment_directory + '/' + channel + "/" + type + '\cy_' + str(
+                                cycle_number) + '\Tiles' + '/focused_basic_brightness_corrected'
+                    if hdr_sub == 1:
+                        if channel == 'DAPI':
+                            im_path = experiment_directory + '/' + channel + "/" + type + '\cy_' + str(cycle_number) + '\Tiles' + r'\subbed_focused_basic_brightness_corrected'
+                        else:
+                            im_path = experiment_directory + '/' + channel + "/" + type + '\cy_' + str(cycle_number) + '\Tiles' + '/subbed_focused_basic_brightness_corrected'
                 elif type == 'Bleach':
                     im_path = experiment_directory + '/' + channel + "/" + type + '\cy_' + str(
                         cycle_number) + '\Tiles' + '/focused_basic_corrected'
@@ -2569,7 +2576,7 @@ class cycif:
                 pass
 
 
-    def illumination_flattening(self, experiment_directory, cycle_number, rolling_ball = 1):
+    def illumination_flattening(self, experiment_directory, cycle_number, rolling_ball = 1, hdr_sub = 1):
 
         # load numpy arrays in
         numpy_path = experiment_directory + '/' + 'np_arrays'
@@ -2592,28 +2599,44 @@ class cycif:
             print('channel', channel_name, 'cycle', cycle_number)
 
             if channel == 0:
-                stain_directory = directory_start + channel_name + '\Stain\cy_' + str(cycle_number) + r'\Tiles\focused'
-                bleach_directory = directory_start + channel_name + '\Bleach\cy_' + str(cycle_number) + r'\Tiles\focused'
-            else:
-                if rolling_ball != 1:
+                if hdr_sub == 1:
+                    stain_directory = directory_start + channel_name + '\Stain\cy_' + str(cycle_number) + r'\Tiles\subbed_focused'
+                if hdr_sub == 0:
                     stain_directory = directory_start + channel_name + '\Stain\cy_' + str(cycle_number) + r'\Tiles\focused'
                     bleach_directory = directory_start + channel_name + '\Bleach\cy_' + str(cycle_number) + r'\Tiles\focused'
+            else:
+                if rolling_ball != 1:
+                    if hdr_sub == 1:
+                        stain_directory = directory_start + channel_name + '\Stain\cy_' + str(cycle_number) + r'\Tiles\subbed_focused'
+                    if hdr_sub == 0:
+                        stain_directory = directory_start + channel_name + '\Stain\cy_' + str(cycle_number) + r'\Tiles\focused'
+                        bleach_directory = directory_start + channel_name + '\Bleach\cy_' + str(cycle_number) + r'\Tiles\focused'
+
                 if rolling_ball == 1:
                     directory = directory_start + channel_name + '\Stain\cy_' + str(cycle_number) + r'\Tiles\focused\background_subbed_rolling'
-            stain_output_directory = directory_start + channel_name + '\Stain\cy_' + str(cycle_number) + r'\Tiles\focused_basic_corrected'
-            bleach_output_directory = directory_start + channel_name + '\Bleach\cy_' + str(cycle_number) + r'\Tiles\focused_basic_corrected'
+
+            if hdr_sub == 1:
+                stain_output_directory = directory_start + channel_name + '\Stain\cy_' + str(cycle_number) + r'\Tiles\subbed_focused_basic_corrected'
+            else:
+                stain_output_directory = directory_start + channel_name + '\Stain\cy_' + str(cycle_number) + r'\Tiles\focused_basic_corrected'
+                bleach_output_directory = directory_start + channel_name + '\Bleach\cy_' + str(cycle_number) + r'\Tiles\focused_basic_corrected'
+
+
 
             try:
                 os.mkdir(stain_output_directory)
-                os.mkdir(bleach_output_directory)
+                if hdr_sub == 0:
+                    os.mkdir(bleach_output_directory)
+                    self.nan_folder_conversion(bleach_directory)
+                else:
+                    pass
             except:
                 pass
 
 
             #resave images without NaN or infinity values
             self.nan_folder_conversion(stain_directory)
-            #self.nan_folder_conversion(bleach_directory)
-            ff_directory = r'C:\Users\CyCIF PC\Desktop\new A647 FF'
+            #ff_directory = r'C:\Users\CyCIF PC\Desktop\new A647 FF'
 
             epsilon = 1e-06
             optimizer = shading_correction.BaSiC(stain_directory)
@@ -2629,11 +2652,14 @@ class cycif:
             optimizer.write_images(stain_output_directory, epsilon=epsilon)
 
 
-            # run same ff on bleached images
-            #optimizer.directory = bleach_directory
-            #optimizer._sniff_input()
-            #optimizer._load_images()
-            #optimizer.write_images(bleach_output_directory, epsilon=epsilon)
+            if hdr_sub == 0:
+                # run same ff on bleached images
+                optimizer.directory = bleach_directory
+                optimizer._sniff_input()
+                optimizer._load_images()
+                optimizer.write_images(bleach_output_directory, epsilon=epsilon)
+            else:
+                pass
 
     def illumination_flattening_per_tile(self, experiment_directory, cycle_number, rolling_ball = 1):
 
@@ -3054,10 +3080,6 @@ class cycif:
                     else:
                         pass
 
-
-
-
-
     def brenner_reconstruct_array(self, brenner_sub_selector, z_slice_count, number_bins):
         '''
         take in sub selector array and slice to find max values for brenner scores and then find mode for various bin levels
@@ -3319,7 +3341,7 @@ class cycif:
                 else:
                     pass
 
-    def brightness_uniformer(self, experiment_directory, cycle_number):
+    def brightness_uniformer(self, experiment_directory, cycle_number, hdr_sub = 1):
 
         experiment_directory = experiment_directory + '/'
         #import numpy focus map info
@@ -3341,19 +3363,37 @@ class cycif:
             x_tiles = np.shape(fm_array[0])[1]
             y_tiles = np.shape(fm_array[0])[0]
             #paths to needed folders
-            if channel == 'DAPI':
-                channel_file_path = experiment_directory + '/' + channel + '/Stain/cy_' + str(cycle_number) + '/Tiles/focused_basic_corrected'
-            else:
-                channel_file_path = experiment_directory + '/' + channel + '/Stain/cy_' + str(cycle_number) + '/Tiles/focused_basic_corrected'
-            tissue_path = experiment_directory + '/Tissue_Binary'
-            if channel == 'DAPI':
-                channel_output_path = experiment_directory + '/' + channel + '/Stain/cy_' + str(cycle_number) + '/Tiles/focused_basic_brightness_corrected'
-            else:
-                channel_output_path = experiment_directory + '/' + channel + '/Stain/cy_' + str(cycle_number) + '/Tiles/focused_basic_brightness_corrected'
-            #make array to store brightness information in
-            bright_array = np.zeros((y_tiles, x_tiles, 6))
 
-            os.chdir(channel_file_path)
+            if hdr_sub == 0:
+                if channel == 'DAPI':
+                    channel_file_path = experiment_directory + '/' + channel + '/Stain/cy_' + str(cycle_number) + '/Tiles/focused_basic_corrected'
+                else:
+                    channel_file_path = experiment_directory + '/' + channel + '/Stain/cy_' + str(cycle_number) + '/Tiles/focused_basic_corrected'
+                tissue_path = experiment_directory + '/Tissue_Binary'
+                if channel == 'DAPI':
+                    channel_output_path = experiment_directory + '/' + channel + '/Stain/cy_' + str(cycle_number) + '/Tiles/focused_basic_brightness_corrected'
+                else:
+                    channel_output_path = experiment_directory + '/' + channel + '/Stain/cy_' + str(cycle_number) + '/Tiles/focused_basic_brightness_corrected'
+                #make array to store brightness information in
+                bright_array = np.zeros((y_tiles, x_tiles, 6))
+
+                os.chdir(channel_file_path)
+            if hdr_sub == 1:
+                if channel == 'DAPI':
+                    channel_file_path = experiment_directory + '/' + channel + '/Stain/cy_' + str(cycle_number) + '/Tiles/subbed_focused_basic_corrected'
+                else:
+                    channel_file_path = experiment_directory + '/' + channel + '/Stain/cy_' + str(cycle_number) + '/Tiles/subbed_focused_basic_corrected'
+                tissue_path = experiment_directory + '/Tissue_Binary'
+                if channel == 'DAPI':
+                    channel_output_path = experiment_directory + '/' + channel + '/Stain/cy_' + str(cycle_number) + '/Tiles/subbed_focused_basic_brightness_corrected'
+                else:
+                    channel_output_path = experiment_directory + '/' + channel + '/Stain/cy_' + str(cycle_number) + '/Tiles/subbed_focused_basic_brightness_corrected'
+                # make array to store brightness information in
+                bright_array = np.zeros((y_tiles, x_tiles, 6))
+
+                os.chdir(channel_file_path)
+            if hdr_sub == 1:
+
 
             try:
                 os.mkdir(channel_output_path)
@@ -3647,14 +3687,6 @@ class cycif:
 
                     else:
                         pass
-
-
-
-
-
-
-
-
 
 
     def max_projector(self, experiment_directory, cycle_number, x_frame_size):
