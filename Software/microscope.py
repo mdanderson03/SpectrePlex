@@ -2157,8 +2157,8 @@ class cycif:
             else:
                 cycle_start_search = 1
         '''
-        cycle_end = 2
-        cycle_start = 1
+        cycle_end = 8
+        cycle_start = 2
 
         #self.tissue_binary_generate(experiment_directory)
         #self.tissue_exist_array_generate(experiment_directory)
@@ -2166,10 +2166,10 @@ class cycif:
         for cycle_number in range(cycle_start, cycle_end):
 
             #self.illumination_flattening(experiment_directory, cycle_number, rolling_ball)
-            #self.background_sub(experiment_directory, cycle_number, hdr_sub= 1,rolling_ball= 0)
-            #self.focus_excel_creation(experiment_directory, cycle_number)
-            #self.in_focus_excel_populate(experiment_directory, cycle_number, x_pixels, hdr_sub=1)
-            #self.excel_2_focus(experiment_directory, cycle_number, hdr_sub=1)
+            self.background_sub(experiment_directory, cycle_number, hdr_sub= 1,rolling_ball= 0)
+            self.focus_excel_creation(experiment_directory, cycle_number)
+            self.in_focus_excel_populate(experiment_directory, cycle_number, x_pixels, hdr_sub=1)
+            self.excel_2_focus(experiment_directory, cycle_number, hdr_sub=1)
             self.illumination_flattening(experiment_directory, cycle_number, rolling_ball, hdr_sub=1)
             self.brightness_uniformer(experiment_directory, cycle_number, hdr_sub = 1)
             self.mcmicro_image_stack_generator(cycle_number, experiment_directory, x_pixels, hdr_sub=1)
