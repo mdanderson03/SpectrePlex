@@ -552,7 +552,7 @@ class cycif:
                                     im = io.imread(file_name)
                                     im = im/max_tile_int
                                     im = skimage.util.img_as_uint(im)
-                                    io.imsave(file_name, im)
+                                    #io.imsave(file_name, im)
 
                 elif channel == 'DAPI' and type != 'Stain' or 'Bleach':
                     pass
@@ -566,7 +566,7 @@ class cycif:
                                     im = io.imread(file_name)
                                     im = im / max_tile_int
                                     im = skimage.util.img_as_uint(im)
-                                    io.imsave(file_name, im)
+                                    #io.imsave(file_name, im)
                             else:
                                 pass
 
