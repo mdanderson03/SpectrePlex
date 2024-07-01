@@ -572,11 +572,6 @@ class cycif:
                             else:
                                 pass
 
-
-
-
-
-
     def hdr_fuser(self, hdr_images):
 
         hdr_times = self.hdr_exp_times
@@ -2910,7 +2905,7 @@ class cycif:
 
         wb.save(file_name)
 
-    def in_focus_excel_populate(self, experiment_directory, cycle_number, x_frame_size, x_sub_section_count = 1, y_sub_section_count = 1):
+    def in_focus_excel_populate(self, experiment_directory, cycle_number, x_frame_size, hdr_sub = 1, x_sub_section_count = 1, y_sub_section_count = 1):
 
         print('cycle', cycle_number)
         channels = ['DAPI', 'A488', 'A555', 'A647']
@@ -3131,7 +3126,7 @@ class cycif:
             filename = 'x' + str(x_tile_number) + '_y_' + str(y_tile_number) + '_c_' + str(channel) + '.tif'
             tf.imwrite(filename, image)
 
-    def background_sub(self, experiment_directory, cycle, rolling_ball = 1):
+    def background_sub(self, experiment_directory, cycle, hdr_sub = 1, rolling_ball = 1):
 
         experiment_directory = experiment_directory + '/'
 
@@ -3184,45 +3179,89 @@ class cycif:
                         # apply translation to other color channels
 
                         for channel in channels:
-                            #stain_color_path = experiment_directory + channel + r'/Stain/cy_' + str(cycle) + '\Tiles/focused_basic_corrected'
-                            stain_color_path = experiment_directory + channel + r'/Stain/cy_' + str(cycle) + '\Tiles/focused'
-                            os.chdir(stain_color_path)
-                            filename = 'x' + str(x) + '_y_' + str(y) + '_c_' + channel + '.tif'
-                            color_im = io.imread(filename)
-                            color_im = np.nan_to_num(color_im, posinf= 65500)
-                            #color_reg = sr.transform(color_im)
-                            color_factor = color_im
+                            if hdr_sub == 0:
+                                #stain_color_path = experiment_directory + channel + r'/Stain/cy_' + str(cycle) + '\Tiles/focused_basic_corrected'
+                                stain_color_path = experiment_directory + channel + r'/Stain/cy_' + str(cycle) + '\Tiles/focused'
+                                os.chdir(stain_color_path)
+                                filename = 'x' + str(x) + '_y_' + str(y) + '_c_' + channel + '.tif'
+                                color_im = io.imread(filename)
+                                color_im = np.nan_to_num(color_im, posinf= 65500)
+                                #color_reg = sr.transform(color_im)
+                                color_factor = color_im
 
-                            # sub background color channels
-                            #bleach_color_path = experiment_directory + channel + r'/Bleach/cy_' + str(cycle) + '\Tiles/focused_basic_corrected'
-                            bleach_color_path = experiment_directory + channel + r'/Bleach/cy_' + str(cycle) + '\Tiles/focused'
-                            os.chdir(bleach_color_path)
-                            color_bleach = io.imread(filename)
-                            color_bleach_factor = color_bleach
-                            color_bleach = np.nan_to_num(color_bleach, posinf=65500)
-                            coefficent = self.autof_factor_estimator(color_factor, color_bleach_factor)
-                            #color_subbed = color_im - coefficent * color_bleach
-                            #color_subbed = color_reg - color_bleach
-                            color_subbed = color_im - color_bleach
-                            color_subbed[color_subbed < 0] = 0
-                            #color_subbed = np.nan_to_num(color_subbed, posinf= 65500)
+                                # sub background color channels
+                                #bleach_color_path = experiment_directory + channel + r'/Bleach/cy_' + str(cycle) + '\Tiles/focused_basic_corrected'
+                                bleach_color_path = experiment_directory + channel + r'/Bleach/cy_' + str(cycle) + '\Tiles/focused'
+                                os.chdir(bleach_color_path)
+                                color_bleach = io.imread(filename)
+                                color_bleach_factor = color_bleach
+                                color_bleach = np.nan_to_num(color_bleach, posinf=65500)
+                                coefficent = self.autof_factor_estimator(color_factor, color_bleach_factor)
+                                #color_subbed = color_im - coefficent * color_bleach
+                                #color_subbed = color_reg - color_bleach
+                                color_subbed = color_im - color_bleach
+                                color_subbed[color_subbed < 0] = 0
+                                #color_subbed = np.nan_to_num(color_subbed, posinf= 65500)
 
-                            # save
+                                # save
 
-                            #save_path = experiment_directory + channel + r'/Stain/cy_' + str(cycle) + '\Tiles/focused_flattened_subbed'
-                            save_path = experiment_directory + channel + r'/Stain/cy_' + str(cycle) + '\Tiles/background_subbed'
-                            try:
-                                os.chdir(save_path)
-                            except:
-                                os.mkdir(save_path)
-                                os.chdir(save_path)
+                                #save_path = experiment_directory + channel + r'/Stain/cy_' + str(cycle) + '\Tiles/focused_flattened_subbed'
+                                save_path = experiment_directory + channel + r'/Stain/cy_' + str(cycle) + '\Tiles/background_subbed'
+                                try:
+                                    os.chdir(save_path)
+                                except:
+                                    os.mkdir(save_path)
+                                    os.chdir(save_path)
 
-                            subbed_filename = 'x' + str(x) + '_y_' + str(y) + '_c_' + channel + '.tif'
-                            # bleach_filename ='x' + str(x) + '_y_' + str(y) + '_c_' + channel + '_bleach.tif'
-                            # reg_filename = 'x' + str(x) + '_y_' + str(y) + '_c_' + channel + '_registered.tif'
-                            tf.imwrite(subbed_filename, color_subbed)
-                            # io.imsave(bleach_filename, color_bleach)
-                            # io.imsave(reg_filename, color_reg)
+                                subbed_filename = 'x' + str(x) + '_y_' + str(y) + '_c_' + channel + '.tif'
+                                # bleach_filename ='x' + str(x) + '_y_' + str(y) + '_c_' + channel + '_bleach.tif'
+                                # reg_filename = 'x' + str(x) + '_y_' + str(y) + '_c_' + channel + '_registered.tif'
+                                tf.imwrite(subbed_filename, color_subbed)
+                                # io.imsave(bleach_filename, color_bleach)
+                                # io.imsave(reg_filename, color_reg)
+                            if hdr_sub == 1:
+                                z_slices = int(fm_array[3][0][0])
+                                for z in range(0, z_slices):
+
+                                    stain_color_path = experiment_directory + channel + r'/Stain/cy_' + str(cycle) + '\Tiles'
+                                    os.chdir(stain_color_path)
+                                    filename = 'z_' + str(z) + '_x' + str(x) + '_y_' + str(y) + '_c_' + channel + '.tif'
+                                    color_im = io.imread(filename)
+                                    color_im = np.nan_to_num(color_im, posinf=65500)
+                                    # color_reg = sr.transform(color_im)
+                                    color_factor = color_im
+
+                                    # sub background color channels
+                                    # bleach_color_path = experiment_directory + channel + r'/Bleach/cy_' + str(cycle) + '\Tiles/focused_basic_corrected'
+                                    bleach_color_path = experiment_directory + channel + r'/Bleach/cy_' + str(cycle) + '\Tiles'
+                                    os.chdir(bleach_color_path)
+                                    color_bleach = io.imread(filename)
+                                    color_bleach_factor = color_bleach
+                                    color_bleach = np.nan_to_num(color_bleach, posinf=65500)
+                                    #coefficent = self.autof_factor_estimator(color_factor, color_bleach_factor)
+                                    # color_subbed = color_im - coefficent * color_bleach
+                                    # color_subbed = color_reg - color_bleach
+                                    color_subbed = color_im - color_bleach
+                                    color_subbed[color_subbed < 0] = 0
+                                    # color_subbed = np.nan_to_num(color_subbed, posinf= 65500)
+
+                                    # save
+
+                                    # save_path = experiment_directory + channel + r'/Stain/cy_' + str(cycle) + '\Tiles/focused_flattened_subbed'
+                                    save_path = experiment_directory + channel + r'/Stain/cy_' + str(cycle) + '\Tiles/subbed'
+                                    try:
+                                        os.chdir(save_path)
+                                    except:
+                                        os.mkdir(save_path)
+                                        os.chdir(save_path)
+
+                                    subbed_filename = 'x' + str(x) + '_y_' + str(y) + '_c_' + channel + '.tif'
+                                    # bleach_filename ='x' + str(x) + '_y_' + str(y) + '_c_' + channel + '_bleach.tif'
+                                    # reg_filename = 'x' + str(x) + '_y_' + str(y) + '_c_' + channel + '_registered.tif'
+                                    tf.imwrite(subbed_filename, color_subbed)
+                                    # io.imsave(bleach_filename, color_bleach)
+                                    # io.imsave(reg_filename, color_reg)
+
 
                     if rolling_ball == 1:
 
