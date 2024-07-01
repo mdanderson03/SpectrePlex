@@ -162,9 +162,11 @@ class cycif:
                 self.exp_predetermined(experiment_directory, desired_cycle_count)
         if autofocus == 0 and auto_expose == 3:
             self.hdr = 1
+            self.hdr_exp_generator(experiment_directory, threshold_level=10000, max_exp=700, min_exp=20)
         if autofocus == 1 and auto_expose == 3:
             self.recursive_stardist_autofocus(experiment_directory, desired_cycle_count)
             self.hdr = 1
+            self.hdr_exp_generator(experiment_directory, threshold_level=10000, max_exp=700, min_exp=20)
         else:
             pass
 
@@ -1913,7 +1915,7 @@ class cycif:
             #self.reacquire_run_autofocus(experiment_directory, cycle_number, z_slices, offset_array, x_frame_size)
             # print(status_str)
             self.image_cycle_acquire(cycle_number, experiment_directory, z_slices, 'Stain', offset_array,x_frame_size=x_frame_size, establish_fm_array=0, auto_focus_run=1,
-                                     auto_expose_run=2)
+                                     auto_expose_run=3)
             time.sleep(5)
 
             # print(status_str)
@@ -1921,7 +1923,7 @@ class cycif:
             time.sleep(5)
             # print(status_str)
             self.image_cycle_acquire(cycle_number, experiment_directory, z_slices, 'Bleach', offset_array, x_frame_size=x_frame_size, establish_fm_array=0, auto_focus_run=0,
-                                     auto_expose_run=0)
+                                     auto_expose_run=3)
             time.sleep(3)
 
         # self.post_acquisition_processor(experiment_directory, x_frame_size)

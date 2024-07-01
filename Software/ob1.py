@@ -197,7 +197,7 @@ class fluidics:
         if unique_value_count <= 2:
             print('reboot')
             self.fluidics_logger('rebooting ob1', error, current_flow_rate)
-            self.ob1_reboot()
+            #self.ob1_reboot()
         else:
             pass
 

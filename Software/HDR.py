@@ -139,8 +139,8 @@ labelled_path = experiment_directory + '/Labelled_Nuc'
 dapi_im_path = experiment_directory + '/' + 'DAPI' '\Bleach\cy_' + str(0) + '\Tiles'
 
 os.chdir(dapi_im_path)
-file_name = 'z_' + str(4) + '_x' + str(x) + '_y_' + str(y) + '_c_DAPI.tif'
-#file_name = r'bit32.tif'
+#file_name = 'z_' + str(4) + '_x' + str(x) + '_y_' + str(y) + '_c_DAPI.tif'
+file_name = r'bit32.tif'
 img = io.imread(file_name)
 print(img[1600][600])
 
@@ -165,14 +165,15 @@ def focus_score(image, derivative_jump, labels):
 
     a = image[derivative_jump:, :]
     a = a.astype('float64')
+    posinf_nan = np.median(a)
     print('a', a[1600][600])
-    a = np.nan_to_num(a, posinf=65500, nan=65550)
+    a = np.nan_to_num(a, posinf=posinf_nan , nan=posinf_nan )
     print('a', a[1600][600])
     b = image[:-derivative_jump, :]
     print('b', b[1600][600])
     b = b.astype('float64')
 
-    b = np.nan_to_num(b, posinf=65500, nan=65550)
+    b = np.nan_to_num(b, posinf=posinf_nan , nan=posinf_nan )
     a = np.log(a)
     print('a', a[1600][600])
     b = np.log(b)
@@ -184,9 +185,12 @@ def focus_score(image, derivative_jump, labels):
     # c = c / 1000 * c / 1000
     labels = labels[derivative_jump:, :]
     c = c * labels
+    c = np.nan_to_num(c, posinf=0)
     f_score_shadow = c.sum(dtype=np.float64)
 
     return f_score_shadow
+
+
 
 
 print(focus_score(img, 17, labels))
