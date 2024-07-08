@@ -468,7 +468,7 @@ class cycif:
 
         self.hdr_exp_times = hdr_exp_list
 
-    def hdr_compression(self, experiment_directory, cycle_number, apply_2_subbed = 1, apply_2_bleached = 1, channels = ['DAPI', 'A488', 'A555', 'A647']):
+    def hdr_compression(self, experiment_directory, cycle_number, apply_2_subbed = 1, apply_2_bleached = 1, apply_2_focused = 1, channels = ['DAPI', 'A488', 'A555', 'A647']):
         '''
         Looks through all tiles and compresses 32bit images into 16 bit based on 2^16 = highest pixel in any tile.
         By standard, will apply to raw stained tiles. Can be extended to raw bleached tiles and subbed tiles.
@@ -502,18 +502,25 @@ class cycif:
             types.append('Bleach')
         if apply_2_subbed == 1:
             #make anything beyond Stain and Bleach all lower case
-            types.append('subbed')
+            types.append('focused_subbed')
+        if apply_2_focused == 1:
+            #make anything beyond Stain and Bleach all lower case
+            types.append('focused')
 
         for channel in channels:
             for type in types:
                 if type == 'Stain':
                     type_path = experiment_directory + r'//' + channel + r'//' + type + r'//cy_' + str(cycle_number) + r'//Tiles'
+                    os.chdir(type_path)
                 elif type == 'Bleach':
                     type_path = experiment_directory + r'//' + channel + r'//' + type + r'//cy_' + str(cycle_number - 1) + r'//Tiles'
+                    os.chdir(type_path)
+                elif channel == 'DAPI' and type == 'focused_subbed':
+                    pass
                 else:
                     type_path = experiment_directory + r'//' + channel + r'//Stain//cy_' + str(cycle_number) + r'//Tiles/' + type
+                    os.chdir(type_path)
 
-                os.chdir(type_path)
                 if type == 'Stain':
                     highest_intensity = 0
                     #Find max intensity
@@ -554,9 +561,9 @@ class cycif:
                                     im = io.imread(file_name)
                                     im = im/highest_intensity
                                     im = skimage.util.img_as_uint(im)
-                                    #io.imsave(file_name, im)
+                                    io.imsave(file_name, im)
 
-                elif channel == 'DAPI' and type != 'Stain' or 'Bleach':
+                elif channel == 'DAPI' and type != 'Stain' or 'Bleach' or 'focused_subbed':
                     pass
                 else:
                     #Max int came from Stain loop above this section
@@ -568,7 +575,8 @@ class cycif:
                                     im = io.imread(file_name)
                                     im = im / max_tile_int
                                     im = skimage.util.img_as_uint(im)
-                                    #io.imsave(file_name, im)
+                                    #tf.imwrite(file_name,im, compression='zlib')
+                                    io.imsave(file_name, im)
                             else:
                                 pass
 
@@ -1313,7 +1321,7 @@ class cycif:
 
         return image_2
 
-    def tissue_cluster_filter(self, experiment_directory, x_frame_size, number_clusters_retained = 1):
+    def tissue_cluster_filter(self, experiment_directory, x_frame_size, number_clusters_retained = 1, area_threshold = 0.1):
         '''
         Looks at tissue binary images, combines them and determines the largest x clusters in
         the joined image and removes the rest. In addition, this will fill in holes
@@ -1356,15 +1364,12 @@ class cycif:
         labelled_super = skimage.measure.label(super_image)
         props = skimage.measure.regionprops(labelled_super)
 
-        # find largest x number of clusters
-        cluster_area_index = np.zeros((2, number_clusters_retained))
-
-
-
-
-
+        # make array to store cluster area and indicies in
+        cluster_area_index = np.zeros((2, np.max(labelled_super)))
+        '''
         for index in range(0, np.max(labelled_super)):
             area = props[index]['area']
+            print(area, index)
             array_min = np.min(cluster_area_index[0])
             if area > array_min:
                 min_index = np.where(cluster_area_index[0] == array_min)[0][0]
@@ -1372,13 +1377,42 @@ class cycif:
                 cluster_area_index[1][min_index] = int(index + 1)
             else:
                 pass
+        '''
+
+        for index in range(0, np.max(labelled_super)):
+            area = props[index]['area']
+            cluster_area_index[0][index] = area
+            cluster_area_index[1][index] = int(index + 1)
+
+        #sort array by size and keep index tracked alongside the size sorting
+
+        sorted_cluster_areas = deepcopy(np.sort(cluster_area_index, kind='stable'))
+
+        x = 0
+        while x < np.shape(cluster_area_index)[1]:
+            area = sorted_cluster_areas[0][x]
+            x_index = np.where(cluster_area_index[0] == area)[0]
+            cluster_index = cluster_area_index[1][x_index]
+            sorted_cluster_areas[1][x:x + np.shape(x_index)[0]] = cluster_index
+            x += np.shape(x_index)[0]
+
+        sorted_cluster_areas = np.fliplr(sorted_cluster_areas)
+
+        #determine how many clusters will pass with threshold based on smallest demanded retained cluster
+        min_area = area_threshold * sorted_cluster_areas[0][number_clusters_retained - 1]
+        sorted_cluster_areas[0][sorted_cluster_areas[0] < min_area] = 0
+        index_smallest = np.where(sorted_cluster_areas[0] == 0)[0][0]
+        sorted_cluster_areas = sorted_cluster_areas[::, 0:index_smallest]
+
+        number_actual_clusters_retained = np.shape(sorted_cluster_areas)[1]
+
 
         #make new binary image
         new_image = labelled_super * super_image
-        first_index = cluster_area_index[1][0]
+        first_index = sorted_cluster_areas[1][0]
         #scale all clusters to same number
-        for x in range(0, number_clusters_retained):
-            index_value = cluster_area_index[1][x]
+        for x in range(0, number_actual_clusters_retained):
+            index_value = sorted_cluster_areas[1][x]
             new_image[new_image == index_value] = first_index
 
         new_image[new_image != first_index] = 0
@@ -1390,7 +1424,7 @@ class cycif:
 
         for y in range(0, y_tile_count):
             for x in range(0, x_tile_count):
-                filename = 'x' + str(x) + '_y_' +str(y) + '_tissue.tif'
+                filename = 'x' + str(x) + '_y_' + str(y) + '_tissue.tif'
 
                 start_x = x * x_frame_size
                 end_x = start_x + x_frame_size
@@ -1409,7 +1443,7 @@ class cycif:
         io.imsave('whole_tissue.tif', super_image)
         io.imsave('whole_tissue_filtered.tif', new_image)
 
-    def tissue_binary_generate(self, experiment_directory, x_frame_size = 2960, clusters_retained = 1):
+    def tissue_binary_generate(self, experiment_directory, x_frame_size = 2960, clusters_retained = 1, area_threshold = 0.1):
         '''
         Generates tissue binary maps from star dist binary maps
 
@@ -1453,7 +1487,7 @@ class cycif:
                 tissue_binary_name = 'x' + str(x) + '_y_' + str(y) + '_tissue.tif'
                 io.imsave(tissue_binary_name, filtered_image)
 
-        self.tissue_cluster_filter(experiment_directory, x_frame_size, clusters_retained)
+        self.tissue_cluster_filter(experiment_directory, x_frame_size, clusters_retained, area_threshold=area_threshold)
 
     #recursize autofocusfunctions#####################################
 
@@ -1552,7 +1586,7 @@ class cycif:
             pass
 
         if cycle == 0:
-            self.tissue_region_identifier(experiment_directory, x_frame_size=2960, clusters_retained=1)
+            self.tissue_region_identifier(experiment_directory, x_frame_size=2960, clusters_retained=3)
         else:
             pass
 
@@ -2000,10 +2034,10 @@ class cycif:
         except:
             pass
 
-        self.image_cycle_acquire(0, experiment_directory, z_slices, 'Bleach', offset_array,x_frame_size=x_frame_size, establish_fm_array=1, auto_focus_run=0,auto_expose_run=0, channels=['DAPI'], focus_position=focus_position)
-        self.image_cycle_acquire(0, experiment_directory, z_slices, 'Bleach', offset_array,x_frame_size=x_frame_size, fm_array_adjuster=0, establish_fm_array=0, auto_focus_run=1,auto_expose_run=0, focus_position=focus_position)
-        self.generate_nuc_mask(experiment_directory, cycle_number=0)
-        self.tissue_region_identifier(experiment_directory)
+        #self.image_cycle_acquire(0, experiment_directory, z_slices, 'Bleach', offset_array,x_frame_size=x_frame_size, establish_fm_array=1, auto_focus_run=0,auto_expose_run=0, channels=['DAPI'], focus_position=focus_position)
+        self.image_cycle_acquire(0, experiment_directory, z_slices, 'Bleach', offset_array,x_frame_size=x_frame_size, fm_array_adjuster=0, establish_fm_array=0, auto_focus_run=1,auto_expose_run=3, focus_position=focus_position)
+        #self.generate_nuc_mask(experiment_directory, cycle_number=0)
+        #self.tissue_region_identifier(experiment_directory, clusters_retained=3)
 
     def full_cycle(self, experiment_directory, cycle_number, offset_array, stain_valve, fluidics_object, z_slices, incub_val=45, x_frame_size=2960, focus_position = 'none'):
 
@@ -2018,16 +2052,15 @@ class cycif:
             pump.liquid_action('Stain', incub_val=incub_val, stain_valve=stain_valve,  microscope_object = self, experiment_directory=experiment_directory)  # nuc is valve=7, pbs valve=8, bleach valve=1 (action, stain_valve, heater state (off = 0, on = 1))
             #self.reacquire_run_autofocus(experiment_directory, cycle_number, z_slices, offset_array, x_frame_size)
             # print(status_str)
-            self.image_cycle_acquire(cycle_number, experiment_directory, z_slices, 'Stain', offset_array,x_frame_size=x_frame_size, establish_fm_array=0, auto_focus_run=1,
-                                     auto_expose_run=3)
+            self.image_cycle_acquire(cycle_number, experiment_directory, z_slices, 'Stain', offset_array,x_frame_size=x_frame_size, establish_fm_array=0, auto_focus_run=0,auto_expose_run=3)
             time.sleep(5)
 
             # print(status_str)
             pump.liquid_action('Bleach', stain_valve=stain_valve)  # nuc is valve=7, pbs valve=8, bleach valve=1 (action, stain_valve, heater state (off = 0, on = 1))
             time.sleep(5)
             # print(status_str)
-            self.image_cycle_acquire(cycle_number, experiment_directory, z_slices, 'Bleach', offset_array, x_frame_size=x_frame_size, establish_fm_array=0, auto_focus_run=0,
-                                     auto_expose_run=3)
+            self.image_cycle_acquire(cycle_number, experiment_directory, z_slices, 'Bleach', offset_array, x_frame_size=x_frame_size, establish_fm_array=0, auto_focus_run=0,auto_expose_run=3)
+            self.inter_cycle_processing(experiment_directory, cycle_number=cycle_number, x_frame_size=x_frame_size)
             time.sleep(3)
 
         # self.post_acquisition_processor(experiment_directory, x_frame_size)
@@ -2157,22 +2190,23 @@ class cycif:
             else:
                 cycle_start_search = 1
         '''
-        cycle_end = 8
+        cycle_end = 2
         cycle_start = 1
 
-        #self.tissue_binary_generate(experiment_directory)
-        #self.tissue_exist_array_generate(experiment_directory)
+        self.tissue_binary_generate(experiment_directory)
+        self.tissue_exist_array_generate(experiment_directory)
 
         for cycle_number in range(cycle_start, cycle_end):
 
             #self.background_sub(experiment_directory, cycle_number, hdr_sub= 1,rolling_ball= 0)
             #self.focus_excel_creation(experiment_directory, cycle_number)
-            #self.in_focus_excel_populate(experiment_directory, cycle_number, x_pixels, hdr_sub=1)
-            #self.excel_2_focus(experiment_directory, cycle_number, hdr_sub=1)
-            #self.illumination_flattening(experiment_directory, cycle_number, rolling_ball, hdr_sub=1)
-            #self.brightness_uniformer(experiment_directory, cycle_number, hdr_sub = 1)
-            self.mcmicro_image_stack_generator(cycle_number, experiment_directory, x_pixels, hdr_sub=1)
-            self.stage_placement(experiment_directory, cycle_number, x_pixels, hdr_sub = 1)
+            #self.in_focus_excel_populate(experiment_directory, cycle_number, x_pixels, hdr_sub=0)
+            #self.excel_2_focus(experiment_directory, cycle_number, hdr_sub=0)
+            #self.illumination_flattening(experiment_directory, cycle_number, rolling_ball, hdr_sub=0)
+            #self.illumination_flattening_per_tile(experiment_directory, cycle_number, rolling_ball=0, hdr_sub=1)
+            #self.brightness_uniformer(experiment_directory, cycle_number, hdr_sub = 0)
+            #self.mcmicro_image_stack_generator(cycle_number, experiment_directory, x_pixels, hdr_sub=1)
+            self.stage_placement(experiment_directory, cycle_number, x_pixels, hdr_sub = 0)
 
     def post_acquisition_processor_experimental(self, experiment_directory, x_pixels, rolling_ball = 1):
 
@@ -2203,7 +2237,7 @@ class cycif:
             self.mcmicro_image_stack_generator(cycle_number, experiment_directory, x_pixels)
             self.stage_placement(experiment_directory, cycle_number, x_pixels)
 
-    def mcmicro_image_stack_generator(self, cycle_number, experiment_directory, x_frame_size, hdr_sub = 1):
+    def mcmicro_image_stack_generator(self, cycle_number, experiment_directory, x_frame_size):
 
         numpy_path = experiment_directory + '/' + 'np_arrays'
         os.chdir(numpy_path)
@@ -2220,24 +2254,15 @@ class cycif:
         x_tile_count = numpy_y.shape[1]
         tile_count = int(tissue_exist.sum())
 
-        if hdr_sub == 0:
-            dapi_im_path = experiment_directory + '\DAPI\Stain\cy_' + str(
-                cycle_number) + '\Tiles' + '/focused_basic_corrected_brightness_corrected'
-            a488_im_path = experiment_directory + '\A488\Stain\cy_' + str(
-                cycle_number) + '\Tiles' + '/focused_flattened_subbed_brightness'
-            a555_im_path = experiment_directory + '\A555\Stain\cy_' + str(
-                cycle_number) + '\Tiles' + '/focused_flattened_subbed_brightness'
-            a647_im_path = experiment_directory + '\A647\Stain\cy_' + str(
-                cycle_number) + '\Tiles' + '/focused_flattened_subbed_brightness'
-        if hdr_sub == 1:
-            dapi_im_path = experiment_directory + '\DAPI\Stain\cy_' + str(
-                cycle_number) + '\Tiles' + r'\subbed_focused_basic_corrected'
-            a488_im_path = experiment_directory + '\A488\Stain\cy_' + str(
-                cycle_number) + '\Tiles' + r'\subbed_focused_basic_corrected'
-            a555_im_path = experiment_directory + '\A555\Stain\cy_' + str(
-                cycle_number) + '\Tiles' + r'\subbed_focused_basic_corrected'
-            a647_im_path = experiment_directory + '\A647\Stain\cy_' + str(
-                cycle_number) + '\Tiles' + r'\subbed_focused_basic_corrected'
+        dapi_im_path = experiment_directory + '\DAPI\Stain\cy_' + str(
+            cycle_number) + '\Tiles' + '/focused_basic_corrected'
+        a488_im_path = experiment_directory + '\A488\Stain\cy_' + str(
+            cycle_number) + '\Tiles' + '/focused_subbed_basic_corrected'
+        a555_im_path = experiment_directory + '\A555\Stain\cy_' + str(
+            cycle_number) + '\Tiles' + '/focused_subbed_basic_corrected'
+        a647_im_path = experiment_directory + '\A647\Stain\cy_' + str(
+            cycle_number) + '\Tiles' + '/focused_subbed_basic_corrected'
+
 
         mcmicro_path = experiment_directory + r'\mcmicro\raw'
 
@@ -2450,7 +2475,7 @@ class cycif:
         os.chdir(star_dist_path)
         tf.imwrite('star_dist_placed.tif', placed_image)
 
-    def stage_placement(self, experiment_directory, cycle_number, x_pixels, hdr_sub = 1):
+    def stage_placement(self, experiment_directory, cycle_number, x_pixels):
         '''
         Goal to place images via rough stage coords in a larger image. WIll have nonsense borders
         '''
@@ -2498,30 +2523,22 @@ class cycif:
         # load images into python
 
         channels = ['DAPI', 'A488', 'A555', 'A647']
-        if hdr_sub == 0:
-            types = ['Stain', 'Bleach']
-        if hdr_sub == 1:
-            types = ['Stain']
+        types = ['Stain', 'Bleach']
 
         for type in types:
             for channel in channels:
 
                 if type == 'Stain':
-                    if hdr_sub == 0:
-                        if channel == 'DAPI':
-                            im_path = experiment_directory + '/' + channel + "/" + type + '\cy_' + str(
-                                cycle_number) + '\Tiles' + r'\focused_basic_brightness_corrected'
-                        else:
-                            im_path = experiment_directory + '/' + channel + "/" + type + '\cy_' + str(
-                                cycle_number) + '\Tiles' + '/focused_basic_brightness_corrected'
-                    if hdr_sub == 1:
-                        if channel == 'DAPI':
-                            im_path = experiment_directory + '/' + channel + "/" + type + '\cy_' + str(cycle_number) + '\Tiles' + r'\subbed_focused_basic_corrected'
-                        else:
-                            im_path = experiment_directory + '/' + channel + "/" + type + '\cy_' + str(cycle_number) + '\Tiles' + '/subbed_focused_basic_corrected'
+                    if channel == 'DAPI':
+                        im_path = experiment_directory + '/' + channel + "/" + type + '\cy_' + str(
+                            cycle_number) + '\Tiles' + r'\focused_basic_corrected'
+                    else:
+                        im_path = experiment_directory + '/' + channel + "/" + type + '\cy_' + str(
+                            cycle_number) + '\Tiles' + '/focused_subbed_basic_corrected'
+
                 elif type == 'Bleach':
                     im_path = experiment_directory + '/' + channel + "/" + type + '\cy_' + str(
-                        cycle_number) + '\Tiles' + '/focused_basic_corrected'
+                        cycle_number - 1) + '\Tiles' + '/focused'
                 os.chdir(im_path)
 
                 # place images into large array
@@ -2530,7 +2547,6 @@ class cycif:
                     for y in range(0, y_tile_count):
 
                         if tissue_exist[y][x] == 1:
-                            print('x', x, 'y', y)
                             filename = 'x' + str(x) + '_y_' + str(y) + '_c_' + channel + '.tif'
                             try:
                                 image = io.imread(filename)
@@ -2586,92 +2602,7 @@ class cycif:
                 pass
 
 
-    def illumination_flattening(self, experiment_directory, cycle_number, rolling_ball = 1, hdr_sub = 1):
-
-        # load numpy arrays in
-        numpy_path = experiment_directory + '/' + 'np_arrays'
-        os.chdir(numpy_path)
-        full_array = np.load('fm_array.npy', allow_pickle=False)
-
-        directory_start = experiment_directory + '//'
-
-        for channel in range(0, 4):
-
-            if channel == 0:
-                channel_name = 'DAPI'
-            if channel == 1:
-                channel_name = 'A488'
-            if channel == 2:
-                channel_name = 'A555'
-            if channel == 3:
-                channel_name = 'A647'
-
-            print('channel', channel_name, 'cycle', cycle_number)
-
-            if channel == 0:
-                if hdr_sub == 1:
-                    stain_directory = directory_start + channel_name + '\Stain\cy_' + str(cycle_number) + r'\Tiles\subbed_focused'
-                if hdr_sub == 0:
-                    stain_directory = directory_start + channel_name + '\Stain\cy_' + str(cycle_number) + r'\Tiles\focused'
-                    bleach_directory = directory_start + channel_name + '\Bleach\cy_' + str(cycle_number) + r'\Tiles\focused'
-            else:
-                if rolling_ball != 1:
-                    if hdr_sub == 1:
-                        stain_directory = directory_start + channel_name + '\Stain\cy_' + str(cycle_number) + r'\Tiles\subbed_focused'
-                    if hdr_sub == 0:
-                        stain_directory = directory_start + channel_name + '\Stain\cy_' + str(cycle_number) + r'\Tiles\focused'
-                        bleach_directory = directory_start + channel_name + '\Bleach\cy_' + str(cycle_number) + r'\Tiles\focused'
-
-                if rolling_ball == 1:
-                    directory = directory_start + channel_name + '\Stain\cy_' + str(cycle_number) + r'\Tiles\focused\background_subbed_rolling'
-
-            if hdr_sub == 1:
-                stain_output_directory = directory_start + channel_name + '\Stain\cy_' + str(cycle_number) + r'\Tiles\subbed_focused_basic_corrected'
-            else:
-                stain_output_directory = directory_start + channel_name + '\Stain\cy_' + str(cycle_number) + r'\Tiles\focused_basic_corrected'
-                bleach_output_directory = directory_start + channel_name + '\Bleach\cy_' + str(cycle_number) + r'\Tiles\focused_basic_corrected'
-
-
-
-            try:
-                os.mkdir(stain_output_directory)
-                if hdr_sub == 0:
-                    os.mkdir(bleach_output_directory)
-                    self.nan_folder_conversion(bleach_directory)
-                else:
-                    pass
-            except:
-                pass
-
-
-            #resave images without NaN or infinity values
-            self.nan_folder_conversion(stain_directory)
-            #ff_directory = r'C:\Users\CyCIF PC\Desktop\new A647 FF'
-
-            epsilon = 1e-06
-            optimizer = shading_correction.BaSiC(stain_directory)
-            #optimizer = shading_correction.BaSiC(ff_directory)
-            optimizer.prepare()
-            optimizer.run()
-            # Save the estimated fields (only if the profiles were estimated)
-            directory = Path(stain_output_directory)
-            flatfield_name = directory / "flatfield.tif"
-            darkfield_name = directory / "darkfield.tif"
-            cv2.imwrite(str(flatfield_name), optimizer.flatfield_fullsize.astype(np.float32))
-            cv2.imwrite(str(darkfield_name), optimizer.darkfield_fullsize.astype(np.float32))
-            optimizer.write_images(stain_output_directory, epsilon=epsilon)
-
-
-            if hdr_sub == 0:
-                # run same ff on bleached images
-                optimizer.directory = bleach_directory
-                optimizer._sniff_input()
-                optimizer._load_images()
-                optimizer.write_images(bleach_output_directory, epsilon=epsilon)
-            else:
-                pass
-
-    def illumination_flattening_per_tile(self, experiment_directory, cycle_number, rolling_ball = 1):
+    def illumination_flattening(self, experiment_directory, cycle_number, rolling_ball = 0):
 
         # load numpy arrays in
         numpy_path = experiment_directory + '/' + 'np_arrays'
@@ -2695,16 +2626,93 @@ class cycif:
 
             if channel == 0:
                 stain_directory = directory_start + channel_name + '\Stain\cy_' + str(cycle_number) + r'\Tiles\focused'
-                stain_temp_directory = directory_start + channel_name + '\Stain\cy_' + str(cycle_number) + r'\Tiles\focused\temp'
-                bleach_directory = directory_start + channel_name + '\Bleach\cy_' + str(cycle_number) + r'\Tiles\focused'
+                training_directory = directory_start + channel_name + '\Stain\cy_' + str(cycle_number) + r'\Tiles\focused'
+                stain_output_directory = directory_start + channel_name + '\Stain\cy_' + str(cycle_number) + r'\Tiles\focused_basic_corrected'
+
             else:
                 if rolling_ball != 1:
-                    stain_directory = directory_start + channel_name + '\Stain\cy_' + str(cycle_number) + r'\Tiles\background_subbed'
-                    stain_temp_directory = directory_start + channel_name + '\Stain\cy_' + str(cycle_number) + r'\Tiles\background_subbed\temp'
-                    bleach_directory = directory_start + channel_name + '\Bleach\cy_' + str(cycle_number) + r'\Tiles\focused'
+                    stain_directory = directory_start + channel_name + '\Stain\cy_' + str(cycle_number) + r'\Tiles\focused_subbed'
+                    training_directory = directory_start + channel_name + '\Stain\cy_' + str(cycle_number) + r'\Tiles\focused_subbed'
+                    stain_output_directory = directory_start + channel_name + '\Stain\cy_' + str(cycle_number) + r'\Tiles\focused_subbed_basic_corrected'
+
                 if rolling_ball == 1:
                     directory = directory_start + channel_name + '\Stain\cy_' + str(cycle_number) + r'\Tiles\focused\background_subbed_rolling'
-            stain_output_directory = directory_start + channel_name + '\Stain\cy_' + str(cycle_number) + r'\Tiles\focused_flattened_subbed'
+
+
+
+
+            try:
+                os.mkdir(stain_output_directory)
+            except:
+                pass
+
+
+            #resave images without NaN or infinity values
+            self.nan_folder_conversion(stain_directory)
+            #ff_directory = r'C:\Users\CyCIF PC\Desktop\new A647 FF'
+
+            epsilon = 1e-06
+            optimizer = shading_correction.BaSiC(training_directory)
+            #optimizer = shading_correction.BaSiC(ff_directory)
+            optimizer.prepare()
+            optimizer.run()
+            # Save the estimated fields (only if the profiles were estimated)
+            directory = Path(stain_output_directory)
+            flatfield_name = directory / "flatfield.tif"
+            darkfield_name = directory / "darkfield.tif"
+            cv2.imwrite(str(flatfield_name), optimizer.flatfield_fullsize.astype(np.float32))
+            cv2.imwrite(str(darkfield_name), optimizer.darkfield_fullsize.astype(np.float32))
+            #optimizer.write_images(stain_output_directory, epsilon=epsilon)
+
+            #run trained FF on subtracted images
+            optimizer.directory = stain_directory
+            optimizer._sniff_input()
+            optimizer._load_images()
+            optimizer.write_images(stain_output_directory, epsilon=epsilon)
+
+
+    def illumination_flattening_per_tile(self, experiment_directory, cycle_number, rolling_ball = 1, hdr_sub = 1):
+
+        # load numpy arrays in
+        numpy_path = experiment_directory + '/' + 'np_arrays'
+        os.chdir(numpy_path)
+        full_array = np.load('fm_array.npy', allow_pickle=False)
+
+        directory_start = experiment_directory + '//'
+
+        for channel in range(0, 4):
+
+            if channel == 0:
+                channel_name = 'DAPI'
+            if channel == 1:
+                channel_name = 'A488'
+            if channel == 2:
+                channel_name = 'A555'
+            if channel == 3:
+                channel_name = 'A647'
+
+            print('channel', channel_name, 'cycle', cycle_number)
+
+            if channel == 0:
+                if hdr_sub == 0:
+                    stain_directory = directory_start + channel_name + '\Stain\cy_' + str(cycle_number) + r'\Tiles\focused'
+                    stain_temp_directory = directory_start + channel_name + '\Stain\cy_' + str(cycle_number) + r'\Tiles\focused\temp'
+                    bleach_directory = directory_start + channel_name + '\Bleach\cy_' + str(cycle_number) + r'\Tiles\focused'
+                if hdr_sub == 1:
+                    stain_directory = directory_start + channel_name + '\Stain\cy_' + str(cycle_number) + r'\Tiles\subbed_focused'
+                    stain_temp_directory = directory_start + channel_name + '\Stain\cy_' + str(cycle_number) + r'\Tiles\subbed_focused\temp'
+            else:
+                if rolling_ball != 1:
+                    if hdr_sub == 0:
+                        stain_directory = directory_start + channel_name + '\Stain\cy_' + str(cycle_number) + r'\Tiles\background_subbed'
+                        stain_temp_directory = directory_start + channel_name + '\Stain\cy_' + str(cycle_number) + r'\Tiles\background_subbed\temp'
+                        bleach_directory = directory_start + channel_name + '\Bleach\cy_' + str(cycle_number) + r'\Tiles\focused'
+                    if hdr_sub == 1:
+                        stain_directory = directory_start + channel_name + '\Stain\cy_' + str(cycle_number) + r'\Tiles\subbed_focused'
+                        stain_temp_directory = directory_start + channel_name + '\Stain\cy_' + str(cycle_number) + r'\Tiles\subbed_focused\temp'
+                if rolling_ball == 1:
+                    directory = directory_start + channel_name + '\Stain\cy_' + str(cycle_number) + r'\Tiles\focused\background_subbed_rolling'
+            stain_output_directory = directory_start + channel_name + '\Stain\cy_' + str(cycle_number) + r'\Tiles\subbed_focused_basic_corrected'
             #bleach_output_directory = directory_start + channel_name + '\Bleach\cy_' + str(cycle_number) + r'\Tiles\focused_basic_corrected'
 
             #stain_temp_directory = directory_start + channel_name + '\Stain\cy_' + str(cycle_number) + r'\Tiles\background_subbed\temp'
@@ -2814,6 +2822,63 @@ class cycif:
                 output_path_file = os.path.join(bleach_temp_directory, second_name)
                 os.remove(output_path_file)
             '''
+
+    def inter_cycle_processing(self, experiment_directory, cycle_number, x_frame_size):
+        '''
+        To reduce file size between, some processing is done between cycles. In this case: 1. find focus tiles
+        2. Subtract bleached from stained
+        3. compress files from 32bit to 16bit in general tile folder and subbed folder.
+        :param experiment_directory:
+        :param cycle_number:
+        :return:
+        '''
+        start = time.time()
+        #make tissue exist array if needed
+        if cycle_number == 1:
+            self.tissue_binary_generate(experiment_directory)
+            self.tissue_exist_array_generate(experiment_directory)
+        else:
+            pass
+        end = time.time()
+        print('binary create', end - start)
+
+        #determine in focus parts first
+        self.focus_excel_creation(experiment_directory, cycle_number)
+        self.in_focus_excel_populate(experiment_directory, cycle_number, x_frame_size=x_frame_size)
+        self.excel_2_focus(experiment_directory, cycle_number, x_frame_size=x_frame_size)
+
+        end = time.time()
+        print('focus', end - start)
+
+        #subtract background
+        self.background_sub(experiment_directory, cycle_number, rolling_ball=0)
+
+        end = time.time()
+        print('sub background', end - start)
+
+        #compress to 16bit
+        self.hdr_compression(experiment_directory, cycle_number, apply_2_subbed=1, apply_2_bleached=1, apply_2_focused = 1)
+
+        end = time.time()
+        print('compress', end - start)
+
+        #flatten image
+        self.illumination_flattening(experiment_directory, cycle_number, rolling_ball=0)
+
+        end = time.time()
+        print('flatten', end - start)
+
+        #make Mcmicro file
+        self.mcmicro_image_stack_generator(cycle_number, experiment_directory, x_frame_size)
+
+        end = time.time()
+        print('mcmicro', end - start)
+
+        #generate stage placement file
+        self.stage_placement(experiment_directory, cycle_number, x_pixels = x_frame_size)
+
+        end = time.time()
+        print('stage placement', end - start)
 
     def infocus(self, experiment_directory, cycle_number, x_frame_size, x_sub_section_count = 1, y_sub_section_count = 1):
 
@@ -2941,7 +3006,7 @@ class cycif:
 
         wb.save(file_name)
 
-    def in_focus_excel_populate(self, experiment_directory, cycle_number, x_frame_size, hdr_sub = 1, x_sub_section_count = 1, y_sub_section_count = 1):
+    def in_focus_excel_populate(self, experiment_directory, cycle_number, x_frame_size, x_sub_section_count = 1, y_sub_section_count = 1):
 
         print('cycle', cycle_number)
         channels = ['DAPI', 'A488', 'A555', 'A647']
@@ -2950,6 +3015,7 @@ class cycif:
 
         dapi_im_path = experiment_directory + '/' + 'DAPI' '\Stain\cy_' + str(cycle_number) + '\Tiles'
         tissue_path = experiment_directory + '/Tissue_Binary'
+        nuc_binary_path = experiment_directory + '/Labelled_Nuc'
 
         excel_folder_name = 'focus_grid_excel'
         excel_file_name = 'focus_grid.xlsx'
@@ -2984,6 +3050,18 @@ class cycif:
                 else:
                     pass
 
+            # make object to hold all nuclear binary maps
+            nuc_binary_stack = np.random.rand(y_tile_count, x_tile_count, 2960, x_frame_size).astype('uint16')
+            for x in range(0, x_tile_count):
+                for y in range(0, y_tile_count):
+                    if tissue_exist[y][x] == 1:
+                        os.chdir(nuc_binary_path)
+                        file_name = 'x' + str(x) + '_y_' + str(y) + '_c_DAPI.tif'
+                        image = tf.imread(file_name)
+                        nuc_binary_stack[y][x] = image
+                    else:
+                        pass
+
         for channel in channels:
 
             #load in sheet
@@ -2993,10 +3071,6 @@ class cycif:
 
             # generate imstack of z slices for tile
             im_path = experiment_directory + '/' + channel + '\Stain\cy_' + str(cycle_number) + '\Tiles'
-            if hdr_sub == 1 and channel != 'DAPI':
-                im_path = experiment_directory + '/' + channel + '\Stain\cy_' + str(cycle_number) + '\Tiles\subbed'
-            else:
-                pass
 
             os.chdir(im_path)
 
@@ -3026,7 +3100,10 @@ class cycif:
                                     x_start = int(x_sub * (x_frame_size / x_sub_section_count))
                                     sub_image = z_stack[z][y_start:y_end, x_start:x_end]
 
-                                    sub_tissue_bin = tissue_binary_stack[y][x][y_start:y_end, x_start:x_end]
+                                    if channel == 'DAPI':
+                                        sub_tissue_bin = nuc_binary_stack[y][x][y_start:y_end, x_start:x_end]
+                                    else:
+                                        sub_tissue_bin = tissue_binary_stack[y][x][y_start:y_end, x_start:x_end]
 
                                     for b in range(0, number_bins):
                                         bin_value = int(bin_values[b])
@@ -3085,7 +3162,7 @@ class cycif:
                     if tissue_exist[y][x] == 1:
 
                         slice_number = ws.cell(row= (y+1), column = (x + 1)).value
-                        self.image_reconstructor(experiment_directory, slice_number, channel, cycle_number,x_frame_size, y, x, hdr_sub = hdr_sub)
+                        self.image_reconstructor(experiment_directory, slice_number, channel, cycle_number,x_frame_size, y, x)
 
                     else:
                         pass
@@ -3120,36 +3197,35 @@ class cycif:
         return reconstruct_array
 
     def image_reconstructor(self, experiment_directory, reconstruct_array, channel, cycle_number, x_frame_size,
-                            y_tile_number, x_tile_number, hdr_sub = 1):
+                            y_tile_number, x_tile_number):
 
         #y_sections = np.shape(reconstruct_array)[0]
         #x_sections = np.shape(reconstruct_array)[1]
 
-        #cycle_types = ['Stain', 'Bleach']
-        cycle_types = ['Stain']
+        cycle_types = ['Stain', 'Bleach']
+        #cycle_types = ['Stain']
 
-        for cycle_type in cycle_types:
+        for type in cycle_types:
 
-            if hdr_sub == 0:
-                im_path = experiment_directory + '/' + channel + '/' + cycle_type + '\cy_' + str(cycle_number) + '\Tiles'
+            if type == 'Stain':
+
+                im_path = experiment_directory + '/' + channel + '/' + type + '\cy_' + str(cycle_number) + '\Tiles'
                 os.chdir(im_path)
+                saving_path = experiment_directory + '/' + channel + '/' + type + '\cy_' + str(cycle_number) + '\Tiles//focused'
                 try:
                     os.mkdir('focused')
                 except:
                     pass
-            if hdr_sub == 1:
 
-                im_path = experiment_directory + '/' + channel + '/' + cycle_type + '\cy_' + str(cycle_number) + '\Tiles'
+            if type == 'Bleach':
+
+                im_path = experiment_directory + '/' + channel + '/' + type + '\cy_' + str(cycle_number - 1) + '\Tiles'
                 os.chdir(im_path)
+                saving_path = experiment_directory + '/' + channel + '/' + type + '\cy_' + str(cycle_number - 1) + '\Tiles//focused'
                 try:
-                    os.mkdir('subbed_focused')
+                    os.mkdir('focused')
                 except:
                     pass
-                saving_path = experiment_directory + '/' + channel + '/' + cycle_type + '\cy_' + str(cycle_number) + '\Tiles\subbed_focused'
-                if channel == 'DAPI':
-                    im_path = experiment_directory + '/' + channel + '/' + cycle_type + '\cy_' + str(cycle_number) + '\Tiles'
-                else:
-                    im_path = experiment_directory + '/' + channel + '/' + cycle_type + '\cy_' + str(cycle_number) + '\Tiles\subbed'
 
             os.chdir(im_path)
 
@@ -3177,7 +3253,7 @@ class cycif:
             os.chdir(saving_path)
             tf.imwrite(filename, image)
 
-    def background_sub(self, experiment_directory, cycle, hdr_sub = 1, rolling_ball = 1):
+    def background_sub(self, experiment_directory, cycle, rolling_ball = 0):
 
         experiment_directory = experiment_directory + '/'
 
@@ -3230,88 +3306,46 @@ class cycif:
                         # apply translation to other color channels
 
                         for channel in channels:
-                            if hdr_sub == 0:
-                                #stain_color_path = experiment_directory + channel + r'/Stain/cy_' + str(cycle) + '\Tiles/focused_basic_corrected'
-                                stain_color_path = experiment_directory + channel + r'/Stain/cy_' + str(cycle) + '\Tiles/focused'
-                                os.chdir(stain_color_path)
-                                filename = 'x' + str(x) + '_y_' + str(y) + '_c_' + channel + '.tif'
-                                color_im = io.imread(filename)
-                                color_im = np.nan_to_num(color_im, posinf= 65500)
-                                #color_reg = sr.transform(color_im)
-                                color_factor = color_im
 
-                                # sub background color channels
-                                #bleach_color_path = experiment_directory + channel + r'/Bleach/cy_' + str(cycle) + '\Tiles/focused_basic_corrected'
-                                bleach_color_path = experiment_directory + channel + r'/Bleach/cy_' + str(cycle) + '\Tiles/focused'
-                                os.chdir(bleach_color_path)
-                                color_bleach = io.imread(filename)
-                                color_bleach_factor = color_bleach
-                                color_bleach = np.nan_to_num(color_bleach, posinf=65500)
-                                coefficent = self.autof_factor_estimator(color_factor, color_bleach_factor)
-                                #color_subbed = color_im - coefficent * color_bleach
-                                #color_subbed = color_reg - color_bleach
-                                color_subbed = color_im - color_bleach
-                                color_subbed[color_subbed < 0] = 0
-                                #color_subbed = np.nan_to_num(color_subbed, posinf= 65500)
+                            #stain_color_path = experiment_directory + channel + r'/Stain/cy_' + str(cycle) + '\Tiles/focused_basic_corrected'
+                            stain_color_path = experiment_directory + channel + r'/Stain/cy_' + str(cycle) + '\Tiles/focused'
+                            os.chdir(stain_color_path)
+                            filename = 'x' + str(x) + '_y_' + str(y) + '_c_' + channel + '.tif'
+                            color_im = io.imread(filename)
+                            color_im = np.nan_to_num(color_im, posinf= 65500)
+                            #color_reg = sr.transform(color_im)
+                            color_factor = color_im
 
-                                # save
+                            # sub background color channels
+                            #bleach_color_path = experiment_directory + channel + r'/Bleach/cy_' + str(cycle) + '\Tiles/focused_basic_corrected'
+                            bleach_color_path = experiment_directory + channel + r'/Bleach/cy_' + str(cycle - 1) + '\Tiles/focused'
+                            os.chdir(bleach_color_path)
+                            color_bleach = io.imread(filename)
+                            color_bleach_factor = color_bleach
+                            color_bleach = np.nan_to_num(color_bleach, posinf=65500)
+                            coefficent = self.autof_factor_estimator(color_factor, color_bleach_factor)
+                            #color_subbed = color_im - coefficent * color_bleach
+                            #color_subbed = color_reg - color_bleach
+                            color_subbed = color_im - color_bleach
+                            color_subbed[color_subbed < 0] = 0
+                            #color_subbed = np.nan_to_num(color_subbed, posinf= 65500)
 
-                                #save_path = experiment_directory + channel + r'/Stain/cy_' + str(cycle) + '\Tiles/focused_flattened_subbed'
-                                save_path = experiment_directory + channel + r'/Stain/cy_' + str(cycle) + '\Tiles/background_subbed'
-                                try:
-                                    os.chdir(save_path)
-                                except:
-                                    os.mkdir(save_path)
-                                    os.chdir(save_path)
+                            # save
 
-                                subbed_filename = 'x' + str(x) + '_y_' + str(y) + '_c_' + channel + '.tif'
-                                # bleach_filename ='x' + str(x) + '_y_' + str(y) + '_c_' + channel + '_bleach.tif'
-                                # reg_filename = 'x' + str(x) + '_y_' + str(y) + '_c_' + channel + '_registered.tif'
-                                tf.imwrite(subbed_filename, color_subbed)
-                                # io.imsave(bleach_filename, color_bleach)
-                                # io.imsave(reg_filename, color_reg)
-                            if hdr_sub == 1:
-                                z_slices = int(fm_array[3][0][0])
-                                for z in range(0, z_slices):
+                            #save_path = experiment_directory + channel + r'/Stain/cy_' + str(cycle) + '\Tiles/focused_flattened_subbed'
+                            save_path = experiment_directory + channel + r'/Stain/cy_' + str(cycle) + '\Tiles/focused_subbed'
+                            try:
+                                os.chdir(save_path)
+                            except:
+                                os.mkdir(save_path)
+                                os.chdir(save_path)
 
-                                    stain_color_path = experiment_directory + channel + r'/Stain/cy_' + str(cycle) + '\Tiles'
-                                    os.chdir(stain_color_path)
-                                    filename = 'z_' + str(z) + '_x' + str(x) + '_y_' + str(y) + '_c_' + channel + '.tif'
-                                    color_im = io.imread(filename)
-                                    color_im = np.nan_to_num(color_im, posinf=65500)
-                                    # color_reg = sr.transform(color_im)
-                                    color_factor = color_im
-
-                                    # sub background color channels
-                                    # bleach_color_path = experiment_directory + channel + r'/Bleach/cy_' + str(cycle) + '\Tiles/focused_basic_corrected'
-                                    bleach_color_path = experiment_directory + channel + r'/Bleach/cy_' + str(cycle - 1) + '\Tiles'
-                                    os.chdir(bleach_color_path)
-                                    color_bleach = io.imread(filename)
-                                    color_bleach_factor = color_bleach
-                                    color_bleach = np.nan_to_num(color_bleach, posinf=65500)
-                                    #coefficent = self.autof_factor_estimator(color_factor, color_bleach_factor)
-                                    # color_subbed = color_im - coefficent * color_bleach
-                                    # color_subbed = color_reg - color_bleach
-                                    color_subbed = color_im - color_bleach
-                                    color_subbed[color_subbed < 0] = 0
-                                    # color_subbed = np.nan_to_num(color_subbed, posinf= 65500)
-
-                                    # save
-
-                                    # save_path = experiment_directory + channel + r'/Stain/cy_' + str(cycle) + '\Tiles/focused_flattened_subbed'
-                                    save_path = experiment_directory + channel + r'/Stain/cy_' + str(cycle) + '\Tiles/subbed'
-                                    try:
-                                        os.chdir(save_path)
-                                    except:
-                                        os.mkdir(save_path)
-                                        os.chdir(save_path)
-
-                                    subbed_filename = 'z_' + str(z) + '_x' + str(x) + '_y_' + str(y) + '_c_' + channel + '.tif'
-                                    # bleach_filename ='x' + str(x) + '_y_' + str(y) + '_c_' + channel + '_bleach.tif'
-                                    # reg_filename = 'x' + str(x) + '_y_' + str(y) + '_c_' + channel + '_registered.tif'
-                                    tf.imwrite(subbed_filename, color_subbed)
-                                    # io.imsave(bleach_filename, color_bleach)
-                                    # io.imsave(reg_filename, color_reg)
+                            subbed_filename = 'x' + str(x) + '_y_' + str(y) + '_c_' + channel + '.tif'
+                            # bleach_filename ='x' + str(x) + '_y_' + str(y) + '_c_' + channel + '_bleach.tif'
+                            # reg_filename = 'x' + str(x) + '_y_' + str(y) + '_c_' + channel + '_registered.tif'
+                            tf.imwrite(subbed_filename, color_subbed)
+                            # io.imsave(bleach_filename, color_bleach)
+                            # io.imsave(reg_filename, color_reg)
 
 
                     if rolling_ball == 1:
@@ -3696,7 +3730,6 @@ class cycif:
 
                     else:
                         pass
-
 
     def max_projector(self, experiment_directory, cycle_number, x_frame_size):
 

@@ -12,17 +12,17 @@ ob1_com_port = 13
 flow_control = 1
 
 pump = ob1.fluidics(experiment_path, ob1_com_port, flow_control = 1)
-#power_strip = SmartPowerStrip('10.3.141.157')
+power_strip = SmartPowerStrip('10.3.141.157')
 
 #turn on upper fluid filter pump
-#power_strip.toggle_plug('on', plug_num=2)
+power_strip.toggle_plug('on', plug_num=2)
 #run actions
 pump.flow('ON')
-time.sleep(150)
+time.sleep(15)
 pump.flow('OFF')
 
 #turn off upper fluid filter pump
-#power_strip.toggle_plug('off', plug_num=2)
+power_strip.toggle_plug('off', plug_num=2)
 
 #save array that confirms that file was run
 numpy_path = experiment_path + '/' + 'np_arrays'
