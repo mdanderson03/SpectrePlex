@@ -9,21 +9,39 @@ import socket
 #print(found_devices)
 import numpy as np
 from copy import deepcopy
+from csbdeep.utils import normalize
+from stardist.models import StarDist2D
+import os
+from skimage import io
+
+model = StarDist2D.from_pretrained('2D_versatile_fluo')
 
 
-a = np.array((((1,5,100,2), (0,1,2,3))))
-print(a)
-b = deepcopy(np.sort(a, kind = 'stable'))
-x = 0
-while x  < np.shape(a)[1]:
+experiment_directory = r'E:\3-7-24 marco'
+z_slices = 3
+x_frame_size = 2960
+offset_array = [0, -7, -7, -6]
+focus_position = 258
 
-    area = b[0][x]
-    x_index = np.where(a[0] == area)
-    index = a[1][x_index]
-    b[1][x:x+np.shape(x_index)[0]] = index
-    x += np.shape(x_index)[0]
-b = np.fliplr(b)
-b[0][b[0]<5] = 0
-index_smallest = np.where(b[0] == 0)[0][0]
-b = b[::, 0:index_smallest]
-print(b)
+labelled_path = experiment_directory + '/Labelled_Nuc'
+dapi_im_path = r'E:\3-7-24 marco\DAPI\Bleach\cy_0\Tiles'
+z_center_index = 1
+
+
+for x in range(0, 1):
+    for y in range(5, 6):
+        os.chdir(dapi_im_path)
+        file_name = 'z_' + str(z_center_index) + '_x' + str(x) + '_y_' + str(y) + '_c_DAPI.tif'
+        labelled_file_name = 'x' + str(x) + '_y_' + str(y) + '_c_DAPI.tif'
+        img = io.imread(file_name)
+        img = img.astype('int32')
+        print(np.min(img))
+        img[img < 0] = 0
+        #img = skimage.util.img_as_uint(img)
+        labels, _ = model.predict_instances(normalize(img))
+        labels[labels > 0] = 1
+        print('x', x, 'y', y)
+        io.imshow(img)
+        io.show()
+        io.imshow(labels)
+        io.show()

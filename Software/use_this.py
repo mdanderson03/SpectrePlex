@@ -1,19 +1,16 @@
 from autocyplex import *
 from optparse import OptionParser
 microscope = cycif() # initialize cycif object
-experiment_directory = r'E:\3-7-24 marco'
+experiment_directory = r'E:\9-7-24 marco'
 pump = fluidics(experiment_directory, 6, 13, flow_control=1)
 core = Core()
 
 z_slices = 3
 x_frame_size = 2960
 offset_array = [0, -7, -7, -6]
-focus_position = 258
+focus_position = 281
 
-
-
-
-for cycle in range(1, 6):
+for cycle in range(1, 7):
     microscope.full_cycle(experiment_directory, cycle, offset_array, cycle, pump, z_slices, focus_position=focus_position)
 #microscope.image_cycle_acquire(0, experiment_directory, z_slices, 'Bleach', offset_array,x_frame_size=x_frame_size, auto_focus_run=0, auto_expose_run=3)
 #microscope.post_acquisition_processor(experiment_directory, x_frame_size, rolling_ball=0)
@@ -27,4 +24,4 @@ for cycle in range(1, 6):
 #microscope.tissue_binary_generate(experiment_directory, x_frame_size=x_frame_size, clusters_retained=3, area_threshold=0.1)
 
 
-#microscope.inter_cycle_processing(experiment_directory, cycle_number=2, x_frame_size=x_frame_size)
+#microscope.inter_cycle_processing(experiment_directory, cycle_number=1, x_frame_size=x_frame_size)

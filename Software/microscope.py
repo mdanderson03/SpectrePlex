@@ -1379,6 +1379,7 @@ class cycif:
                 pass
         '''
 
+
         for index in range(0, np.max(labelled_super)):
             area = props[index]['area']
             cluster_area_index[0][index] = area
@@ -1398,10 +1399,16 @@ class cycif:
 
         sorted_cluster_areas = np.fliplr(sorted_cluster_areas)
 
+
         #determine how many clusters will pass with threshold based on smallest demanded retained cluster
         min_area = area_threshold * sorted_cluster_areas[0][number_clusters_retained - 1]
         sorted_cluster_areas[0][sorted_cluster_areas[0] < min_area] = 0
-        index_smallest = np.where(sorted_cluster_areas[0] == 0)[0][0]
+
+        try:
+            index_smallest = np.where(sorted_cluster_areas[0] == 0)[0][0]
+        except:
+            index_smallest = number_clusters_retained
+
         sorted_cluster_areas = sorted_cluster_areas[::, 0:index_smallest]
 
         number_actual_clusters_retained = np.shape(sorted_cluster_areas)[1]
@@ -1540,12 +1547,13 @@ class cycif:
 
         for x in range(0, x_tile_count):
             for y in range(0, y_tile_count):
-                if tissue_fm[y][x] == 1:
+                if tissue_fm[y][x] == 1 or 0:
                     os.chdir(dapi_im_path)
                     file_name = 'z_' + str(z_center_index) + '_x' + str(x) + '_y_' + str(y) + '_c_DAPI.tif'
                     labelled_file_name = 'x' + str(x) + '_y_' + str(y) + '_c_DAPI.tif'
                     img = io.imread(file_name)
                     img = img.astype('int32')
+                    img[img < 0] = 0
                     #img = skimage.util.img_as_uint(img)
                     labels, _ = model.predict_instances(normalize(img))
                     labels[labels > 0] = 1
@@ -1586,7 +1594,7 @@ class cycif:
             pass
 
         if cycle == 0:
-            self.tissue_region_identifier(experiment_directory, x_frame_size=2960, clusters_retained=3)
+            self.tissue_region_identifier(experiment_directory, x_frame_size=2960, clusters_retained=1)
         else:
             pass
 
@@ -2034,10 +2042,11 @@ class cycif:
         except:
             pass
 
+
         #self.image_cycle_acquire(0, experiment_directory, z_slices, 'Bleach', offset_array,x_frame_size=x_frame_size, establish_fm_array=1, auto_focus_run=0,auto_expose_run=0, channels=['DAPI'], focus_position=focus_position)
         self.image_cycle_acquire(0, experiment_directory, z_slices, 'Bleach', offset_array,x_frame_size=x_frame_size, fm_array_adjuster=0, establish_fm_array=0, auto_focus_run=1,auto_expose_run=3, focus_position=focus_position)
         #self.generate_nuc_mask(experiment_directory, cycle_number=0)
-        #self.tissue_region_identifier(experiment_directory, clusters_retained=3)
+        #self.tissue_region_identifier(experiment_directory, clusters_retained=1)
 
     def full_cycle(self, experiment_directory, cycle_number, offset_array, stain_valve, fluidics_object, z_slices, incub_val=45, x_frame_size=2960, focus_position = 'none'):
 
@@ -2193,19 +2202,18 @@ class cycif:
         cycle_end = 2
         cycle_start = 1
 
-        self.tissue_binary_generate(experiment_directory)
         self.tissue_exist_array_generate(experiment_directory)
 
         for cycle_number in range(cycle_start, cycle_end):
 
             #self.background_sub(experiment_directory, cycle_number, hdr_sub= 1,rolling_ball= 0)
-            #self.focus_excel_creation(experiment_directory, cycle_number)
-            #self.in_focus_excel_populate(experiment_directory, cycle_number, x_pixels, hdr_sub=0)
-            #self.excel_2_focus(experiment_directory, cycle_number, hdr_sub=0)
-            #self.illumination_flattening(experiment_directory, cycle_number, rolling_ball, hdr_sub=0)
+            self.focus_excel_creation(experiment_directory, cycle_number)
+            self.in_focus_excel_populate(experiment_directory, cycle_number, x_pixels, hdr_sub=0)
+            self.excel_2_focus(experiment_directory, cycle_number, hdr_sub=0)
+            self.illumination_flattening(experiment_directory, cycle_number, rolling_ball, hdr_sub=0)
             #self.illumination_flattening_per_tile(experiment_directory, cycle_number, rolling_ball=0, hdr_sub=1)
-            #self.brightness_uniformer(experiment_directory, cycle_number, hdr_sub = 0)
-            #self.mcmicro_image_stack_generator(cycle_number, experiment_directory, x_pixels, hdr_sub=1)
+            self.brightness_uniformer(experiment_directory, cycle_number, hdr_sub = 0)
+            self.mcmicro_image_stack_generator(cycle_number, experiment_directory, x_pixels, hdr_sub=0)
             self.stage_placement(experiment_directory, cycle_number, x_pixels, hdr_sub = 0)
 
     def post_acquisition_processor_experimental(self, experiment_directory, x_pixels, rolling_ball = 1):
@@ -2835,7 +2843,6 @@ class cycif:
         start = time.time()
         #make tissue exist array if needed
         if cycle_number == 1:
-            self.tissue_binary_generate(experiment_directory)
             self.tissue_exist_array_generate(experiment_directory)
         else:
             pass
