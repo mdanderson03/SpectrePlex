@@ -1911,7 +1911,7 @@ class cycif:
 
                             for z in range(z_start, z_end, slice_gap):
                                 core.set_position(z)
-                                time.sleep(0.1)
+                                time.sleep(0.3)
                                 pixels = self.core_capture(experiment_directory,x_pixels, channel, hdr=hdr_value)
                                 zc_tif_stack[zc_index][z_counter] = pixels
 
@@ -1973,7 +1973,7 @@ class cycif:
 
                             for z in range(z_start, z_end, slice_gap):
                                 core.set_position(z)
-                                time.sleep(0.1)
+                                time.sleep(0.3)
 
                                 pixels = self.core_capture(experiment_directory, x_pixels, channel, hdr=hdr_value)
                                 zc_tif_stack[zc_index][z_counter] = pixels
@@ -2043,8 +2043,8 @@ class cycif:
             pass
 
 
-        #self.image_cycle_acquire(0, experiment_directory, z_slices, 'Bleach', offset_array,x_frame_size=x_frame_size, establish_fm_array=1, auto_focus_run=0,auto_expose_run=0, channels=['DAPI'], focus_position=focus_position)
-        self.image_cycle_acquire(0, experiment_directory, z_slices, 'Bleach', offset_array,x_frame_size=x_frame_size, fm_array_adjuster=0, establish_fm_array=0, auto_focus_run=1,auto_expose_run=3, focus_position=focus_position)
+        self.image_cycle_acquire(0, experiment_directory, z_slices, 'Bleach', offset_array,x_frame_size=x_frame_size, establish_fm_array=1, auto_focus_run=0,auto_expose_run=0, channels=['DAPI'], focus_position=focus_position)
+        #self.image_cycle_acquire(0, experiment_directory, z_slices, 'Bleach', offset_array,x_frame_size=x_frame_size, fm_array_adjuster=0, establish_fm_array=0, auto_focus_run=1,auto_expose_run=3, focus_position=focus_position)
         #self.generate_nuc_mask(experiment_directory, cycle_number=0)
         #self.tissue_region_identifier(experiment_directory, clusters_retained=1)
 
