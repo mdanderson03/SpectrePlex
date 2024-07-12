@@ -449,9 +449,10 @@ class cycif:
             ws.cell(row=1, column=4).value = 'exposure time 3'
             ws.cell(row=1, column=5).value = 'threshold real'
             ws.cell(row=4, column=1).value = 'Cycle'
-            ws.cell(row=4, column=2).value = 'Max Int A488'
-            ws.cell(row=4, column=3).value = 'Max Int A555'
-            ws.cell(row=4, column=4).value = 'Max Int A647'
+            ws.cell(row=4, column=2).value = 'Max Int DAPI'
+            ws.cell(row=4, column=3).value = 'Max Int A488'
+            ws.cell(row=4, column=4).value = 'Max Int A555'
+            ws.cell(row=4, column=5).value = 'Max Int A647'
 
         if os.path.isfile('HDR_Exp.xlsx') == True:
             wb = load_workbook('HDR_Exp.xlsx')
@@ -468,7 +469,7 @@ class cycif:
 
         self.hdr_exp_times = hdr_exp_list
 
-    def hdr_compression(self, experiment_directory, cycle_number, apply_2_subbed = 1, apply_2_bleached = 1, apply_2_focused = 1, channels = ['DAPI', 'A488', 'A555', 'A647']):
+    def hdr_compression(self, experiment_directory, cycle_number, apply_2_subbed = 1, apply_2_bleached = 1, apply_2_focused = 1, apply_2_flattened = 1,  channels = ['DAPI', 'A488', 'A555', 'A647']):
         '''
         Looks through all tiles and compresses 32bit images into 16 bit based on 2^16 = highest pixel in any tile.
         By standard, will apply to raw stained tiles. Can be extended to raw bleached tiles and subbed tiles.
@@ -506,6 +507,9 @@ class cycif:
         if apply_2_focused == 1:
             #make anything beyond Stain and Bleach all lower case
             types.append('focused')
+        if apply_2_flattened == 1:
+            #make anything beyond Stain and Bleach all lower case
+            types.append('focused_subbed_basic_corrected')
 
         for channel in channels:
             for type in types:
@@ -517,6 +521,9 @@ class cycif:
                     os.chdir(type_path)
                 elif channel == 'DAPI' and type == 'focused_subbed':
                     pass
+                elif channel == 'DAPI' and type == 'focused_subbed_basic_corrected':
+                    type_path = experiment_directory + r'//' + channel + r'//Stain//cy_' + str(cycle_number) + r'//Tiles/' + 'focused_basic_corrected'
+                    os.chdir(type_path)
                 else:
                     type_path = experiment_directory + r'//' + channel + r'//Stain//cy_' + str(cycle_number) + r'//Tiles/' + type
                     os.chdir(type_path)
@@ -535,6 +542,37 @@ class cycif:
                                         highest_intensity = max_tile_int
                                     else:
                                         pass
+
+                    if im.dtype == 'uint16':
+                        if channel == 'DAPI':
+                            channel_col_index = 2
+                        if channel == 'A488':
+                            channel_col_index = 3
+                        if channel == 'A555':
+                            channel_col_index = 4
+                        if channel == 'A647':
+                            channel_col_index = 5
+
+                        row = cycle_number + 4
+                        highest_intensity = ws.cell(row=row, column=channel_col_index).value = highest_intensity
+
+                    if apply_2_flattened == 1:
+                        if channel == 'DAPI':
+                            ff_path = experiment_directory + r'//' + channel + r'//Stain//cy_' + str(cycle_number) + r'//Tiles/' + 'focused_basic_corrected'
+                            os.chdir(ff_path)
+                        else:
+                            ff_path = experiment_directory + r'//' + channel + r'//Stain//cy_' + str(cycle_number) + r'//Tiles/' + 'focused_subbed_basic_corrected'
+                            os.chdir(ff_path)
+
+                        file_names = os.listdir(ff_path)
+                        image_tile = io.imread(file_names[2])
+                        if image_tile.dtype == 'uint16':
+                            pass
+                        else:
+                            ff_im = io.imread('flatfield.tif')
+                            max_ff_ratio = np.max(ff_im)
+                            highest_intensity = highest_intensity * max_ff_ratio
+                            os.chdir( type_path)
 
                     #record highest intensity in exp hdr logbook
                     row = cycle_number + 4
@@ -559,9 +597,12 @@ class cycif:
                                 for z in range(0, z_tiles):
                                     file_name = r'z_' +str(z) + '_x' + str(x) + '_y_' + str(y) + '_c_' + channel + '.tif'
                                     im = io.imread(file_name)
-                                    im = im/highest_intensity
-                                    im = skimage.util.img_as_uint(im)
-                                    io.imsave(file_name, im)
+                                    if im.dtype == 'unit16':
+                                        pass
+                                    else:
+                                        im = im/highest_intensity
+                                        im = skimage.util.img_as_uint(im)
+                                        io.imsave(file_name, im)
 
                 elif channel == 'DAPI' and type != 'Stain' or 'Bleach' or 'focused_subbed':
                     pass
@@ -573,10 +614,13 @@ class cycif:
                                 for z in range(0, z_tiles):
                                     file_name = r'z_' + str(z) + '_x' + str(x) + '_y_' + str(y) + '_c_' + channel + '.tif'
                                     im = io.imread(file_name)
-                                    im = im / max_tile_int
-                                    im = skimage.util.img_as_uint(im)
-                                    #tf.imwrite(file_name,im, compression='zlib')
-                                    io.imsave(file_name, im)
+                                    if im.dtype == 'unit16':
+                                        pass
+                                    else:
+                                        im = im / max_tile_int
+                                        im = skimage.util.img_as_uint(im)
+                                        #tf.imwrite(file_name,im, compression='zlib')
+                                        io.imsave(file_name, im)
                             else:
                                 pass
 
@@ -2863,17 +2907,17 @@ class cycif:
         end = time.time()
         print('sub background', end - start)
 
-        #compress to 16bit
-        self.hdr_compression(experiment_directory, cycle_number, apply_2_subbed=1, apply_2_bleached=1, apply_2_focused = 1)
-
-        end = time.time()
-        print('compress', end - start)
-
         #flatten image
         self.illumination_flattening(experiment_directory, cycle_number, rolling_ball=0)
 
         end = time.time()
         print('flatten', end - start)
+
+        #compress to 16bit
+        self.hdr_compression(experiment_directory, cycle_number, apply_2_subbed=1, apply_2_bleached=1, apply_2_focused = 1, apply_2_flattened=1)
+
+        end = time.time()
+        print('compress', end - start)
 
         #make Mcmicro file
         self.mcmicro_image_stack_generator(cycle_number, experiment_directory, x_frame_size)
