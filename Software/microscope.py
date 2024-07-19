@@ -469,7 +469,7 @@ class cycif:
 
         self.hdr_exp_times = hdr_exp_list
 
-    def hdr_compression(self, experiment_directory, cycle_number, apply_2_subbed = 1, apply_2_bleached = 1, apply_2_focused = 1, apply_2_flattened = 1,  channels = ['DAPI', 'A488', 'A555', 'A647']):
+    def hdr_compression(self, experiment_directory, cycle_number, apply_2_subbed = 1, apply_2_bleached = 1, apply_2_focused = 1, apply_2_flattened = 1,  channels = ['DAPI', 'A488','A555', 'A647']):
         '''
         Looks through all tiles and compresses 32bit images into 16 bit based on 2^16 = highest pixel in any tile.
         By standard, will apply to raw stained tiles. Can be extended to raw bleached tiles and subbed tiles.
@@ -506,6 +506,10 @@ class cycif:
             types.append('focused_subbed')
         if apply_2_focused == 1:
             #make anything beyond Stain and Bleach all lower case
+            if apply_2_bleached == 1:
+                types.append('bleach_focused')
+            else:
+                pass
             types.append('focused')
         if apply_2_flattened == 1:
             #make anything beyond Stain and Bleach all lower case
@@ -518,6 +522,9 @@ class cycif:
                     os.chdir(type_path)
                 elif type == 'Bleach':
                     type_path = experiment_directory + r'//' + channel + r'//' + type + r'//cy_' + str(cycle_number - 1) + r'//Tiles'
+                    os.chdir(type_path)
+                elif type == 'bleach_focused':
+                    type_path = experiment_directory + r'//' + channel + r'//' + 'Bleach' + r'//cy_' + str(cycle_number - 1) + r'//Tiles/focused'
                     os.chdir(type_path)
                 elif channel == 'DAPI' and type == 'focused_subbed':
                     pass
@@ -572,7 +579,7 @@ class cycif:
                             ff_im = io.imread('flatfield.tif')
                             max_ff_ratio = np.max(ff_im)
                             highest_intensity = highest_intensity * max_ff_ratio
-                            os.chdir( type_path)
+                            os.chdir(type_path)
 
                     #record highest intensity in exp hdr logbook
                     row = cycle_number + 4
@@ -588,6 +595,7 @@ class cycif:
                     ws.cell(row=row, column=channel_col_index).value = highest_intensity
                     os.chdir(exp_path)
                     wb.save('HDR_Exp.xlsx')
+                    #highest_intensity = ws.cell(row=row, column=channel_col_index).value
 
                     #resave compressed versions of Stain tiles
                     os.chdir(type_path)
@@ -604,10 +612,11 @@ class cycif:
                                         im = skimage.util.img_as_uint(im)
                                         io.imsave(file_name, im)
 
-                elif channel == 'DAPI' and type != 'Stain' or 'Bleach' or 'focused_subbed':
+                elif channel == 'DAPI' and type == 'focused_subbed':
                     pass
-                else:
+                elif type == 'Bleach':
                     #Max int came from Stain loop above this section
+                    os.chdir(type_path)
                     for x in range(0, x_tile_count):
                         for y in range(0, y_tile_count):
                             if tissue_fm[y][x] == 1:
@@ -617,12 +626,33 @@ class cycif:
                                     if im.dtype == 'unit16':
                                         pass
                                     else:
-                                        im = im / max_tile_int
+                                        im = im / highest_intensity
                                         im = skimage.util.img_as_uint(im)
                                         #tf.imwrite(file_name,im, compression='zlib')
                                         io.imsave(file_name, im)
-                            else:
-                                pass
+                else:
+                    #Max int came from Stain loop above this section
+                    os.chdir(type_path)
+                    for x in range(0, x_tile_count):
+                        for y in range(0, y_tile_count):
+                            if tissue_fm[y][x] == 1:
+                                file_name = r'x' + str(x) + '_y_' + str(y) + '_c_' + channel + '.tif'
+                                im = io.imread(file_name)
+                                if im.dtype == 'unit16':
+                                    pass
+
+                                else:
+                                    im = im/highest_intensity
+                                    #im = int(im)
+                                    #im = im.astype('uint16')
+
+                                    im = skimage.util.img_as_uint(im)
+                                    #tf.imwrite(file_name,im, compression='zlib')
+                                    io.imsave(file_name, im)
+
+
+
+
 
     def hdr_fuser(self, hdr_images):
 
@@ -2089,8 +2119,8 @@ class cycif:
 
         self.image_cycle_acquire(0, experiment_directory, z_slices, 'Bleach', offset_array,x_frame_size=x_frame_size, establish_fm_array=1, auto_focus_run=0,auto_expose_run=0, channels=['DAPI'], focus_position=focus_position)
         #self.image_cycle_acquire(0, experiment_directory, z_slices, 'Bleach', offset_array,x_frame_size=x_frame_size, fm_array_adjuster=0, establish_fm_array=0, auto_focus_run=1,auto_expose_run=3, focus_position=focus_position)
-        #self.generate_nuc_mask(experiment_directory, cycle_number=0)
-        #self.tissue_region_identifier(experiment_directory, clusters_retained=1)
+        self.generate_nuc_mask(experiment_directory, cycle_number=0)
+        self.tissue_region_identifier(experiment_directory, clusters_retained=1)
 
     def full_cycle(self, experiment_directory, cycle_number, offset_array, stain_valve, fluidics_object, z_slices, incub_val=45, x_frame_size=2960, focus_position = 'none'):
 
@@ -2885,6 +2915,7 @@ class cycif:
         :return:
         '''
         start = time.time()
+
         #make tissue exist array if needed
         if cycle_number == 1:
             self.tissue_exist_array_generate(experiment_directory)
@@ -2913,11 +2944,12 @@ class cycif:
         end = time.time()
         print('flatten', end - start)
 
+
         #compress to 16bit
-        self.hdr_compression(experiment_directory, cycle_number, apply_2_subbed=1, apply_2_bleached=1, apply_2_focused = 1, apply_2_flattened=1)
+        #self.hdr_compression(experiment_directory, cycle_number, apply_2_subbed=1, apply_2_bleached=1, apply_2_focused = 1, apply_2_flattened=1)
 
         end = time.time()
-        print('compress', end - start)
+        #print('compress', end - start)
 
         #make Mcmicro file
         self.mcmicro_image_stack_generator(cycle_number, experiment_directory, x_frame_size)
