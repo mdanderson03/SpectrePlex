@@ -1369,16 +1369,17 @@ class cycif:
         for x in range(0, x_tiles):
             for y in range(0, y_tiles):
 
-                tissue_binary_name = 'x' + str(x) + '_y_' + str(y) + '_tissue.tif'
+                tissue_binary_name = 'x' + str(x) + '_y_' + str(y) + '_label_tissue.tif'
                 im = io.imread(tissue_binary_name)
-                sum = np.sum(im)
+                unique_numbers = np.unique(im[np.nonzero(im)])
 
-                if sum > 0:
-                    tissue_status = 1
-                if sum == 0:
-                    tissue_status = 0
+                for number in unique_numbers:
+                    sci_number = '1.35e+' + str(number)
+                    int_number = int(sci_number)
+                    tissue_fm_code_number += int_number
 
-                fm_array[10][y][x] = tissue_status
+                fm_array[10][y][x] = tissue_fm_code_number
+                print('y',y, 'x', x, 'ntiss_fm', int_number)
 
         os.chdir(numpy_path)
         np.save(file_name, fm_array)
@@ -1503,7 +1504,7 @@ class cycif:
         for y in range(0, y_tile_count):
             for x in range(0, x_tile_count):
                 filename = 'x' + str(x) + '_y_' + str(y) + '_tissue.tif'
-                label_filename = 'x' + str(x) + '_y_' + str(y) + 'label_tissue.tif'
+                label_filename = 'x' + str(x) + '_y_' + str(y) + '_label_tissue.tif'
 
                 start_x = x * x_frame_size
                 end_x = start_x + x_frame_size
