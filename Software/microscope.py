@@ -1360,7 +1360,7 @@ class cycif:
         y_tiles = np.shape(fm_array[0])[0]
 
         #make tissue binary images
-        self.tissue_binary_generate(experiment_directory, x_frame_size, clusters_retained)
+        #self.tissue_binary_generate(experiment_directory, x_frame_size, clusters_retained)
         tissue_path = experiment_directory + '/Tissue_Binary'
         os.chdir(tissue_path)
 
@@ -4105,7 +4105,9 @@ class cycif:
 
         # determine max cluster count
         highest_number = np.max(tissue_fm)
-        number_clusters = math.floor(math.log10(highest_number)) - 1
+        print(highest_number)
+        number_clusters = math.floor(math.log10(highest_number))
+        print('number clust', number_clusters)
 
         cluster_tile_count = np.zeros(number_clusters)
 
@@ -4118,6 +4120,8 @@ class cycif:
                     for number in clusters_in_tile:
                         number = int(number)
                         cluster_tile_count[number - 1] += 1
+                else:
+                    pass
 
         return cluster_tile_count
 
