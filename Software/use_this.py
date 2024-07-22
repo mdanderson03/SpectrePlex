@@ -30,10 +30,10 @@ focus_position = 263
 #microscope.tissue_binary_generate(experiment_directory, x_frame_size=x_frame_size, clusters_retained=3, area_threshold=0.1)
 #pump.liquid_action('Bleach')
 
-#microscope.inter_cycle_processing(experiment_directory, cycle_number=2, x_frame_size=x_frame_size)
+microscope.inter_cycle_processing(experiment_directory, cycle_number=1, x_frame_size=x_frame_size)
 #microscope.hdr_compression(experiment_directory, cycle_number=2)
 #os.chdir(r'E:\3-7-24 marco\Tissue_Binary')
 #im = io.imread('x1_y_2label_tissue.tif')
 #print(np.unique(im[np.nonzero(im)]))
-cluster_counts = microscope.number_tiles_each_cluster(experiment_directory)
-print(cluster_counts)
+#cluster_counts = microscope.number_tiles_each_cluster(experiment_directory)
+#print(cluster_counts)

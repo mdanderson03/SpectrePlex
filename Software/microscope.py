@@ -2449,6 +2449,7 @@ class cycif:
         number_clusters = math.floor(math.log10(highest_number))
         tiles_in_cluster = self.number_tiles_each_cluster(experiment_directory)
         most_tiles_in_cluster = np.max(tiles_in_cluster)
+        most_tiles_in_cluster = int(most_tiles_in_cluster)
 
         mcmicro_stack = np.zeros((number_clusters, (most_tiles_in_cluster) * 4, 2960, x_frame_size)).astype('uint16')
 
@@ -2457,11 +2458,17 @@ class cycif:
         for x in range(0, number_clusters):
             os.chdir(mcmicro_path)
             sub_folder_name = 'cluster_' + str(x)
-            os.mkdir(sub_folder_name)
+            try:
+                os.mkdir(sub_folder_name)
+            except:
+                pass
             os.chdir(sub_folder_name)
-            os.mkdir('raw')
+            try:
+                os.mkdir('raw')
+            except:
+                pass
 
-        tile = np.zeros(number_clusters)
+        tile = np.zeros(number_clusters).astype('int8')
         for x in range(0, x_tile_count):
             for y in range(0, y_tile_count):
 
@@ -2476,7 +2483,7 @@ class cycif:
 
                     for cluster in clusters_in_tile:
 
-                        base_count_number_stack = tile[cluster - 1] * 4
+                        base_count_number_stack = int(tile[cluster - 1] * 4)
 
                         os.chdir(dapi_im_path)
                         try:
@@ -2486,7 +2493,7 @@ class cycif:
 
                         image[image > 65500] = 65500
                         image = np.nan_to_num(image, posinf=65500)
-                        mcmicro_stack[cluster][base_count_number_stack + 0] = image
+                        mcmicro_stack[cluster - 1][base_count_number_stack + 0] = image
 
                         os.chdir(a488_im_path)
                         try:
@@ -2496,7 +2503,7 @@ class cycif:
 
                         image[image > 65500] = 65500
                         image = np.nan_to_num(image, posinf=65500)
-                        mcmicro_stack[[cluster]][base_count_number_stack + 1] = image
+                        mcmicro_stack[cluster - 1][base_count_number_stack + 1] = image
 
                         os.chdir(a555_im_path)
                         try:
@@ -2506,7 +2513,7 @@ class cycif:
 
                         image[image > 65500] = 65500
                         image = np.nan_to_num(image, posinf=65500)
-                        mcmicro_stack[cluster][base_count_number_stack + 2] = image
+                        mcmicro_stack[cluster - 1][base_count_number_stack + 2] = image
 
                         os.chdir(a647_im_path)
                         try:
@@ -2516,7 +2523,7 @@ class cycif:
 
                         image[image > 65500] = 65500
                         image = np.nan_to_num(image, posinf=65500)
-                        mcmicro_stack[cluster][base_count_number_stack + 3] = image
+                        mcmicro_stack[cluster - 1][base_count_number_stack + 3] = image
 
                         tile[cluster - 1] += 1
 
@@ -2528,8 +2535,8 @@ class cycif:
             os.chdir(mc_micro_cluster_path)
             mcmicro_file_name = str(experiment_directory.split("\\")[-1]) + '-cycle-0' + str(cycle_number) + '.ome.tif'
             #tf.imwrite(mcmicro_file_name, mcmicro_stack, photometric='minisblack', description=xml_metadata)
-            image_stack = mcmicro_stack[x][0:tiles_in_cluster[x]]
-            tf.imwrite(mcmicro_file_name, image_stack_stack, photometric='minisblack')
+            image_stack = mcmicro_stack[x][0:int(tiles_in_cluster[x])]
+            tf.imwrite(mcmicro_file_name, image_stack, photometric='minisblack')
 
     def metadata_generator(self, experiment_directory, x_frame_size):
 
@@ -3033,6 +3040,8 @@ class cycif:
         :param cycle_number:
         :return:
         '''
+
+        '''
         start = time.time()
 
         #make tissue exist array if needed
@@ -3071,16 +3080,18 @@ class cycif:
         #print('compress', end - start)
 
         #make Mcmicro file
-        self.mcmicro_image_stack_generator(cycle_number, experiment_directory, x_frame_size)
+        '''
+        #self.mcmicro_image_stack_generator(cycle_number, experiment_directory, x_frame_size)
+        self.mcmicro_image_stack_generator_separate_clusters(cycle_number, experiment_directory, x_frame_size)
 
         end = time.time()
-        print('mcmicro', end - start)
+        #print('mcmicro', end - start)
 
         #generate stage placement file
         self.stage_placement(experiment_directory, cycle_number, x_pixels = x_frame_size)
 
-        end = time.time()
-        print('stage placement', end - start)
+        #end = time.time()
+        #print('stage placement', end - start)
 
     def infocus(self, experiment_directory, cycle_number, x_frame_size, x_sub_section_count = 1, y_sub_section_count = 1):
 
