@@ -2352,11 +2352,7 @@ class cycif:
 
         mcmicro_path = experiment_directory + r'\mcmicro\raw'
 
-        #determine max cluster count
-        highest_number = np.max(full_array[10])
-        number_clusters = math.floor(math.log10(highest_number)) - 1
-
-        mcmicro_stack = np.random.rand(tile_count * 4, 2960, x_frame_size).astype('uint16')
+        mcmicro_stack = np.zeros((tile_count * 4, 2960, x_frame_size)).astype('uint16')
 
         tile = 0
         for x in range(0, x_tile_count):
@@ -2419,6 +2415,121 @@ class cycif:
         os.chdir(mcmicro_path)
         mcmicro_file_name = str(experiment_directory.split("\\")[-1]) + '-cycle-0' + str(cycle_number) + '.ome.tif'
         tf.imwrite(mcmicro_file_name, mcmicro_stack, photometric='minisblack', description=xml_metadata)
+
+    def mcmicro_image_stack_generator_separate_clusters(self, cycle_number, experiment_directory, x_frame_size):
+
+        numpy_path = experiment_directory + '/' + 'np_arrays'
+        os.chdir(numpy_path)
+        full_array = np.load('fm_array.npy', allow_pickle=False)
+        tissue_exist = np.load('tissue_exist.npy', allow_pickle=False)
+
+        #xml_metadata = self.metadata_generator(experiment_directory, x_frame_size)
+
+        numpy_x = full_array[0]
+        numpy_y = full_array[1]
+        tissue_fm = full_array[10]
+        # numpy_tissue = full_array[10]
+        y_tile_count = numpy_x.shape[0]
+        x_tile_count = numpy_y.shape[1]
+        tile_count = int(tissue_exist.sum())
+
+        dapi_im_path = experiment_directory + '\DAPI\Stain\cy_' + str(
+            cycle_number) + '\Tiles' + '/focused_basic_corrected'
+        a488_im_path = experiment_directory + '\A488\Stain\cy_' + str(
+            cycle_number) + '\Tiles' + '/focused_subbed_basic_corrected'
+        a555_im_path = experiment_directory + '\A555\Stain\cy_' + str(
+            cycle_number) + '\Tiles' + '/focused_subbed_basic_corrected'
+        a647_im_path = experiment_directory + '\A647\Stain\cy_' + str(
+            cycle_number) + '\Tiles' + '/focused_subbed_basic_corrected'
+
+        mcmicro_path = experiment_directory + r'\mcmicro'
+
+        # determine max cluster count
+        highest_number = np.max(full_array[10])
+        number_clusters = math.floor(math.log10(highest_number))
+        tiles_in_cluster = self.number_tiles_each_cluster(experiment_directory)
+        most_tiles_in_cluster = np.max(tiles_in_cluster)
+
+        mcmicro_stack = np.zeros((number_clusters, (most_tiles_in_cluster) * 4, 2960, x_frame_size)).astype('uint16')
+
+        # create sub folders in mcmicro folder
+        os.chdir(mcmicro_path)
+        for x in range(0, number_clusters):
+            os.chdir(mcmicro_path)
+            sub_folder_name = 'cluster_' + str(x)
+            os.mkdir(sub_folder_name)
+            os.chdir(sub_folder_name)
+            os.mkdir('raw')
+
+        tile = np.zeros(number_clusters)
+        for x in range(0, x_tile_count):
+            for y in range(0, y_tile_count):
+
+                if tissue_exist[y][x] == 1:
+
+                    clusters_in_tile = self.tissue_fm_decode(tissue_fm[y][x])
+
+                    dapi_file_name = 'x' + str(x) + '_y_' + str(y) + '_c_DAPI.tif'
+                    a488_file_name = 'x' + str(x) + '_y_' + str(y) + '_c_A488.tif'
+                    a555_file_name = 'x' + str(x) + '_y_' + str(y) + '_c_A555.tif'
+                    a647_file_name = 'x' + str(x) + '_y_' + str(y) + '_c_A647.tif'
+
+                    for cluster in clusters_in_tile:
+
+                        base_count_number_stack = tile[cluster - 1] * 4
+
+                        os.chdir(dapi_im_path)
+                        try:
+                            image = io.imread(dapi_file_name)
+                        except:
+                            image = cv2.imread(dapi_file_name)[::, ::, 0]
+
+                        image[image > 65500] = 65500
+                        image = np.nan_to_num(image, posinf=65500)
+                        mcmicro_stack[cluster][base_count_number_stack + 0] = image
+
+                        os.chdir(a488_im_path)
+                        try:
+                            image = io.imread(a488_file_name)
+                        except:
+                            image = cv2.imread(a488_file_name)[::, ::, 0]
+
+                        image[image > 65500] = 65500
+                        image = np.nan_to_num(image, posinf=65500)
+                        mcmicro_stack[[cluster]][base_count_number_stack + 1] = image
+
+                        os.chdir(a555_im_path)
+                        try:
+                            image = io.imread(a555_file_name)
+                        except:
+                            image = cv2.imread(a555_file_name)[::, ::, 0]
+
+                        image[image > 65500] = 65500
+                        image = np.nan_to_num(image, posinf=65500)
+                        mcmicro_stack[cluster][base_count_number_stack + 2] = image
+
+                        os.chdir(a647_im_path)
+                        try:
+                            image = io.imread(a647_file_name)
+                        except:
+                            image = cv2.imread(a647_file_name)[::, ::, 0]
+
+                        image[image > 65500] = 65500
+                        image = np.nan_to_num(image, posinf=65500)
+                        mcmicro_stack[cluster][base_count_number_stack + 3] = image
+
+                        tile[cluster - 1] += 1
+
+                    else:
+                        pass
+
+        for x in range(0, number_clusters):
+            mc_micro_cluster_path = mcmicro_path +'\cluster_' + str(x) +r'\raw'
+            os.chdir(mc_micro_cluster_path)
+            mcmicro_file_name = str(experiment_directory.split("\\")[-1]) + '-cycle-0' + str(cycle_number) + '.ome.tif'
+            #tf.imwrite(mcmicro_file_name, mcmicro_stack, photometric='minisblack', description=xml_metadata)
+            image_stack = mcmicro_stack[x][0:tiles_in_cluster[x]]
+            tf.imwrite(mcmicro_file_name, image_stack_stack, photometric='minisblack')
 
     def metadata_generator(self, experiment_directory, x_frame_size):
 
