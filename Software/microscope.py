@@ -2615,7 +2615,7 @@ class cycif:
         #numpy_tissue = full_array[10]
         y_tile_count = numpy_x.shape[0]
         x_tile_count = numpy_y.shape[1]
-        total_tile_count = self.number_tiles_each_cluster(experiment_directory)[cluster_number - 1]
+        total_tile_count = int(self.number_tiles_each_cluster(experiment_directory)[cluster_number - 1])
         #total_tile_count = int(tissue_exist.sum())
 
         y_gap = 532
