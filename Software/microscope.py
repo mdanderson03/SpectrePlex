@@ -2534,9 +2534,10 @@ class cycif:
             mc_micro_cluster_path = mcmicro_path +'\cluster_' + str(x) +r'\raw'
             os.chdir(mc_micro_cluster_path)
             mcmicro_file_name = str(experiment_directory.split("\\")[-1]) + '-cycle-0' + str(cycle_number) + '.ome.tif'
-            #tf.imwrite(mcmicro_file_name, mcmicro_stack, photometric='minisblack', description=xml_metadata)
             image_stack = mcmicro_stack[x][0:int(tiles_in_cluster[x])]
-            tf.imwrite(mcmicro_file_name, image_stack, photometric='minisblack')
+            xml_metadata = self.metadata_generator_separate_clusters(experiment_directory, x_frame_size, cluster_number= x + 1)
+            tf.imwrite(mcmicro_file_name, image_stack, photometric='minisblack', description=xml_metadata)
+            #tf.imwrite(mcmicro_file_name, mcmicro_stack, photometric='minisblack')
 
     def metadata_generator(self, experiment_directory, x_frame_size):
 
@@ -2580,6 +2581,68 @@ class cycif:
             for y in range(0, y_tile_count):
 
                 if tissue_exist[y][x] == 1:
+
+                    for p in range(0, 4):
+                        new_x = numpy_x[y][x] - 11000
+                        new_y = numpy_y[y][x] + 2300
+                        new_ome.images[tile_counter].pixels.planes[p].position_y = deepcopy(new_y)
+                        new_ome.images[tile_counter].pixels.planes[p].position_x = deepcopy(new_x)
+                        new_ome.images[tile_counter].pixels.tiff_data_blocks[p].ifd = (4 * tile_counter) + p
+                    tile_counter += 1
+
+                else:
+                    pass
+
+        xml = to_xml(new_ome)
+
+        return xml
+
+    def metadata_generator_separate_clusters(self, experiment_directory, x_frame_size, cluster_number):
+
+        new_ome = OME()
+        #ome = from_xml(r'C:\Users\mike\Documents\GitHub\AutoCIF/image.xml', parser='lxml')
+        ome = from_xml(r'C:\Users\CyCIF PC\Documents\GitHub\AutoCIF/image.xml', parser='lxml')
+        ome = ome.images[0]
+
+        numpy_path = experiment_directory + '/' + 'np_arrays'
+        os.chdir(numpy_path)
+        full_array = np.load('fm_array.npy', allow_pickle=False)
+        tissue_exist = np.load('tissue_exist.npy', allow_pickle=False)
+
+        numpy_x = full_array[0]
+        numpy_y = full_array[1]
+        tissue_fm = full_array[10]
+        #numpy_tissue = full_array[10]
+        y_tile_count = numpy_x.shape[0]
+        x_tile_count = numpy_y.shape[1]
+        total_tile_count = self.number_tiles_each_cluster(experiment_directory)[cluster_number - 1]
+        #total_tile_count = int(tissue_exist.sum())
+
+        y_gap = 532
+        col_col_gap = 10
+        # for r in range(3, -1, -1):
+        #    numpy_y[r][0] = numpy_y[r + 1][0] - y_gap
+        #    numpy_y[r][1] = numpy_y[r + 1][1] - y_gap - col_col_gap
+
+        # sub in needed pixel size and pixel grid changes
+        ome.pixels.physical_size_x = 0.2
+        ome.pixels.physical_size_y = 0.2
+        ome.pixels.size_x = x_frame_size
+        ome.pixels.size_y = 2960
+        # sub in other optional numbers to make metadata more accurate
+
+        for x in range(0, total_tile_count):
+            tile_metadata = deepcopy(ome)
+            new_ome.images.append(tile_metadata)
+
+        # sub in stage positional information into each tile. numpy[y][x]
+        tile_counter = 0
+        for x in range(0, x_tile_count):
+            for y in range(0, y_tile_count):
+
+                clusters_in_tile = self.tissue_fm_decode(tissue_fm[y][x])
+                boolean = np.isin(clusters_in_tile, cluster_number, assume_unique=True)
+                if np.sum(boolean) > 0:
 
                     for p in range(0, 4):
                         new_x = numpy_x[y][x] - 11000
