@@ -21,7 +21,7 @@ focus_position = 263
 #microscope.post_acquisition_processor(experiment_directory, x_frame_size, rolling_ball=0)
 #microscope.brightness_uniformer(experiment_directory, cycle_number=1)
 
-#microscope.tissue_region_identifier(experiment_directory, x_frame_size=x_frame_size, clusters_retained=3)
+microscope.tissue_region_identifier(experiment_directory, x_frame_size=x_frame_size, clusters_retained=3)
 
 #microscope.recursive_stardist_autofocus(experiment_directory, 0,remake_nuc_binary=0)
 #microscope.hdr_compression(experiment_directory, cycle_number=1, apply_2_subbed=0, apply_2_bleached=0)
@@ -32,6 +32,6 @@ focus_position = 263
 
 #microscope.inter_cycle_processing(experiment_directory, cycle_number=2, x_frame_size=x_frame_size)
 #microscope.hdr_compression(experiment_directory, cycle_number=2)
-os.chdir(r'E:\3-7-24 marco\Tissue_Binary')
-im = io.imread('x1_y_2label_tissue.tif')
-print(np.unique(im[np.nonzero(im)]))
+#os.chdir(r'E:\3-7-24 marco\Tissue_Binary')
+#im = io.imread('x1_y_2label_tissue.tif')
+#print(np.unique(im[np.nonzero(im)]))

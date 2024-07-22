@@ -1360,7 +1360,7 @@ class cycif:
         y_tiles = np.shape(fm_array[0])[0]
 
         #make tissue binary images
-        self.tissue_binary_generate(experiment_directory, x_frame_size, clusters_retained)
+        #self.tissue_binary_generate(experiment_directory, x_frame_size, clusters_retained)
         tissue_path = experiment_directory + '/Tissue_Binary'
         os.chdir(tissue_path)
 
@@ -1371,15 +1371,16 @@ class cycif:
 
                 tissue_binary_name = 'x' + str(x) + '_y_' + str(y) + '_label_tissue.tif'
                 im = io.imread(tissue_binary_name)
-                unique_numbers = np.unique(im[np.nonzero(im)])
+                unique_numbers = np.unique(im)
+                tissue_fm_code_number = 0
 
                 for number in unique_numbers:
-                    sci_number = '1.35e+' + str(number)
-                    int_number = int(sci_number)
-                    tissue_fm_code_number += int_number
+                    sci_number = '1e+' + str(number)
+                    fl_number = float(sci_number)
+                    tissue_fm_code_number += fl_number
 
                 fm_array[10][y][x] = tissue_fm_code_number
-                print('y',y, 'x', x, 'ntiss_fm', int_number)
+                print('y',y, 'x', x, 'ntiss_fm', tissue_fm_code_number, unique_numbers)
 
         os.chdir(numpy_path)
         np.save(file_name, fm_array)
