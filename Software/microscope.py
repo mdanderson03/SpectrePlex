@@ -250,7 +250,7 @@ class cycif:
                 tissue_binary_name = 'x' + str(x) + '_y_' + str(y) + '_tissue.tif'
                 tissue_bin_im = io.imread(tissue_binary_name)
 
-                if tissue_fm[y][x] == 1:
+                if tissue_fm[y][x] > 1:
 
                     for channel in channels:
                         if channel == 'DAPI':
@@ -307,7 +307,7 @@ class cycif:
                         #place subbed image into stack
                         exp_image_stack[channel_index][y][x] = masked_subbed_image
 
-                if tissue_fm[y][x] == 0:
+                if tissue_fm[y][x] == 1:
                     pass
 
         #save image array for analysis
@@ -540,7 +540,7 @@ class cycif:
                     #Find max intensity
                     for x in range(0, x_tile_count):
                         for y in range(0, y_tile_count):
-                            if tissue_fm[y][x] == 1:
+                            if tissue_fm[y][x] > 1:
                                 for z in range(0, z_tiles):
                                     file_name = r'z_' +str(z) + '_x' + str(x) + '_y_' + str(y) + '_c_' + channel + '.tif'
                                     im = io.imread(file_name)
@@ -601,7 +601,7 @@ class cycif:
                     os.chdir(type_path)
                     for x in range(0, x_tile_count):
                         for y in range(0, y_tile_count):
-                            if tissue_fm[y][x] == 1:
+                            if tissue_fm[y][x] > 1:
                                 for z in range(0, z_tiles):
                                     file_name = r'z_' +str(z) + '_x' + str(x) + '_y_' + str(y) + '_c_' + channel + '.tif'
                                     im = io.imread(file_name)
@@ -619,7 +619,7 @@ class cycif:
                     os.chdir(type_path)
                     for x in range(0, x_tile_count):
                         for y in range(0, y_tile_count):
-                            if tissue_fm[y][x] == 1:
+                            if tissue_fm[y][x] > 1:
                                 for z in range(0, z_tiles):
                                     file_name = r'z_' + str(z) + '_x' + str(x) + '_y_' + str(y) + '_c_' + channel + '.tif'
                                     im = io.imread(file_name)
@@ -635,7 +635,7 @@ class cycif:
                     os.chdir(type_path)
                     for x in range(0, x_tile_count):
                         for y in range(0, y_tile_count):
-                            if tissue_fm[y][x] == 1:
+                            if tissue_fm[y][x] > 1:
                                 file_name = r'x' + str(x) + '_y_' + str(y) + '_c_' + channel + '.tif'
                                 im = io.imread(file_name)
                                 if im.dtype == 'unit16':
@@ -1360,7 +1360,7 @@ class cycif:
         y_tiles = np.shape(fm_array[0])[0]
 
         #make tissue binary images
-        #self.tissue_binary_generate(experiment_directory, x_frame_size, clusters_retained)
+        self.tissue_binary_generate(experiment_directory, x_frame_size, clusters_retained)
         tissue_path = experiment_directory + '/Tissue_Binary'
         os.chdir(tissue_path)
 
@@ -1715,7 +1715,7 @@ class cycif:
                     else:
                         pass
 
-                if tissue_fm[y][x] == 1:
+                if tissue_fm[y][x] > 1:
 
                     for z in range(0, z_count):
                         # load in binary image mask
@@ -1751,7 +1751,7 @@ class cycif:
                     # update focus map for all channels
                     fm_array[2][y][x] = fm_array[2][y][x] + new_fm_z_position
 
-                if tissue_fm[y][x] == 0:
+                if tissue_fm[y][x] == 1:
                     pass
 
         # save updated focus array
@@ -1947,7 +1947,7 @@ class cycif:
             if y % 2 != 0:
                 for x in range(x_tile_count - 1, -1, -1):
 
-                    if tissue_fm[y][x] == 1:
+                    if tissue_fm[y][x] > 1:
 
                         core.set_xy_position(numpy_x[y][x], numpy_y[y][x])
                         time.sleep(.3)
@@ -2000,14 +2000,14 @@ class cycif:
                         self.zc_save(zc_tif_stack, channels, x, y, cycle_number, x_pixels, experiment_directory,
                                      Stain_or_Bleach)
 
-                    if tissue_fm[y][x] == 0:
+                    if tissue_fm[y][x] == 1:
                         pass
 
 
             elif y % 2 == 0:
                 for x in range(0, x_tile_count):
 
-                    if tissue_fm[y][x] == 1:
+                    if tissue_fm[y][x] > 1:
 
                         #print('x', numpy_x[y][x], 'y', numpy_y[y][x])
 
@@ -2062,7 +2062,7 @@ class cycif:
                         self.zc_save(zc_tif_stack, channels, x, y, cycle_number, x_pixels, experiment_directory,
                                      Stain_or_Bleach)
 
-                    if tissue_fm[y][x] == 0:
+                    if tissue_fm[y][x] == 1:
                         pass
 
         return
@@ -2351,6 +2351,10 @@ class cycif:
 
 
         mcmicro_path = experiment_directory + r'\mcmicro\raw'
+
+        #determine max cluster count
+        highest_number = np.max(full_array[10])
+        number_clusters = math.floor(math.log10(highest_number)) - 1
 
         mcmicro_stack = np.random.rand(tile_count * 4, 2960, x_frame_size).astype('uint16')
 
@@ -4058,6 +4062,65 @@ class cycif:
 
         os.chdir(numpy_path)
         np.save('tissue_exist.npy', tissue_or_not)
+
+    def tissue_fm_decode(self, tissue_fm_yx):
+        '''
+        Takes in number from tissue_fm array and gives back
+        what unique cluster numbers are contained within it (will not output 0)
+        :param tissue_fm_yx: tissue_fm[y][x] value
+        :return:
+        '''
+
+
+        #unique numbers
+
+        unique_number_list = []
+        while tissue_fm_yx > 1:
+            power = math.floor(math.log10(tissue_fm_yx))
+            unique_number_list.append(power)
+            sci_number_str = '1e+' + str(power)
+            sci_number = float(sci_number_str)
+            tissue_fm_yx -= sci_number
+
+        return unique_number_list
+
+    def number_tiles_each_cluster(self, experiment_directory):
+        '''
+        Gives list back that contains the amount of tiles in each cluster
+        :param experiment_directory:
+        :return:
+        '''
+
+        numpy_path = experiment_directory + '/' + 'np_arrays'
+        os.chdir(numpy_path)
+        fm_array = np.load('fm_array.npy', allow_pickle=False)
+
+        numpy_x = fm_array[0]
+        numpy_y = fm_array[1]
+
+        y_tile_count = numpy_x.shape[0]
+        x_tile_count = numpy_y.shape[1]
+
+        tissue_fm = fm_array[10]
+
+        # determine max cluster count
+        highest_number = np.max(tissue_fm)
+        number_clusters = math.floor(math.log10(highest_number)) - 1
+
+        cluster_tile_count = np.zeros(number_clusters)
+
+        for x in range(0, x_tile_count):
+            for y in range(0, y_tile_count):
+
+                tissue_code_number = tissue_fm[y][x]
+                clusters_in_tile = self.tissue_fm_decode(tissue_code_number)
+                if len(clusters_in_tile) > 0:
+                    for number in clusters_in_tile:
+                        number = int(number)
+                        cluster_tile_count[number - 1] += 1
+
+        return cluster_tile_count
+
 
     ######Kinetics and its functions#####################################################
 
