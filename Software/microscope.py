@@ -29,8 +29,8 @@ import multiprocessing
 
 
 
-magellan = Magellan()
-core = Core()
+#magellan = Magellan()
+#core = Core()
 
 
 class cycif:
@@ -1449,7 +1449,6 @@ class cycif:
                 pass
         '''
 
-
         for index in range(0, np.max(labelled_super)):
             area = props[index]['area']
             cluster_area_index[0][index] = area
@@ -1484,15 +1483,17 @@ class cycif:
         number_actual_clusters_retained = np.shape(sorted_cluster_areas)[1]
 
         # make new labelled image with desired clusters retain and renumbered 1 through x
-        new_labelled_image = labelled_super * super_image
+        new_labelled_image = labelled_super
+        #new_labelled_image = labelled_super * super_image
         # scale all clusters to same number
         for x in range(0, number_actual_clusters_retained):
             index_value = sorted_cluster_areas[1][x]
-            new_labelled_image[new_labelled_image == index_value] = -(x + 1)
-        new_labelled_image = -1 * new_labelled_image
+            new_labelled_image[new_labelled_image == index_value] = 65535 - x
+        new_labelled_image[new_labelled_image < (65535 - number_actual_clusters_retained -1)] = 0
+        new_labelled_image[np.nonzero(new_labelled_image)] = new_labelled_image[np.nonzero(new_labelled_image)] - (65535 - number_actual_clusters_retained)
 
         #make new binary image
-        new_image = copy.deepcopy(new_labeled_image)
+        new_image = copy.deepcopy(new_labelled_image)
         new_image[new_image > 0] = 1
         new_image = new_image.astype('int16')
 
@@ -1516,7 +1517,7 @@ class cycif:
                 tile_label_image = new_labelled_image[start_y:end_y, start_x:end_x]
                 tile_label_image = tile_label_image.astype('uint16')
 
-                io.imsave(filename, tile_image)
+                #io.imsave(filename, tile_image)
                 io.imsave(label_filename, tile_label_image)
 
         super_image = skimage.util.img_as_uint(super_image)

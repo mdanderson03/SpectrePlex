@@ -1,8 +1,10 @@
+import numpy as np
+
 from autocyplex import *
 from optparse import OptionParser
 microscope = cycif() # initialize cycif object
-experiment_directory = r'E:\demo_slide - Copy'
-pump = fluidics(experiment_directory, 6, 13, flow_control=1)
+experiment_directory = r'E:\3-7-24 marco'
+#pump = fluidics(experiment_directory, 6, 13, flow_control=1)
 core = Core()
 
 z_slices = 3
@@ -18,7 +20,9 @@ focus_position = 263
 #microscope.image_cycle_acquire(0, experiment_directory, z_slices, 'Bleach', offset_array,x_frame_size=x_frame_size, auto_focus_run=0, auto_expose_run=3)
 #microscope.post_acquisition_processor(experiment_directory, x_frame_size, rolling_ball=0)
 #microscope.brightness_uniformer(experiment_directory, cycle_number=1)
-#microscope.tissue_region_identifier(experiment_directory, clusters_retained=1)
+
+#microscope.tissue_region_identifier(experiment_directory, x_frame_size=x_frame_size, clusters_retained=3)
+
 #microscope.recursive_stardist_autofocus(experiment_directory, 0,remake_nuc_binary=0)
 #microscope.hdr_compression(experiment_directory, cycle_number=1, apply_2_subbed=0, apply_2_bleached=0)
 #microscope.post_acquisition_processor(experiment_directory, x_pixels=x_frame_size)
@@ -27,4 +31,7 @@ focus_position = 263
 #pump.liquid_action('Bleach')
 
 #microscope.inter_cycle_processing(experiment_directory, cycle_number=2, x_frame_size=x_frame_size)
-microscope.hdr_compression(experiment_directory, cycle_number=2)
+#microscope.hdr_compression(experiment_directory, cycle_number=2)
+os.chdir(r'E:\3-7-24 marco\Tissue_Binary')
+im = io.imread('x1_y_2label_tissue.tif')
+print(np.unique(im[np.nonzero(im)]))
