@@ -650,10 +650,6 @@ class cycif:
                                     #tf.imwrite(file_name,im, compression='zlib')
                                     io.imsave(file_name, im)
 
-
-
-
-
     def hdr_fuser(self, hdr_images):
 
         hdr_times = self.hdr_exp_times
@@ -1487,17 +1483,17 @@ class cycif:
 
         number_actual_clusters_retained = np.shape(sorted_cluster_areas)[1]
 
-
-        #make new binary image
-        new_image = labelled_super * super_image
-        first_index = sorted_cluster_areas[1][0]
-        #scale all clusters to same number
+        # make new labelled image with desired clusters retain and renumbered 1 through x
+        new_labelled_image = labelled_super * super_image
+        # scale all clusters to same number
         for x in range(0, number_actual_clusters_retained):
             index_value = sorted_cluster_areas[1][x]
-            new_image[new_image == index_value] = first_index
+            new_labelled_image[new_labelled_image == index_value] = -(x + 1)
+        new_labelled_image = -1 * new_labelled_image
 
-        new_image[new_image != first_index] = 0
-        new_image[new_image == first_index] = 1
+        #make new binary image
+        new_image = copy.deepcopy(new_labeled_image)
+        new_image[new_image > 0] = 1
         new_image = new_image.astype('int16')
 
         # fill small holes
@@ -1506,6 +1502,7 @@ class cycif:
         for y in range(0, y_tile_count):
             for x in range(0, x_tile_count):
                 filename = 'x' + str(x) + '_y_' + str(y) + '_tissue.tif'
+                label_filename = 'x' + str(x) + '_y_' + str(y) + 'label_tissue.tif'
 
                 start_x = x * x_frame_size
                 end_x = start_x + x_frame_size
@@ -1516,7 +1513,11 @@ class cycif:
                 tile_image = skimage.util.img_as_uint(tile_image)
                 tile_image = tile_image/65535
 
+                tile_label_image = new_labelled_image[start_y:end_y, start_x:end_x]
+                tile_label_image = tile_label_image.astype('uint16')
+
                 io.imsave(filename, tile_image)
+                io.imsave(label_filename, tile_label_image)
 
         super_image = skimage.util.img_as_uint(super_image)
         new_image = skimage.util.img_as_uint(new_image)
