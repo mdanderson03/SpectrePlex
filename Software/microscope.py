@@ -1486,9 +1486,9 @@ class cycif:
         except:
             index_smallest = number_clusters_retained
 
-        sorted_cluster_areas = sorted_cluster_areas[0, 0:index_smallest]
-        sorted_y_centroid = sorted_cluster_areas[1, 0:index_smallest]
-        sorted_x_centroid = sorted_cluster_areas[2, 0:index_smallest]
+        sorted_cluster_areas = sorted_cluster_areas[0][0:index_smallest]
+        sorted_y_centroid = sorted_cluster_areas[2][0:index_smallest]
+        sorted_x_centroid = sorted_cluster_areas[3][0:index_smallest]
         print('sort_y', sorted_y_centroid)
         print('sort_x', sorted_x_centroid)
         print('area', sorted_cluster_areas)
