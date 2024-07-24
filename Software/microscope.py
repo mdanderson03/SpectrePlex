@@ -26,6 +26,7 @@ from pywt import wavedecn, waverecn
 from scipy.ndimage import gaussian_filter
 from joblib import Parallel, delayed
 import multiprocessing
+import itertools
 
 
 
@@ -1603,11 +1604,11 @@ class cycif:
 
         neighborhood_matrix = np.zeros((3,3))
         equivilent_radii = np.sqrt((areas/3.14))
-        combos = list(itertools.combinations(np.linspace(0, number_clusters), 2))
+        combos = list(itertools.combinations(np.linspace(1, number_clusters, number_clusters), 2))
 
         for combo in combos:
-            first_cluster_index = combo[0]
-            second_cluster_index = combo[1]
+            first_cluster_index = int(combo[0]) - 1
+            second_cluster_index = int(combo[1]) - 1
             y1 = sorted_y_centroid[first_cluster_index]
             y2 = sorted_y_centroid[second_cluster_index]
             x1 = sorted_x_centroid[first_cluster_index]
@@ -1619,7 +1620,7 @@ class cycif:
 
             neighborhood_matrix[first_cluster_index][second_cluster_index] = net_distance
             neighborhood_matrix[second_cluster_index][first_cluster_index] = net_distance
-            print(neighborhood_matrix)
+        print(neighborhood_matrix)
 
 
 
