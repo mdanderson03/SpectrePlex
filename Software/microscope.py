@@ -1486,12 +1486,15 @@ class cycif:
         except:
             index_smallest = number_clusters_retained
 
-        sorted_cluster_areas = sorted_cluster_areas[::, 0:index_smallest]
-        sorted_y_centroid = sorted_cluster_areas[::, 1:index_smallest]
-        sorted_x_centroid = sorted_cluster_areas[::, 2:index_smallest]
-        print(sorted_y_centroid, sorted_x_centroid)
+        sorted_cluster_areas = sorted_cluster_areas[0, 0:index_smallest]
+        sorted_y_centroid = sorted_cluster_areas[1, 0:index_smallest]
+        sorted_x_centroid = sorted_cluster_areas[2, 0:index_smallest]
+        print('sort_y', sorted_y_centroid)
+        print('sort_x', sorted_x_centroid)
+        print('area', sorted_cluster_areas)
 
         number_actual_clusters_retained = np.shape(sorted_cluster_areas)[1]
+        print(number_actual_clusters_retained)
 
         # make new labelled image with desired clusters retain and renumbered 1 through x
         new_labelled_image = labelled_super
