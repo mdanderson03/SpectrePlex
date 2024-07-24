@@ -1494,6 +1494,8 @@ class cycif:
         new_labelled_image[new_labelled_image < (65535 - number_actual_clusters_retained -1)] = 0
         new_labelled_image[np.nonzero(new_labelled_image)] = new_labelled_image[np.nonzero(new_labelled_image)] - (65535 - number_actual_clusters_retained)
 
+        io.imsave('labelled_tissue_filtered.tif', new_labelled_image)
+
         #make new binary image
         new_image = copy.deepcopy(new_labelled_image)
         new_image[new_image > 0] = 1
@@ -1573,6 +1575,21 @@ class cycif:
                 io.imsave(tissue_binary_name, filtered_image)
 
         self.tissue_cluster_filter(experiment_directory, x_frame_size, clusters_retained, area_threshold=area_threshold)
+
+    def cluster_neighborhood(self, image, total_dilation, dilation_step_size):
+        '''
+        Peforms series of erosion events in order to establish how close neighboring clusters are to each other
+        :param image:
+        :param total_dilation: dilation step size x # steps (rounded to nearest integer)
+        :param dilation_step_size:
+        :return:
+        '''
+
+        foot_print = morphology.disk(erosion_step_size, decomposition='sequence')
+        number_clusters = np.max(image)
+
+        morphology.binary_dilation(star_dist_im, foot_print)
+
 
     #recursize autofocusfunctions#####################################
 
