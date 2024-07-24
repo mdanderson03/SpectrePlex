@@ -1588,7 +1588,7 @@ class cycif:
 
         self.tissue_cluster_filter(experiment_directory, x_frame_size, clusters_retained, area_threshold=area_threshold)
 
-    def cluster_neighborhood(self, image, total_dilation, dilation_step_size):
+    def cluster_neighborhood(self, image, sorted_cluster_areas):
         '''
         Peforms series of erosion events in order to establish how close neighboring clusters are to each other
         :param image:
@@ -1597,10 +1597,36 @@ class cycif:
         :return:
         '''
 
-        foot_print = morphology.disk(erosion_step_size, decomposition='sequence')
+        areas = sorted_cluster_areas[0]
+        sorted_y_centroid = sorted_cluster_areas[2]
+        sorted_x_centroid = sorted_cluster_areas[3]
         number_clusters = np.max(image)
 
-        morphology.binary_dilation(star_dist_im, foot_print)
+        neighborhood_matrix = np.zeros((3,3))
+        equivilent_radii = np.sqrt((areas/3.14))
+        combos = list(itertools.combinations(sorted_cluster_areas[1], 2))
+
+        for combo in combos:
+            first_cluster_index = combo[0]
+            second_cluster_index = combo[1]
+            y1 = sorted_y_centroid[first_cluster_index]
+            y2 = sorted_y_centroid[second_cluster_index]
+            x1 = sorted_x_centroid[first_cluster_index]
+            x2 = sorted_x_centroid[second_cluster_index]
+            r1 = equivilent_radii[first_cluster_index]
+            r2 = equivilent_radii[second_cluster_index]
+            center_center_distance = np.sqrt((y2-y1)**2 + (x2-x1)**2)
+            net_distance = center_center_distance - r1 - r2
+
+            neighborhood_matrix[first_cluster_index][second_cluster_index] = net_distance
+            neighborhood_matrix[second_cluster_index][first_cluster_index] = net_distance
+            print(neighborhood_matrix)
+
+
+
+
+
+
 
 
     #recursize autofocusfunctions#####################################
