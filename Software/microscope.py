@@ -1437,7 +1437,7 @@ class cycif:
         props = skimage.measure.regionprops(labelled_super)
 
         # make array to store cluster area and indicies in
-        cluster_area_index = np.zeros((3, np.max(labelled_super)))
+        cluster_area_index = np.zeros((4, np.max(labelled_super)))
         '''
         for index in range(0, np.max(labelled_super)):
             area = props[index]['area']
@@ -1454,10 +1454,10 @@ class cycif:
         for index in range(0, np.max(labelled_super)):
             area = props[index]['area']
             centroid = props[index]['centroid']
-            print(centroid)
             cluster_area_index[0][index] = area
             cluster_area_index[1][index] = int(index + 1)
-            cluster_area_index[2][index] = centroid
+            cluster_area_index[2][index] = centroid[0]
+            cluster_area_index[3][index] = centroid[1]
 
         #sort array by size and keep index tracked alongside the size sorting
 
@@ -1468,9 +1468,11 @@ class cycif:
             area = sorted_cluster_areas[0][x]
             x_index = np.where(cluster_area_index[0] == area)[0]
             cluster_index = cluster_area_index[1][x_index]
-            centroid_value = cluster_area_index[1][x_index]
+            centroid_y_value = cluster_area_index[2][x_index]
+            centroid_x_value = cluster_area_index[3][x_index]
             sorted_cluster_areas[1][x:x + np.shape(x_index)[0]] = cluster_index
-            sorted_cluster_areas[1][x:x + np.shape(x_index)[0]] = centroid_value
+            sorted_cluster_areas[2][x:x + np.shape(x_index)[0]] = centroid_y_value
+            sorted_cluster_areas[3][x:x + np.shape(x_index)[0]] = centroid_x_value
             x += np.shape(x_index)[0]
 
         sorted_cluster_areas = np.fliplr(sorted_cluster_areas)
