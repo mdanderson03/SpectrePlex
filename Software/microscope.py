@@ -26,6 +26,7 @@ from pywt import wavedecn, waverecn
 from scipy.ndimage import gaussian_filter
 from joblib import Parallel, delayed
 import multiprocessing
+import itertools
 
 
 
@@ -1455,9 +1456,8 @@ class cycif:
             area = props[index]['area']
             centroid = props[index]['centroid']
             bbox = props[index]['bbox']
-            bbox_y_length = bbox[2] = bbox[0]
-            bbox_x_length = bbox[3] = bbox[1]
-
+            bbox_y_length = bbox[2] - bbox[0]
+            bbox_x_length = bbox[3] - bbox[1]
 
             cluster_area_index[0][index] = area
             cluster_area_index[1][index] = int(index + 1)
@@ -1497,11 +1497,14 @@ class cycif:
         except:
             index_smallest = int(number_clusters_retained)
 
+        print(index_smallest)
+
         sorted_cluster_areas = sorted_cluster_areas[::, 0:index_smallest]
-        sorted_y_centroid = sorted_cluster_areas[2]
-        sorted_x_centroid = sorted_cluster_areas[3]
+        sorted_y_centroid = sorted_cluster_areas[5]
+        sorted_x_centroid = sorted_cluster_areas[4]
 
         number_actual_clusters_retained = np.shape(sorted_cluster_areas)[1]
+        print(number_actual_clusters_retained)
 
         # make new labelled image with desired clusters retain and renumbered 1 through x
         new_labelled_image = labelled_super
@@ -1510,8 +1513,11 @@ class cycif:
         for x in range(0, number_actual_clusters_retained):
             index_value = sorted_cluster_areas[1][x]
             new_labelled_image[new_labelled_image == index_value] = 65535 - x
+            sorted_cluster_areas[1][x] = number_actual_clusters_retained - x
+            print(sorted_cluster_areas[0][x], number_actual_clusters_retained - x)
         new_labelled_image[new_labelled_image < (65535 - number_actual_clusters_retained -1)] = 0
         new_labelled_image[np.nonzero(new_labelled_image)] = new_labelled_image[np.nonzero(new_labelled_image)] - (65535 - number_actual_clusters_retained)
+
 
         new_labelled_image = new_labelled_image.astype('int16')
         io.imsave('labelled_tissue_filtered.tif', new_labelled_image)
@@ -1610,18 +1616,19 @@ class cycif:
         areas = sorted_cluster_areas[0]
         sorted_y_centroid = sorted_cluster_areas[2]
         sorted_x_centroid = sorted_cluster_areas[3]
+        sorted_index = sorted_cluster_areas[1]
         sort_y_length = sorted_cluster_areas[4]
         sort_x_length = sorted_cluster_areas[5]
         number_clusters = np.max(image)
 
         neighborhood_matrix = np.zeros((number_clusters,number_clusters))
-        combos = list(itertools.combinations(np.linspace(0, number_clusters), 2))
+        combos = list(itertools.combinations(np.linspace(1, number_clusters, number_clusters), 2))
 
         unit_y_axis_vector = [1,0]
 
         for combo in combos:
-            first_cluster_index = combo[0]
-            second_cluster_index = combo[1]
+            first_cluster_index = np.where(sorted_index == int(combo[0]))[0][0]
+            second_cluster_index = np.where(sorted_index == int(combo[1]))[0][0]
             y1 = sorted_y_centroid[first_cluster_index]
             y2 = sorted_y_centroid[second_cluster_index]
             x1 = sorted_x_centroid[first_cluster_index]
@@ -1633,25 +1640,33 @@ class cycif:
 
             center_center_magnitude = np.sqrt((y2-y1)**2 + (x2-x1)**2)
             center_center_vector = [(y2-y1), (x2-x1)]
-            dot = np.dot(center_center_vector, unit_y_axis_vector)
-            angle = np.arccos(dot / center_center_magnitude)
-            angle = abs(angle)
+            dot = np.dot(center_center_vector, unit_y_axis_vector)/center_center_magnitude
+            dot = np.abs(dot)
+            angle = np.arccos(dot)
+            print(combo)
+            print(y1, x1, y2, x2, sorted_index[first_cluster_index], sorted_index[second_cluster_index])
 
-            if angle == math.pi/4:
-                dist_2_edge1 = np.sqrt(x_len1**2 + y_len1**2)
-                dist_2_edge2 = np.sqrt(x_len2 ** 2 + y_len2 ** 2)
-            elif angle < math.pi/4:
-                dist_2_edge1 = y_len1/np.cos(angle)
-                dist_2_edge2 = y_len2/np.cos(angle)
-            elif angle < math.pi/4:
-                dist_2_edge1 = x_len1/np.sin(angle)
-                dist_2_edge2 = x_len2/np.sin(angle)
+            max_angle1 = np.arctan(x_len1/y_len1)
+            max_angle2 = np.arctan(x_len2/y_len2)
+
+
+            if angle < max_angle1:
+                dist_2_edge1 = (y_len1/2)/np.cos(angle)
+            elif angle >= max_angle1:
+                dist_2_edge1 = (x_len1/2)/np.sin(angle)
+
+            if angle < max_angle2:
+                dist_2_edge2 = (y_len2/2)/np.cos(angle)
+            elif angle >= max_angle2:
+                dist_2_edge2 = (x_len2/2)/np.sin(angle)
+
+            print(dot, angle, angle * 180 / math.pi, center_center_magnitude, dist_2_edge1, dist_2_edge2, x_len1, y_len1, x_len2, y_len2)
 
             net_distance = center_center_magnitude - dist_2_edge1 - dist_2_edge2
 
-            neighborhood_matrix[first_cluster_index][second_cluster_index] = net_distance
-            neighborhood_matrix[second_cluster_index][first_cluster_index] = net_distance
-            print(neighborhood_matrix)
+            neighborhood_matrix[int(combo[0])-1][int(combo[1])-1] = net_distance
+            neighborhood_matrix[int(combo[1])-1][int(combo[0])-1] = net_distance
+        print(neighborhood_matrix)
 
 
 
