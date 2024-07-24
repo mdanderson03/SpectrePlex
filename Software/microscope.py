@@ -1489,9 +1489,6 @@ class cycif:
         sorted_cluster_areas = sorted_cluster_areas[::, 0:index_smallest]
         sorted_y_centroid = sorted_cluster_areas[2]
         sorted_x_centroid = sorted_cluster_areas[3]
-        print('sort_y', sorted_y_centroid)
-        print('sort_x', sorted_x_centroid)
-        print('area', sorted_cluster_areas)
 
         number_actual_clusters_retained = np.shape(sorted_cluster_areas)[1]
 
@@ -1507,6 +1504,8 @@ class cycif:
 
         new_labelled_image = new_labelled_image.astype('int16')
         io.imsave('labelled_tissue_filtered.tif', new_labelled_image)
+
+        self.cluster_neighborhood(new_labelled_image, sorted_cluster_areas)
 
         #make new binary image
         new_image = copy.deepcopy(new_labelled_image)
@@ -1604,7 +1603,7 @@ class cycif:
 
         neighborhood_matrix = np.zeros((3,3))
         equivilent_radii = np.sqrt((areas/3.14))
-        combos = list(itertools.combinations(sorted_cluster_areas[1], 2))
+        combos = list(itertools.combinations(np.linspace(0, number_clusters), 2))
 
         for combo in combos:
             first_cluster_index = combo[0]
