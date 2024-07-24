@@ -1454,6 +1454,7 @@ class cycif:
         for index in range(0, np.max(labelled_super)):
             area = props[index]['area']
             centroid = props[index]['centroid']
+            print(centroid)
             cluster_area_index[0][index] = area
             cluster_area_index[1][index] = int(index + 1)
             cluster_area_index[2][index] = centroid
