@@ -1476,8 +1476,6 @@ class cycif:
             x += np.shape(x_index)[0]
 
         sorted_cluster_areas = np.fliplr(sorted_cluster_areas)
-        print(sorted_cluster_areas)
-
 
         #determine how many clusters will pass with threshold based on smallest demanded retained cluster
         min_area = area_threshold * sorted_cluster_areas[0][number_clusters_retained - 1]
@@ -1489,6 +1487,9 @@ class cycif:
             index_smallest = number_clusters_retained
 
         sorted_cluster_areas = sorted_cluster_areas[::, 0:index_smallest]
+        sorted_y_centroid = sorted_cluster_areas[::, 1:index_smallest]
+        sorted_x_centroid = sorted_cluster_areas[::, 2:index_smallest]
+        print(sorted_y_centroid, sorted_x_centroid)
 
         number_actual_clusters_retained = np.shape(sorted_cluster_areas)[1]
 
