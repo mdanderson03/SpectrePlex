@@ -1437,7 +1437,7 @@ class cycif:
         props = skimage.measure.regionprops(labelled_super)
 
         # make array to store cluster area and indicies in
-        cluster_area_index = np.zeros((4, np.max(labelled_super)))
+        cluster_area_index = np.zeros((6, np.max(labelled_super)))
         '''
         for index in range(0, np.max(labelled_super)):
             area = props[index]['area']
@@ -1454,10 +1454,17 @@ class cycif:
         for index in range(0, np.max(labelled_super)):
             area = props[index]['area']
             centroid = props[index]['centroid']
+            bbox = props[index]['bbox']
+            bbox_y_length = bbox[2] = bbox[0]
+            bbox_x_length = bbox[3] = bbox[1]
+
+
             cluster_area_index[0][index] = area
             cluster_area_index[1][index] = int(index + 1)
             cluster_area_index[2][index] = centroid[0]
             cluster_area_index[3][index] = centroid[1]
+            cluster_area_index[4][index] = bbox_y_length
+            cluster_area_index[5][index] = bbox_x_length
 
         #sort array by size and keep index tracked alongside the size sorting
 
@@ -1470,9 +1477,13 @@ class cycif:
             cluster_index = cluster_area_index[1][x_index]
             centroid_y_value = cluster_area_index[2][x_index]
             centroid_x_value = cluster_area_index[3][x_index]
+            bbox_y_length = cluster_area_index[4][x_index]
+            bbox_x_length = cluster_area_index[5][x_index]
             sorted_cluster_areas[1][x:x + np.shape(x_index)[0]] = cluster_index
             sorted_cluster_areas[2][x:x + np.shape(x_index)[0]] = centroid_y_value
             sorted_cluster_areas[3][x:x + np.shape(x_index)[0]] = centroid_x_value
+            sorted_cluster_areas[4][x:x + np.shape(x_index)[0]] = bbox_y_length
+            sorted_cluster_areas[5][x:x + np.shape(x_index)[0]] = bbox_x_length
             x += np.shape(x_index)[0]
 
         sorted_cluster_areas = np.fliplr(sorted_cluster_areas)
@@ -1599,11 +1610,14 @@ class cycif:
         areas = sorted_cluster_areas[0]
         sorted_y_centroid = sorted_cluster_areas[2]
         sorted_x_centroid = sorted_cluster_areas[3]
+        sort_y_length = sorted_cluster_areas[4]
+        sort_x_length = sorted_cluster_areas[5]
         number_clusters = np.max(image)
 
-        neighborhood_matrix = np.zeros((3,3))
-        equivilent_radii = np.sqrt((areas/3.14))
+        neighborhood_matrix = np.zeros((number_clusters,number_clusters))
         combos = list(itertools.combinations(np.linspace(0, number_clusters), 2))
+
+        unit_y_axis_vector = [1,0]
 
         for combo in combos:
             first_cluster_index = combo[0]
@@ -1612,10 +1626,28 @@ class cycif:
             y2 = sorted_y_centroid[second_cluster_index]
             x1 = sorted_x_centroid[first_cluster_index]
             x2 = sorted_x_centroid[second_cluster_index]
-            r1 = equivilent_radii[first_cluster_index]
-            r2 = equivilent_radii[second_cluster_index]
-            center_center_distance = np.sqrt((y2-y1)**2 + (x2-x1)**2)
-            net_distance = center_center_distance - r1 - r2
+            y_len1 = sort_y_length[first_cluster_index]
+            x_len1= sort_x_length[first_cluster_index]
+            y_len2= sort_y_length[second_cluster_index]
+            x_len2= sort_x_length[second_cluster_index]
+
+            center_center_magnitude = np.sqrt((y2-y1)**2 + (x2-x1)**2)
+            center_center_vector = [(y2-y1), (x2-x1)]
+            dot = np.dot(center_center_vector, unit_y_axis_vector)
+            angle = np.arccos(dot / center_center_magnitude)
+            angle = abs(angle)
+
+            if angle == math.pi/4:
+                dist_2_edge1 = np.sqrt(x_len1**2 + y_len1**2)
+                dist_2_edge2 = np.sqrt(x_len2 ** 2 + y_len2 ** 2)
+            elif angle < math.pi/4:
+                dist_2_edge1 = y_len1/np.cos(angle)
+                dist_2_edge2 = y_len2/np.cos(angle)
+            elif angle < math.pi/4:
+                dist_2_edge1 = x_len1/np.sin(angle)
+                dist_2_edge2 = x_len2/np.sin(angle)
+
+            net_distance = center_center_magnitude - dist_2_edge1 - dist_2_edge2
 
             neighborhood_matrix[first_cluster_index][second_cluster_index] = net_distance
             neighborhood_matrix[second_cluster_index][first_cluster_index] = net_distance
