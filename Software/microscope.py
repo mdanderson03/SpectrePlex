@@ -1518,12 +1518,11 @@ class cycif:
         new_labelled_image[new_labelled_image < (65535 - number_actual_clusters_retained -1)] = 0
         new_labelled_image[np.nonzero(new_labelled_image)] = new_labelled_image[np.nonzero(new_labelled_image)] - (65535 - number_actual_clusters_retained)
 
-
+        new_labelled_image = self.cluster_neighborhood(new_labelled_image, sorted_cluster_areas)
         new_labelled_image = new_labelled_image.astype('int16')
         io.imsave('labelled_tissue_filtered.tif', new_labelled_image)
 
-        self.cluster_neighborhood(new_labelled_image, sorted_cluster_areas)
-
+    
         #make new binary image
         new_image = copy.deepcopy(new_labelled_image)
         new_image[new_image > 0] = 1
@@ -1613,7 +1612,7 @@ class cycif:
         :return:
         '''
 
-        areas = sorted_cluster_areas[0]
+        threshold = 500 # in pixels
         sorted_y_centroid = sorted_cluster_areas[2]
         sorted_x_centroid = sorted_cluster_areas[3]
         sorted_index = sorted_cluster_areas[1]
@@ -1625,6 +1624,7 @@ class cycif:
         combos = list(itertools.combinations(np.linspace(1, number_clusters, number_clusters), 2))
 
         unit_y_axis_vector = [1,0]
+        unique_labels = np.linspace(1, number_clusters, number_clusters)
 
         for combo in combos:
             first_cluster_index = np.where(sorted_index == int(combo[0]))[0][0]
@@ -1643,8 +1643,6 @@ class cycif:
             dot = np.dot(center_center_vector, unit_y_axis_vector)/center_center_magnitude
             dot = np.abs(dot)
             angle = np.arccos(dot)
-            print(combo)
-            print(y1, x1, y2, x2, sorted_index[first_cluster_index], sorted_index[second_cluster_index])
 
             max_angle1 = np.arctan(x_len1/y_len1)
             max_angle2 = np.arctan(x_len2/y_len2)
@@ -1660,16 +1658,21 @@ class cycif:
             elif angle >= max_angle2:
                 dist_2_edge2 = (x_len2/2)/np.sin(angle)
 
-            print(dot, angle, angle * 180 / math.pi, center_center_magnitude, dist_2_edge1, dist_2_edge2, x_len1, y_len1, x_len2, y_len2)
 
             net_distance = center_center_magnitude - dist_2_edge1 - dist_2_edge2
 
             neighborhood_matrix[int(combo[0])-1][int(combo[1])-1] = net_distance
             neighborhood_matrix[int(combo[1])-1][int(combo[0])-1] = net_distance
-        print(neighborhood_matrix)
 
+            if net_distance < threshold:
+                first_cluster_indicies = np.where(image == int(combo[1]))[0][0]
+                image[first_cluster_indicies] = int(combo[0])
+                unique_second_cluster_index = np.where(unique_labels == int(combo[1]))[0][0]
+                unique_labels = np.delete(unique_labels, unique_second_cluster_index)
+            else:
+                pass
 
-
+        return image
 
 
 
