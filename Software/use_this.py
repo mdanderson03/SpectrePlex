@@ -5,7 +5,7 @@ from optparse import OptionParser
 microscope = cycif() # initialize cycif object
 experiment_directory = r'E:\3-7-24 marco'
 #pump = fluidics(experiment_directory, 6, 13, flow_control=1)
-core = Core()
+#core = Core()
 
 z_slices = 3
 x_frame_size = 2960
@@ -27,10 +27,10 @@ focus_position = 263
 #microscope.hdr_compression(experiment_directory, cycle_number=1, apply_2_subbed=0, apply_2_bleached=0)
 #microscope.post_acquisition_processor(experiment_directory, x_pixels=x_frame_size)
 #microscope.hdr_compression(experiment_directory, cycle_number=1, apply_2_subbed=0, apply_2_bleached=1)
-#microscope.tissue_binary_generate(experiment_directory, x_frame_size=x_frame_size, clusters_retained=3, area_threshold=0.1)
+microscope.tissue_binary_generate(experiment_directory, x_frame_size=x_frame_size, clusters_retained=3, area_threshold=0.1)
 #pump.liquid_action('Bleach')
 
-microscope.inter_cycle_processing(experiment_directory, cycle_number=1, x_frame_size=x_frame_size)
+#microscope.inter_cycle_processing(experiment_directory, cycle_number=1, x_frame_size=x_frame_size)
 #microscope.hdr_compression(experiment_directory, cycle_number=2)
 #os.chdir(r'E:\3-7-24 marco\Tissue_Binary')
 #im = io.imread('x1_y_2label_tissue.tif')
