@@ -30,8 +30,8 @@ import itertools
 
 
 
-#magellan = Magellan()
-#core = Core()
+magellan = Magellan()
+core = Core()
 
 
 class cycif:
@@ -193,7 +193,7 @@ class cycif:
         x_tiles = np.shape(fm_array[0])[1]
 
         exp_calc_array = np.random.rand(4, 3, y_tiles, x_tiles)
-        exp_array = [100, 50, 50, 50]
+        exp_array = [50, 50, 50, 50]
         exp_calc_array[::, 0, ::, ::] = 100
 
         file_name = 'exp_calc_array.npy'
@@ -1034,7 +1034,7 @@ class cycif:
         fm_array[7] = z_slice_array
         fm_array[9] = z_slice_array
 
-        fm_array[10] = all_ones_array
+        fm_array[10] = np.full((y_tiles, x_tiles), 2)
         fm_array[11] = all_ones_array
         fm_array[12] = all_ones_array
         fm_array[13] = all_ones_array
@@ -1361,7 +1361,7 @@ class cycif:
         y_tiles = np.shape(fm_array[0])[0]
 
         #make tissue binary images
-        #self.tissue_binary_generate(experiment_directory, x_frame_size, clusters_retained)
+        self.tissue_binary_generate(experiment_directory, x_frame_size, clusters_retained)
         tissue_path = experiment_directory + '/Tissue_Binary'
         os.chdir(tissue_path)
 
@@ -1381,7 +1381,6 @@ class cycif:
                     tissue_fm_code_number += fl_number
 
                 fm_array[10][y][x] = tissue_fm_code_number
-                print('y',y, 'x', x, 'ntiss_fm', tissue_fm_code_number, unique_numbers)
 
         os.chdir(numpy_path)
         np.save(file_name, fm_array)
@@ -1519,6 +1518,9 @@ class cycif:
         new_labelled_image[np.nonzero(new_labelled_image)] = new_labelled_image[np.nonzero(new_labelled_image)] - (65535 - number_actual_clusters_retained)
 
         new_labelled_image = self.cluster_neighborhood(new_labelled_image, sorted_cluster_areas)
+        #os.chdir(r'E:\29-7-24 gutage\Tissue_Binary')
+        #filename = r'labelled_tissue_filtered.tif'
+        #new_labelled_image = io.imread(filename)
         new_labelled_image = new_labelled_image.astype('int16')
         io.imsave('labelled_tissue_filtered.tif', new_labelled_image)
 
@@ -1548,7 +1550,7 @@ class cycif:
                 tile_label_image = new_labelled_image[start_y:end_y, start_x:end_x]
                 tile_label_image = tile_label_image.astype('uint16')
 
-                #io.imsave(filename, tile_image)
+                io.imsave(filename, tile_image)
                 io.imsave(label_filename, tile_label_image)
 
         super_image = skimage.util.img_as_uint(super_image)
@@ -1620,11 +1622,14 @@ class cycif:
         sort_x_length = sorted_cluster_areas[5]
         number_clusters = np.max(image)
 
-        neighborhood_matrix = np.zeros((number_clusters,number_clusters))
+        neighborhood_matrix = np.zeros((number_clusters + 1,number_clusters + 1))
+        neighborhood_matrix[0][1:number_clusters + 1] = np.linspace(1,number_clusters, number_clusters)
+        neighborhood_matrix[1:number_clusters + 1, 0] = np.linspace(1,number_clusters, number_clusters)
         combos = list(itertools.combinations(np.linspace(1, number_clusters, number_clusters), 2))
 
         unit_y_axis_vector = [1,0]
         unique_labels = np.linspace(1, number_clusters, number_clusters)
+        new_cluster_count = number_clusters
 
         for combo in combos:
             first_cluster_index = np.where(sorted_index == int(combo[0]))[0][0]
@@ -1661,16 +1666,44 @@ class cycif:
 
             net_distance = center_center_magnitude - dist_2_edge1 - dist_2_edge2
 
-            neighborhood_matrix[int(combo[0])-1][int(combo[1])-1] = net_distance
-            neighborhood_matrix[int(combo[1])-1][int(combo[0])-1] = net_distance
+            neighborhood_matrix[int(combo[0])][int(combo[1])] = net_distance
+            neighborhood_matrix[int(combo[1])][int(combo[0])] = net_distance
 
-            if net_distance < threshold:
-                first_cluster_indicies = np.where(image == int(combo[1]))[0][0]
-                image[first_cluster_indicies] = int(combo[0])
-                unique_second_cluster_index = np.where(unique_labels == int(combo[1]))[0][0]
-                unique_labels = np.delete(unique_labels, unique_second_cluster_index)
-            else:
-                pass
+        for x in range(1, number_clusters + 1):
+            for y in range(2, number_clusters - (x - 2)):
+                net_distance = neighborhood_matrix[y][x]
+
+                if net_distance < threshold:
+
+                    cluster_reference_index = int(neighborhood_matrix[0][x])
+                    cluster_2_be_merged_index = int(neighborhood_matrix[y][0])
+                    print(cluster_2_be_merged_index, unique_labels)
+                    image[image == cluster_2_be_merged_index] = cluster_reference_index
+                    try:
+                        unique_second_cluster_index = np.where(unique_labels ==cluster_2_be_merged_index)[0][0]
+                        unique_labels = np.delete(unique_labels, unique_second_cluster_index)
+                    except:
+                        pass
+                    neighborhood_matrix[y][0] = cluster_reference_index
+                    neighborhood_matrix[0][y] = cluster_reference_index
+
+                    new_cluster_count -= 1
+
+                else:
+                    pass
+
+        #renumber clusters to be 1 int steps and continuous starting from 1
+        desired_numbers = np.linspace(1, new_cluster_count, new_cluster_count)
+        not_used_desired_numbers = np.setdiff1d(desired_numbers, unique_labels)
+        labels_to_be_replaced  = np.setdiff1d(unique_labels, desired_numbers)
+        if len(not_used_desired_numbers) > 0:
+            for x in range(0, len(not_used_desired_numbers)):
+                image[image==labels_to_be_replaced[x]] = not_used_desired_numbers[x]
+        else:
+            pass
+
+
+
 
         return image
 
@@ -1729,7 +1762,7 @@ class cycif:
 
         for x in range(0, x_tile_count):
             for y in range(0, y_tile_count):
-                if tissue_fm[y][x] == 1 or 0:
+                if tissue_fm[y][x] > 1:
                     os.chdir(dapi_im_path)
                     file_name = 'z_' + str(z_center_index) + '_x' + str(x) + '_y_' + str(y) + '_c_DAPI.tif'
                     labelled_file_name = 'x' + str(x) + '_y_' + str(y) + '_c_DAPI.tif'
@@ -1745,7 +1778,7 @@ class cycif:
                 else:
                     pass
 
-    def recursive_stardist_autofocus(self, experiment_directory, cycle, slice_gap=2, remake_nuc_binary = 1):
+    def recursive_stardist_autofocus(self, experiment_directory, cycle, slice_gap=2, remake_nuc_binary = 0):
         '''
         Finds center of dapi z stack for each tile and updates focus map to center it.
         Cycle 1 uses cycle 0 dapi z stacks. So cycle n-1 informs focus map for cycle n.
@@ -1775,10 +1808,10 @@ class cycif:
         else:
             pass
 
-        if cycle == 0:
-            self.tissue_region_identifier(experiment_directory, x_frame_size=2960, clusters_retained=1)
-        else:
-            pass
+        #if cycle == 0:
+            #self.tissue_region_identifier(experiment_directory, x_frame_size=2960, clusters_retained=1)
+        #else:
+        #    pass
 
 
         # load numpy arrays in (focus map)
@@ -1934,6 +1967,9 @@ class cycif:
 
         side_pixel_count = int((5056 - x_frame_size)/2)
 
+        if channel =='DAPI':
+            hdr = 0
+
         if hdr ==0:
 
             # load in focus map and exp array
@@ -1952,7 +1988,7 @@ class cycif:
             if channel == 'A647':
                 frame_count_index = 14
 
-            frame_count = fm_array[frame_count_index][0][0]
+            frame_count = 1
             frame_count = int(frame_count)
 
             # make array to hold images in
@@ -2054,7 +2090,7 @@ class cycif:
                     if tissue_fm[y][x] > 1:
 
                         core.set_xy_position(numpy_x[y][x], numpy_y[y][x])
-                        time.sleep(.3)
+                        time.sleep(.2)
 
                         for channel in channels:
 
@@ -2086,8 +2122,10 @@ class cycif:
                             core.snap_image()
                             core.get_tagged_image()
 
-                            z_end = int(numpy_z[y][x])
-                            z_start = int(z_end - z_slices * slice_gap)
+                            z_end = int(numpy_z[y][x]) + slice_gap
+                            z_start = int(z_end - (z_slices) * slice_gap)
+                            print(z_start, z_end, slice_gap)
+
 
                             z_counter = 0
 
@@ -2148,14 +2186,14 @@ class cycif:
                             core.snap_image()
                             core.get_tagged_image()
 
-                            z_end = int(numpy_z[y][x])
-                            z_start = int(z_end - z_slices * slice_gap)
+                            z_end = int(numpy_z[y][x]) + slice_gap
+                            z_start = int(z_end - (z_slices) * slice_gap)
                             z_counter = 0
                             #print('channel', channel, 'z_range', z_start, z_end)
 
                             for z in range(z_start, z_end, slice_gap):
                                 core.set_position(z)
-                                time.sleep(0.3)
+                                time.sleep(0.2)
 
                                 pixels = self.core_capture(experiment_directory, x_pixels, channel, hdr=hdr_value)
                                 zc_tif_stack[zc_index][z_counter] = pixels
@@ -2225,10 +2263,10 @@ class cycif:
             pass
 
 
-        self.image_cycle_acquire(0, experiment_directory, z_slices, 'Bleach', offset_array,x_frame_size=x_frame_size, establish_fm_array=1, auto_focus_run=0,auto_expose_run=0, channels=['DAPI'], focus_position=focus_position)
-        #self.image_cycle_acquire(0, experiment_directory, z_slices, 'Bleach', offset_array,x_frame_size=x_frame_size, fm_array_adjuster=0, establish_fm_array=0, auto_focus_run=1,auto_expose_run=3, focus_position=focus_position)
-        self.generate_nuc_mask(experiment_directory, cycle_number=0)
-        self.tissue_region_identifier(experiment_directory, clusters_retained=1)
+        #self.image_cycle_acquire(0, experiment_directory, z_slices, 'Bleach', offset_array,x_frame_size=x_frame_size, establish_fm_array=0, auto_focus_run=0,auto_expose_run=0, channels=['DAPI'], focus_position=focus_position)
+        self.image_cycle_acquire(0, experiment_directory, z_slices, 'Bleach', offset_array,x_frame_size=x_frame_size, fm_array_adjuster=0, establish_fm_array=0, auto_focus_run=0,auto_expose_run=3, focus_position=focus_position)
+        #self.generate_nuc_mask(experiment_directory, cycle_number=0)
+        #self.tissue_region_identifier(experiment_directory, clusters_retained=4)
 
     def full_cycle(self, experiment_directory, cycle_number, offset_array, stain_valve, fluidics_object, z_slices, incub_val=45, x_frame_size=2960, focus_position = 'none'):
 
@@ -2251,7 +2289,7 @@ class cycif:
             time.sleep(5)
             # print(status_str)
             self.image_cycle_acquire(cycle_number, experiment_directory, z_slices, 'Bleach', offset_array, x_frame_size=x_frame_size, establish_fm_array=0, auto_focus_run=0,auto_expose_run=3)
-            self.inter_cycle_processing(experiment_directory, cycle_number=cycle_number, x_frame_size=x_frame_size)
+            #self.inter_cycle_processing(experiment_directory, cycle_number=cycle_number, x_frame_size=x_frame_size)
             time.sleep(3)
 
         # self.post_acquisition_processor(experiment_directory, x_frame_size)
@@ -2636,12 +2674,14 @@ class cycif:
 
         for x in range(0, number_clusters):
             mc_micro_cluster_path = mcmicro_path +'\cluster_' + str(x) +r'\raw'
+            print(mc_micro_cluster_path)
             os.chdir(mc_micro_cluster_path)
             mcmicro_file_name = str(experiment_directory.split("\\")[-1]) + '-cycle-0' + str(cycle_number) + '.ome.tif'
             image_stack = mcmicro_stack[x][0:int(tiles_in_cluster[x])]
-            xml_metadata = self.metadata_generator_separate_clusters(experiment_directory, x_frame_size, cluster_number= x + 1)
-            tf.imwrite(mcmicro_file_name, image_stack, photometric='minisblack', description=xml_metadata)
-            #tf.imwrite(mcmicro_file_name, mcmicro_stack, photometric='minisblack')
+            print(np.shape(image_stack))
+            #xml_metadata = self.metadata_generator_separate_clusters(experiment_directory, x_frame_size, cluster_number= x + 1)
+            #tf.imwrite(mcmicro_file_name, image_stack, photometric='minisblack', description=xml_metadata)
+            tf.imwrite(mcmicro_file_name, mcmicro_stack, photometric='minisblack')
 
     def metadata_generator(self, experiment_directory, x_frame_size):
 
@@ -3199,6 +3239,7 @@ class cycif:
             '''
 
     def inter_cycle_processing(self, experiment_directory, cycle_number, x_frame_size):
+
         '''
         To reduce file size between, some processing is done between cycles. In this case: 1. find focus tiles
         2. Subtract bleached from stained
@@ -3208,8 +3249,9 @@ class cycif:
         :return:
         '''
 
-        '''
+
         start = time.time()
+
 
         #make tissue exist array if needed
         if cycle_number == 1:
@@ -3240,21 +3282,22 @@ class cycif:
         print('flatten', end - start)
 
 
+
         #compress to 16bit
-        #self.hdr_compression(experiment_directory, cycle_number, apply_2_subbed=1, apply_2_bleached=1, apply_2_focused = 1, apply_2_flattened=1)
+        #self.hdr_compression(experiment_directory, cycle_number, apply_2_subbed=1, apply_2_bleached=0, apply_2_focused = 1, apply_2_flattened=1)
 
         end = time.time()
         #print('compress', end - start)
 
         #make Mcmicro file
-        '''
+
         #self.mcmicro_image_stack_generator(cycle_number, experiment_directory, x_frame_size)
         self.mcmicro_image_stack_generator_separate_clusters(cycle_number, experiment_directory, x_frame_size)
 
         end = time.time()
         #print('mcmicro', end - start)
 
-        #generate stage placement file
+        #generate stage placement
         self.stage_placement(experiment_directory, cycle_number, x_pixels = x_frame_size)
 
         #end = time.time()
@@ -3422,7 +3465,7 @@ class cycif:
         tissue_binary_stack = np.random.rand(y_tile_count, x_tile_count, 2960, x_frame_size).astype('uint16')
         for x in range(0, x_tile_count):
             for y in range(0, y_tile_count):
-                if tissue_exist[y][x] == 1:
+                if tissue_exist[y][x] >= 1:
                     os.chdir(tissue_path)
                     file_name = 'x' + str(x) + '_y_' + str(y) + '_tissue.tif'
                     image = tf.imread(file_name)
@@ -3434,7 +3477,7 @@ class cycif:
             nuc_binary_stack = np.random.rand(y_tile_count, x_tile_count, 2960, x_frame_size).astype('uint16')
             for x in range(0, x_tile_count):
                 for y in range(0, y_tile_count):
-                    if tissue_exist[y][x] == 1:
+                    if tissue_exist[y][x] >= 1:
                         os.chdir(nuc_binary_path)
                         file_name = 'x' + str(x) + '_y_' + str(y) + '_c_DAPI.tif'
                         image = tf.imread(file_name)
@@ -3457,7 +3500,7 @@ class cycif:
             z_stack = np.random.rand(z_slice_count, 2960, x_frame_size).astype('float32')
             for x in range(0, x_tile_count):
                 for y in range(0, y_tile_count):
-                    if tissue_exist[y][x] == 1:
+                    if tissue_exist[y][x] >= 1:
                         for z in range(0, z_slice_count):
                             im_path = experiment_directory + '/' + channel + '\Stain\cy_' + str(cycle_number) + '\Tiles'
                             os.chdir(im_path)
@@ -4336,7 +4379,7 @@ class cycif:
         for x in range(0, x_tile_count):
             for y in range(0, y_tile_count):
                 os.chdir(tissue_path)
-                file_name = 'x' + str(x) + '_y_' + str(y) + '_tissue.tif'
+                file_name = 'x' + str(x) + '_y_' + str(y) + '_label_tissue.tif'
                 image = io.imread(file_name)
                 tissue_binary_stack[y][x] = image
 
@@ -4394,9 +4437,8 @@ class cycif:
 
         # determine max cluster count
         highest_number = np.max(tissue_fm)
-        print(highest_number)
+
         number_clusters = math.floor(math.log10(highest_number))
-        print('number clust', number_clusters)
 
         cluster_tile_count = np.zeros(number_clusters)
 

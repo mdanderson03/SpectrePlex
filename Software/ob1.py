@@ -165,6 +165,7 @@ class fluidics:
                 # self.fluidics_logger(str(PID_Set_Running_Remote), error, 0)
 
                 # run = 1 # restart flow function
+                self.ob1_reboot()
                 fluid_array[2] = 1
 
         else:
@@ -204,7 +205,7 @@ class fluidics:
     def ob1_reboot(self):
 
         power_strip = SmartPowerStrip('10.3.141.157')
-        time.sleep(5)
+        time.sleep(1)
         power_strip.toggle_plug('off', plug_num=4)
         time.sleep(7)
         power_strip.toggle_plug('on', plug_num=4)  # turns off socket named 'Socket1'
