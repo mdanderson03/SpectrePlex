@@ -2679,9 +2679,9 @@ class cycif:
             mcmicro_file_name = str(experiment_directory.split("\\")[-1]) + '-cycle-0' + str(cycle_number) + '.ome.tif'
             image_stack = mcmicro_stack[x][0:int(tiles_in_cluster[x])]
             print(np.shape(image_stack))
-            #xml_metadata = self.metadata_generator_separate_clusters(experiment_directory, x_frame_size, cluster_number= x + 1)
-            #tf.imwrite(mcmicro_file_name, image_stack, photometric='minisblack', description=xml_metadata)
-            tf.imwrite(mcmicro_file_name, mcmicro_stack, photometric='minisblack')
+            xml_metadata = self.metadata_generator_separate_clusters(experiment_directory, x_frame_size, cluster_number= x + 1)
+            tf.imwrite(mcmicro_file_name, image_stack, photometric='minisblack', description=xml_metadata)
+            #tf.imwrite(mcmicro_file_name, mcmicro_stack, photometric='minisblack')
 
     def metadata_generator(self, experiment_directory, x_frame_size):
 
@@ -2761,6 +2761,7 @@ class cycif:
         x_tile_count = numpy_y.shape[1]
         total_tile_count = int(self.number_tiles_each_cluster(experiment_directory)[cluster_number - 1])
         #total_tile_count = int(tissue_exist.sum())
+        print(total_tile_count)
 
         y_gap = 532
         col_col_gap = 10
@@ -2789,8 +2790,8 @@ class cycif:
                 if np.sum(boolean) > 0:
 
                     for p in range(0, 4):
-                        new_x = numpy_x[y][x] - 11000
-                        new_y = numpy_y[y][x] + 2300
+                        new_x = numpy_x[y][x]
+                        new_y = numpy_y[y][x]
                         new_ome.images[tile_counter].pixels.planes[p].position_y = deepcopy(new_y)
                         new_ome.images[tile_counter].pixels.planes[p].position_x = deepcopy(new_x)
                         new_ome.images[tile_counter].pixels.tiff_data_blocks[p].ifd = (4 * tile_counter) + p
