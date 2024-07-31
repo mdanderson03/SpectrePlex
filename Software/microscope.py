@@ -2246,7 +2246,32 @@ class cycif:
         end = time.time()
         print('acquistion time', end - start)
         # self.marker_excel_file_generation(experiment_directory, cycle_number)
-    def initialize(self, experiment_directory, offset_array, z_slices, x_frame_size=2960, focus_position = 'none'):
+    def wide_net_auto_focus(self, experiment_directory, x_frame_size, offset_array, z_slices, number_clusters_retained = 6):
+
+        numpy_path = experiment_directory + '/' + 'np_arrays'
+        os.chdir(numpy_path)
+        fm_array = np.load('fm_array.npy', allow_pickle=False)
+
+        self.image_cycle_acquire(0, experiment_directory, 9, 'Bleach', offset_array, x_frame_size=x_frame_size,establish_fm_array=1, auto_focus_run=0, auto_expose_run=0, channels=['DAPI'],focus_position=focus_position)
+        self.generate_nuc_mask(experiment_directory, cycle_number=0)
+        self.tissue_region_identifier(experiment_directory, clusters_retained=number_clusters_retained)
+        self.recursive_stardist_autofocus(experiment_directory, cycle=0)
+        self.image_cycle_acquire(0, experiment_directory, 9, 'Bleach', offset_array, x_frame_size=x_frame_size,establish_fm_array=0, auto_focus_run=0, auto_expose_run=0, channels=['DAPI'],focus_position=focus_position)
+        self.generate_nuc_mask(experiment_directory, cycle_number=0)
+        self.tissue_region_identifier(experiment_directory, clusters_retained=number_clusters_retained)
+        self.recursive_stardist_autofocus(experiment_directory, cycle=0)
+
+        fm_array[2] -= 6
+        fm_array[3] = z_slices
+        fm_array[5] = z_slices
+        fm_array[7] = z_slices
+        fm_array[9] = z_slices
+
+        os.chdir(numpy_path)
+        np.save('fm_array.npy', fm_array)
+
+
+    def initialize(self, experiment_directory, offset_array, z_slices, x_frame_size=2960, focus_position = 'none', number_clusters = 6):
         '''initialization section. Takes DAPI images, cluster filters tissue, minimally frames sampling grid, acquires all channels.
 
         :param experiment_directory:
@@ -2266,7 +2291,7 @@ class cycif:
             pass
 
 
-        #self.image_cycle_acquire(0, experiment_directory, z_slices, 'Bleach', offset_array,x_frame_size=x_frame_size, establish_fm_array=0, auto_focus_run=0,auto_expose_run=0, channels=['DAPI'], focus_position=focus_position)
+        self.wide_net_auto_focus(experiment_directory, x_frame_size, offset_array,z_slices,  number_clusters_retained=number_clusters)
         self.image_cycle_acquire(0, experiment_directory, z_slices, 'Bleach', offset_array,x_frame_size=x_frame_size, fm_array_adjuster=0, establish_fm_array=0, auto_focus_run=0,auto_expose_run=3, focus_position=focus_position)
         #self.generate_nuc_mask(experiment_directory, cycle_number=0)
         #self.tissue_region_identifier(experiment_directory, clusters_retained=4)
