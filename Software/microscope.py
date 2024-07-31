@@ -606,6 +606,7 @@ class cycif:
                                 for z in range(0, z_tiles):
                                     file_name = r'z_' +str(z) + '_x' + str(x) + '_y_' + str(y) + '_c_' + channel + '.tif'
                                     im = io.imread(file_name)
+                                    im = np.nan_to_num(im, nan=0, posinf=0)
                                     if im.dtype == 'unit16':
                                         pass
                                     else:
@@ -624,6 +625,7 @@ class cycif:
                                 for z in range(0, z_tiles):
                                     file_name = r'z_' + str(z) + '_x' + str(x) + '_y_' + str(y) + '_c_' + channel + '.tif'
                                     im = io.imread(file_name)
+                                    im = np.nan_to_num(im, nan=0, posinf=0)
                                     if im.dtype == 'unit16':
                                         pass
                                     else:
@@ -639,6 +641,7 @@ class cycif:
                             if tissue_fm[y][x] > 1:
                                 file_name = r'x' + str(x) + '_y_' + str(y) + '_c_' + channel + '.tif'
                                 im = io.imread(file_name)
+                                im = np.nan_to_num(im, nan=0, posinf=0)
                                 if im.dtype == 'unit16':
                                     pass
 
@@ -2674,12 +2677,12 @@ class cycif:
 
         for x in range(0, number_clusters):
             mc_micro_cluster_path = mcmicro_path +'\cluster_' + str(x) +r'\raw'
-            print(mc_micro_cluster_path)
             os.chdir(mc_micro_cluster_path)
             mcmicro_file_name = str(experiment_directory.split("\\")[-1]) + '-cycle-0' + str(cycle_number) + '.ome.tif'
-            image_stack = mcmicro_stack[x][0:int(tiles_in_cluster[x])]
-            print(np.shape(image_stack))
+            image_stack = mcmicro_stack[x][0:(int(tiles_in_cluster[x])*4)]
             xml_metadata = self.metadata_generator_separate_clusters(experiment_directory, x_frame_size, cluster_number= x + 1)
+            #image_stack = image_stack.astype('uint16')
+            os.chdir(mc_micro_cluster_path)
             tf.imwrite(mcmicro_file_name, image_stack, photometric='minisblack', description=xml_metadata)
             #tf.imwrite(mcmicro_file_name, mcmicro_stack, photometric='minisblack')
 
@@ -2780,6 +2783,7 @@ class cycif:
             tile_metadata = deepcopy(ome)
             new_ome.images.append(tile_metadata)
 
+
         # sub in stage positional information into each tile. numpy[y][x]
         tile_counter = 0
         for x in range(0, x_tile_count):
@@ -2799,6 +2803,7 @@ class cycif:
 
                 else:
                     pass
+
 
         xml = to_xml(new_ome)
 
@@ -3251,7 +3256,10 @@ class cycif:
         '''
 
 
+
         start = time.time()
+
+
 
 
         #make tissue exist array if needed
@@ -3276,6 +3284,7 @@ class cycif:
         end = time.time()
         print('sub background', end - start)
 
+
         #flatten image
         self.illumination_flattening(experiment_directory, cycle_number, rolling_ball=0)
 
@@ -3284,13 +3293,15 @@ class cycif:
 
 
 
+
         #compress to 16bit
-        #self.hdr_compression(experiment_directory, cycle_number, apply_2_subbed=1, apply_2_bleached=0, apply_2_focused = 1, apply_2_flattened=1)
+        self.hdr_compression(experiment_directory, cycle_number, apply_2_subbed=1, apply_2_bleached=0, apply_2_focused = 1, apply_2_flattened=1)
 
         end = time.time()
         #print('compress', end - start)
 
         #make Mcmicro file
+
 
         #self.mcmicro_image_stack_generator(cycle_number, experiment_directory, x_frame_size)
         self.mcmicro_image_stack_generator_separate_clusters(cycle_number, experiment_directory, x_frame_size)
@@ -3299,7 +3310,8 @@ class cycif:
         #print('mcmicro', end - start)
 
         #generate stage placement
-        self.stage_placement(experiment_directory, cycle_number, x_pixels = x_frame_size)
+
+        #self.stage_placement(experiment_directory, cycle_number, x_pixels = x_frame_size)
 
         #end = time.time()
         #print('stage placement', end - start)
