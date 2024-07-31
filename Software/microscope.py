@@ -2786,6 +2786,7 @@ class cycif:
             for y in range(0, y_tile_count):
 
                 clusters_in_tile = self.tissue_fm_decode(tissue_fm[y][x])
+                
                 boolean = np.isin(clusters_in_tile, cluster_number, assume_unique=True)
                 if np.sum(boolean) > 0:
 
