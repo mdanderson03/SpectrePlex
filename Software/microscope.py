@@ -562,7 +562,7 @@ class cycif:
                             channel_col_index = 5
 
                         row = cycle_number + 4
-                        highest_intensity = ws.cell(row=row, column=channel_col_index).value = highest_intensity
+                        highest_intensity = ws.cell(row=row, column=channel_col_index).value
 
                     if apply_2_flattened == 1:
                         if channel == 'DAPI':
@@ -593,7 +593,12 @@ class cycif:
                         channel_col_index = 4
                     if channel == 'A647':
                         channel_col_index = 5
+
+
+
                     ws.cell(row=row, column=channel_col_index).value = highest_intensity
+
+
                     os.chdir(exp_path)
                     wb.save('HDR_Exp.xlsx')
                     #highest_intensity = ws.cell(row=row, column=channel_col_index).value
@@ -610,6 +615,7 @@ class cycif:
                                     if im.dtype == 'unit16':
                                         pass
                                     else:
+                                        print('stain', np.max(im), highest_intensity)
                                         im = im/highest_intensity
                                         im = skimage.util.img_as_uint(im)
                                         io.imsave(file_name, im)
@@ -629,6 +635,7 @@ class cycif:
                                     if im.dtype == 'unit16':
                                         pass
                                     else:
+                                        print('bleach', np.max(im), highest_intensity)
                                         im = im / highest_intensity
                                         im = skimage.util.img_as_uint(im)
                                         #tf.imwrite(file_name,im, compression='zlib')
@@ -641,6 +648,7 @@ class cycif:
                             if tissue_fm[y][x] > 1:
                                 file_name = r'x' + str(x) + '_y_' + str(y) + '_c_' + channel + '.tif'
                                 im = io.imread(file_name)
+                                print(type, channel, 'x', x, 'y', y, np.max(im), highest_intensity)
                                 im = np.nan_to_num(im, nan=0, posinf=0)
                                 if im.dtype == 'unit16':
                                     pass
@@ -3258,6 +3266,7 @@ class cycif:
 
 
         start = time.time()
+        '''
 
 
 
@@ -3290,6 +3299,8 @@ class cycif:
 
         end = time.time()
         print('flatten', end - start)
+        
+        '''
 
 
 
