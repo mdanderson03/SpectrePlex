@@ -1528,12 +1528,12 @@ class cycif:
         new_labelled_image[new_labelled_image < (65535 - number_actual_clusters_retained -1)] = 0
         new_labelled_image[np.nonzero(new_labelled_image)] = new_labelled_image[np.nonzero(new_labelled_image)] - (65535 - number_actual_clusters_retained)
 
-        new_labelled_image = self.cluster_neighborhood(new_labelled_image, sorted_cluster_areas)
-        #os.chdir(r'E:\29-7-24 gutage\Tissue_Binary')
-        #filename = r'labelled_tissue_filtered.tif'
-        #new_labelled_image = io.imread(filename)
+        #new_labelled_image = self.cluster_neighborhood(new_labelled_image, sorted_cluster_areas)
+        os.chdir(r'E:\1-8-24 gutage\Tissue_Binary')
+        filename = r'labelled_tissue_filtered.tif'
+        new_labelled_image = io.imread(filename)
         new_labelled_image = new_labelled_image.astype('int16')
-        io.imsave('labelled_tissue_filtered.tif', new_labelled_image)
+        #io.imsave('labelled_tissue_filtered.tif', new_labelled_image)
 
     
         #make new binary image
@@ -2254,20 +2254,22 @@ class cycif:
         end = time.time()
         print('acquistion time', end - start)
         # self.marker_excel_file_generation(experiment_directory, cycle_number)
-    def wide_net_auto_focus(self, experiment_directory, x_frame_size, offset_array, z_slices, number_clusters_retained = 6):
+    def wide_net_auto_focus(self, experiment_directory, x_frame_size, offset_array, z_slices, focus_position, number_clusters_retained = 6):
+
+
+
+        #self.image_cycle_acquire(0, experiment_directory, 9, 'Bleach', offset_array, x_frame_size=x_frame_size,establish_fm_array=1, auto_focus_run=0, auto_expose_run=0, channels=['DAPI'],focus_position=focus_position)
+        self.generate_nuc_mask(experiment_directory, cycle_number=0)
+        self.tissue_region_identifier(experiment_directory, clusters_retained=number_clusters_retained)
+        self.recursive_stardist_autofocus(experiment_directory, cycle=0)
+        #self.image_cycle_acquire(0, experiment_directory, 9, 'Bleach', offset_array, x_frame_size=x_frame_size,establish_fm_array=0, auto_focus_run=0, auto_expose_run=0, channels=['DAPI'],focus_position=focus_position)
+        #self.generate_nuc_mask(experiment_directory, cycle_number=0)
+        #self.tissue_region_identifier(experiment_directory, clusters_retained=number_clusters_retained)
+        #self.recursive_stardist_autofocus(experiment_directory, cycle=0)
 
         numpy_path = experiment_directory + '/' + 'np_arrays'
         os.chdir(numpy_path)
         fm_array = np.load('fm_array.npy', allow_pickle=False)
-
-        self.image_cycle_acquire(0, experiment_directory, 9, 'Bleach', offset_array, x_frame_size=x_frame_size,establish_fm_array=1, auto_focus_run=0, auto_expose_run=0, channels=['DAPI'],focus_position=focus_position)
-        self.generate_nuc_mask(experiment_directory, cycle_number=0)
-        self.tissue_region_identifier(experiment_directory, clusters_retained=number_clusters_retained)
-        self.recursive_stardist_autofocus(experiment_directory, cycle=0)
-        self.image_cycle_acquire(0, experiment_directory, 9, 'Bleach', offset_array, x_frame_size=x_frame_size,establish_fm_array=0, auto_focus_run=0, auto_expose_run=0, channels=['DAPI'],focus_position=focus_position)
-        self.generate_nuc_mask(experiment_directory, cycle_number=0)
-        self.tissue_region_identifier(experiment_directory, clusters_retained=number_clusters_retained)
-        self.recursive_stardist_autofocus(experiment_directory, cycle=0)
 
         fm_array[2] -= 6
         fm_array[3] = z_slices
@@ -2298,8 +2300,8 @@ class cycif:
         except:
             pass
 
-
-        self.wide_net_auto_focus(experiment_directory, x_frame_size, offset_array,z_slices,  number_clusters_retained=number_clusters)
+        #self.image_cycle_acquire(0, experiment_directory, 1, 'Bleach', offset_array, x_frame_size=x_frame_size,establish_fm_array=1, auto_focus_run=0, auto_expose_run=0, channels=['DAPI'],focus_position=focus_position)
+        #self.wide_net_auto_focus(experiment_directory, x_frame_size, offset_array,z_slices, focus_position, number_clusters_retained=number_clusters)
         self.image_cycle_acquire(0, experiment_directory, z_slices, 'Bleach', offset_array,x_frame_size=x_frame_size, fm_array_adjuster=0, establish_fm_array=0, auto_focus_run=0,auto_expose_run=3, focus_position=focus_position)
         #self.generate_nuc_mask(experiment_directory, cycle_number=0)
         #self.tissue_region_identifier(experiment_directory, clusters_retained=4)
@@ -3292,7 +3294,6 @@ class cycif:
 
 
         start = time.time()
-        '''
 
 
 
@@ -3326,13 +3327,13 @@ class cycif:
         end = time.time()
         print('flatten', end - start)
         
-        '''
+
 
 
 
 
         #compress to 16bit
-        self.hdr_compression(experiment_directory, cycle_number, apply_2_subbed=1, apply_2_bleached=0, apply_2_focused = 1, apply_2_flattened=1)
+        #self.hdr_compression(experiment_directory, cycle_number, apply_2_subbed=1, apply_2_bleached=0, apply_2_focused = 1, apply_2_flattened=1)
 
         end = time.time()
         #print('compress', end - start)
@@ -3340,7 +3341,7 @@ class cycif:
         #make Mcmicro file
 
 
-        #self.mcmicro_image_stack_generator(cycle_number, experiment_directory, x_frame_size)
+        #self.mcmicro_image_stack_generator(cycle_number, experiment_directory, x_fram
         self.mcmicro_image_stack_generator_separate_clusters(cycle_number, experiment_directory, x_frame_size)
 
         end = time.time()
