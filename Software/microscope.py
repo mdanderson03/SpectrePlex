@@ -1529,11 +1529,11 @@ class cycif:
         new_labelled_image[np.nonzero(new_labelled_image)] = new_labelled_image[np.nonzero(new_labelled_image)] - (65535 - number_actual_clusters_retained)
 
         #new_labelled_image = self.cluster_neighborhood(new_labelled_image, sorted_cluster_areas)
-        os.chdir(r'E:\1-8-24 gutage\Tissue_Binary')
+        os.chdir(r'E:\7-8-24 gutage\Tissue_Binary')
         filename = r'labelled_tissue_filtered.tif'
         new_labelled_image = io.imread(filename)
         new_labelled_image = new_labelled_image.astype('int16')
-        #io.imsave('labelled_tissue_filtered.tif', new_labelled_image)
+        io.imsave('labelled_tissue_filtered.tif', new_labelled_image)
 
     
         #make new binary image
@@ -2258,20 +2258,21 @@ class cycif:
 
 
 
-        #self.image_cycle_acquire(0, experiment_directory, 9, 'Bleach', offset_array, x_frame_size=x_frame_size,establish_fm_array=1, auto_focus_run=0, auto_expose_run=0, channels=['DAPI'],focus_position=focus_position)
-        self.generate_nuc_mask(experiment_directory, cycle_number=0)
-        self.tissue_region_identifier(experiment_directory, clusters_retained=number_clusters_retained)
-        self.recursive_stardist_autofocus(experiment_directory, cycle=0)
+        #self.image_cycle_acquire(0, experiment_directory, 7, 'Bleach', offset_array, x_frame_size=x_frame_size,establish_fm_array=0, auto_focus_run=0, auto_expose_run=0, channels=['DAPI'],focus_position=focus_position)
+        #self.generate_nuc_mask(experiment_directory, cycle_number=0)
+        #self.tissue_region_identifier(experiment_directory, clusters_retained=number_clusters_retained)
+        #self.recursive_stardist_autofocus(experiment_directory, cycle=0)
         #self.image_cycle_acquire(0, experiment_directory, 9, 'Bleach', offset_array, x_frame_size=x_frame_size,establish_fm_array=0, auto_focus_run=0, auto_expose_run=0, channels=['DAPI'],focus_position=focus_position)
         #self.generate_nuc_mask(experiment_directory, cycle_number=0)
         #self.tissue_region_identifier(experiment_directory, clusters_retained=number_clusters_retained)
         #self.recursive_stardist_autofocus(experiment_directory, cycle=0)
 
+
         numpy_path = experiment_directory + '/' + 'np_arrays'
         os.chdir(numpy_path)
         fm_array = np.load('fm_array.npy', allow_pickle=False)
 
-        fm_array[2] -= 6
+        fm_array[2] -= 4
         fm_array[3] = z_slices
         fm_array[5] = z_slices
         fm_array[7] = z_slices
@@ -2279,6 +2280,7 @@ class cycif:
 
         os.chdir(numpy_path)
         np.save('fm_array.npy', fm_array)
+
 
 
     def initialize(self, experiment_directory, offset_array, z_slices, x_frame_size=2960, focus_position = 'none', number_clusters = 6):
@@ -2631,7 +2633,7 @@ class cycif:
         most_tiles_in_cluster = np.max(tiles_in_cluster)
         most_tiles_in_cluster = int(most_tiles_in_cluster)
 
-        mcmicro_stack = np.zeros((number_clusters, (most_tiles_in_cluster) * 4, 2960, x_frame_size)).astype('uint16')
+        mcmicro_stack = np.zeros((number_clusters, (most_tiles_in_cluster) * 4, 2960, x_frame_size)).astype('uint32')
 
         # create sub folders in mcmicro folder
         os.chdir(mcmicro_path)
@@ -2671,8 +2673,8 @@ class cycif:
                         except:
                             image = cv2.imread(dapi_file_name)[::, ::, 0]
 
-                        image[image > 65500] = 65500
-                        image = np.nan_to_num(image, posinf=65500)
+                        #image[image > 65500] = 65500
+                        image = np.nan_to_num(image, posinf=0)
                         mcmicro_stack[cluster - 1][base_count_number_stack + 0] = image
 
                         os.chdir(a488_im_path)
@@ -2681,8 +2683,8 @@ class cycif:
                         except:
                             image = cv2.imread(a488_file_name)[::, ::, 0]
 
-                        image[image > 65500] = 65500
-                        image = np.nan_to_num(image, posinf=65500)
+                        #image[image > 65500] = 65500
+                        image = np.nan_to_num(image, posinf=0)
                         mcmicro_stack[cluster - 1][base_count_number_stack + 1] = image
 
                         os.chdir(a555_im_path)
@@ -2691,8 +2693,8 @@ class cycif:
                         except:
                             image = cv2.imread(a555_file_name)[::, ::, 0]
 
-                        image[image > 65500] = 65500
-                        image = np.nan_to_num(image, posinf=65500)
+                        #image[image > 65500] = 65500
+                        image = np.nan_to_num(image, posinf=0)
                         mcmicro_stack[cluster - 1][base_count_number_stack + 2] = image
 
                         os.chdir(a647_im_path)
@@ -2701,8 +2703,8 @@ class cycif:
                         except:
                             image = cv2.imread(a647_file_name)[::, ::, 0]
 
-                        image[image > 65500] = 65500
-                        image = np.nan_to_num(image, posinf=65500)
+                        #image[image > 65500] = 65500
+                        image = np.nan_to_num(image, posinf=0)
                         mcmicro_stack[cluster - 1][base_count_number_stack + 3] = image
 
                         tile[cluster - 1] += 1
@@ -2932,7 +2934,7 @@ class cycif:
         os.chdir(star_dist_path)
         tf.imwrite('star_dist_placed.tif', placed_image)
 
-    def stage_placement(self, experiment_directory, cycle_number, x_pixels):
+    def stage_placement(self, experiment_directory, cycle_number, x_pixels, down_sample_factor = 1):
         '''
         Goal to place images via rough stage coords in a larger image. WIll have nonsense borders
         '''
@@ -2960,7 +2962,6 @@ class cycif:
 
         super_y = int(1.02 * (y_tile_count * fov_y_pixels))
         super_x = int(1.02 * (x_tile_count * fov_x_pixels))
-        placed_image = np.random.rand(super_y, super_x).astype('float32')
 
         # transform numpy x and y coords into new shifted space that starts at zero and is in units of pixels and not um
         numpy_x_pixels = numpy_x / um_pixel
@@ -3000,10 +3001,14 @@ class cycif:
 
                 # place images into large array
 
+                placed_image = np.random.rand(super_y, super_x).astype('float32')
                 for x in range(0, x_tile_count):
                     for y in range(0, y_tile_count):
 
+
+
                         if tissue_exist[y][x] == 1:
+
                             filename = 'x' + str(x) + '_y_' + str(y) + '_c_' + channel + '.tif'
                             try:
                                 image = io.imread(filename)
@@ -3035,6 +3040,10 @@ class cycif:
 
                         else:
                             pass
+
+                #down sample
+
+                placed_image = placed_image[::down_sample_factor, ::down_sample_factor]
 
                 # save output image
                 os.chdir(quick_tile_path + '/' + channel)
@@ -3088,8 +3097,8 @@ class cycif:
 
             else:
                 if rolling_ball != 1:
-                    stain_directory = directory_start + channel_name + '\Stain\cy_' + str(cycle_number) + r'\Tiles\focused_subbed'
-                    training_directory = directory_start + channel_name + '\Stain\cy_' + str(cycle_number) + r'\Tiles\focused_subbed'
+                    stain_directory = directory_start + channel_name + '\Stain\cy_' + str(cycle_number) + r'\Tiles\focused'
+                    training_directory = directory_start + channel_name + '\Stain\cy_' + str(cycle_number) + r'\Tiles\focused'
                     stain_output_directory = directory_start + channel_name + '\Stain\cy_' + str(cycle_number) + r'\Tiles\focused_subbed_basic_corrected'
 
                 if rolling_ball == 1:
@@ -3294,6 +3303,8 @@ class cycif:
 
 
         start = time.time()
+        '''
+
 
 
 
@@ -3315,10 +3326,11 @@ class cycif:
         print('focus', end - start)
 
         #subtract background
-        self.background_sub(experiment_directory, cycle_number, rolling_ball=0)
+        #self.background_sub(experiment_directory, cycle_number, rolling_ball=0)
 
         end = time.time()
         print('sub background', end - start)
+
 
 
         #flatten image
@@ -3339,6 +3351,7 @@ class cycif:
         #print('compress', end - start)
 
         #make Mcmicro file
+        '''
 
 
         #self.mcmicro_image_stack_generator(cycle_number, experiment_directory, x_fram
@@ -3349,7 +3362,8 @@ class cycif:
 
         #generate stage placement
 
-        #self.stage_placement(experiment_directory, cycle_number, x_pixels = x_frame_size)
+
+        #self.stage_placement(experiment_directory, cycle_number, x_pixels = x_frame_size, down_sample_factor=4)
 
         #end = time.time()
         #print('stage placement', end - start)
