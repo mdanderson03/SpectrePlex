@@ -18,7 +18,7 @@ power_strip = SmartPowerStrip('10.3.141.157')
 power_strip.toggle_plug('on', plug_num=2)
 #run actions
 pump.flow('ON')
-time.sleep(150)
+time.sleep(200)
 pump.flow('OFF')
 
 #turn off upper fluid filter pump

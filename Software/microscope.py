@@ -3303,7 +3303,8 @@ class cycif:
 
 
         start = time.time()
-        '''
+
+
 
 
 
@@ -3324,12 +3325,14 @@ class cycif:
 
         end = time.time()
         print('focus', end - start)
+        
 
         #subtract background
-        #self.background_sub(experiment_directory, cycle_number, rolling_ball=0)
+        self.background_sub(experiment_directory, cycle_number, rolling_ball=0)
 
         end = time.time()
         print('sub background', end - start)
+
 
 
 
@@ -3351,11 +3354,11 @@ class cycif:
         #print('compress', end - start)
 
         #make Mcmicro file
-        '''
+
 
 
         #self.mcmicro_image_stack_generator(cycle_number, experiment_directory, x_fram
-        self.mcmicro_image_stack_generator_separate_clusters(cycle_number, experiment_directory, x_frame_size)
+        #self.mcmicro_image_stack_generator_separate_clusters(cycle_number, experiment_directory, x_frame_size)
 
         end = time.time()
         #print('mcmicro', end - start)
@@ -3363,7 +3366,7 @@ class cycif:
         #generate stage placement
 
 
-        #self.stage_placement(experiment_directory, cycle_number, x_pixels = x_frame_size, down_sample_factor=4)
+        self.stage_placement(experiment_directory, cycle_number, x_pixels = x_frame_size, down_sample_factor=4)
 
         #end = time.time()
         #print('stage placement', end - start)

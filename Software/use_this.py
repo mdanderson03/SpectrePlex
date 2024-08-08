@@ -11,21 +11,22 @@ core = Core()
 z_slices = 3
 x_frame_size = 2960
 offset_array = [0, -7, -7, -6]
-focus_position = 15
+focus_position = 159
 
+#pump.liquid_action('Bleach')
 #pump.liquid_action('Wash')
-#microscope.image_cycle_acquire(5, experiment_directory, z_slices, 'Stain', offset_array,x_frame_size=x_frame_size, auto_focus_run=0, auto_expose_run=3)
+microscope.image_cycle_acquire(1, experiment_directory, z_slices, 'Bleach', offset_array,x_frame_size=x_frame_size, auto_focus_run=0, auto_expose_run=3)
 #pump.liquid_action('Bleach')
 #microscope.image_cycle_acquire(5, experiment_directory, z_slices, 'Bleach', offset_array,x_frame_size=x_frame_size, auto_focus_run=0, auto_expose_run=3)
-for cycle in range(0, 1):
+for cycle in range(2, 11):
     #microscope.inter_cycle_processing(experiment_directory, cycle_number=cycle, x_frame_size=x_frame_size)
     microscope.full_cycle(experiment_directory, cycle, offset_array, cycle, pump, z_slices, focus_position=focus_position)
 #microscope.image_cycle_acquire(1, experiment_directory, z_slices, 'Stain', offset_array,x_frame_size=x_frame_size, auto_focus_run=0, auto_expose_run=3)
 #microscope.image_cycle_acquire(0, experiment_directory, z_slices, 'Bleach', offset_array,x_frame_size=x_frame_size, auto_focus_run=0, auto_expose_run=3)
 #microscope.post_acquisition_processor(experiment_directory, x_frame_size, rolling_ball=0)
 #microscope.brightness_uniformer(experiment_directory, cycle_number=1)
-#for cycle in range(1, 8) :
-#    microscope.inter_cycle_processing(experiment_directory, cycle_number=cycle, x_frame_size=x_frame_size)
+for cycle in range(2, 11) :
+    microscope.inter_cycle_processing(experiment_directory, cycle_number=cycle, x_frame_size=x_frame_size)
 #microscope.tissue_region_identifier(experiment_directory, x_frame_size=x_frame_size, clusters_retained=6)
 
 #microscope.recursive_stardist_autofocus(experiment_directory, 0,remake_nuc_binary=0)
