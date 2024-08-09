@@ -3151,8 +3151,8 @@ class cycif:
 
             else:
                 if rolling_ball != 1:
-                    stain_directory = directory_start + channel_name + '\Stain\cy_' + str(cycle_number) + r'\Tiles\focused'
-                    training_directory = directory_start + channel_name + '\Stain\cy_' + str(cycle_number) + r'\Tiles\focused'
+                    stain_directory = directory_start + channel_name + '\Stain\cy_' + str(cycle_number) + r'\Tiles\focused_subbed'
+                    training_directory = directory_start + channel_name + '\Stain\cy_' + str(cycle_number) + r'\Tiles\focused_subbed'
                     stain_output_directory = directory_start + channel_name + '\Stain\cy_' + str(cycle_number) + r'\Tiles\focused_subbed_basic_corrected'
 
                 if rolling_ball == 1:
@@ -3357,6 +3357,7 @@ class cycif:
 
 
         start = time.time()
+        '''
 
 
 
@@ -3379,6 +3380,7 @@ class cycif:
 
         end = time.time()
         print('focus', end - start)
+        '''
         
 
         #subtract background
@@ -3863,7 +3865,7 @@ class cycif:
 
                             # sub background color channels
                             #bleach_color_path = experiment_directory + channel + r'/Bleach/cy_' + str(cycle) + '\Tiles/focused_basic_corrected'
-                            bleach_color_path = experiment_directory + channel + r'/Bleach/cy_' + str(cycle - 1) + '\Tiles/focused'
+                            bleach_color_path = experiment_directory + channel + r'/Bleach/cy_' + str(cycle) + '\Tiles/focused'
                             os.chdir(bleach_color_path)
                             color_bleach = io.imread(filename)
                             color_bleach_factor = color_bleach
