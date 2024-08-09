@@ -497,28 +497,55 @@ class cycif:
         row_number = cycle_number + 1
 
 
+
         for channel in channels:
+            low_value = 1000000 #its set higher than it ever will be after adjustments per tile
             high_col = (np.where(channels == channel)[0] + 1) * 2
             print(channel, high_col)
             low_col = high_col + 1
             tile_directory = experiment_directory + '//' + str(channel) + r'\Stain\cy_' + str(cycle_number) + r'\Tiles\focused_subbed_basic_corrected'
             os.chdir(tile_directory)
+            #determine low value
             for x in range(0, x_tile_count):
                 for y in range(0, y_tile_count):
                     if tissue_fm[y][x] > 2:
 
                         tile_filename = 'x' + str(x) + '_y_' + str(y) + '_c_' + str(channel) + '.tif'
                         im = io.imread(tile_filename)
-                        low_value = ws.cell(row=row_number, column=low_col).value
+                        tile_low_value = np.min(im)
+                        if tile_low_value < low_value:
+                            low_value = tile_low_value
+                        else:
+                            pass
+
+                    else:
+                        pass
+
+            for x in range(0, x_tile_count):
+                for y in range(0, y_tile_count):
+                    if tissue_fm[y][x] > 2:
+
                         high_value = ws.cell(row=row_number, column=high_col).value
+                        ws.cell(row=row_number, column=low_col).value = low_value
+
+                        #no reason for range to be under 16bit range ever so make adjustment if it is lower
+                        if (high_value - low_value) < 65500:
+                            high_value = low_value + 65500
+                            ws.cell(row=row_number, column=high_col).value =  high_value
+                        else:
+                            pass
+
                         im -= low_value
                         high_value -= low_value
                         im/high_value
                         im[im > 1] = 1
                         im = skimage.util.img_as_uint(im)
                         io.imsave(tile_filename, im)
+
                     else:
                         pass
+
+        wb.save('compression.xlsx')
 
 
 
