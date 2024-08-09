@@ -470,6 +470,60 @@ class cycif:
 
         self.hdr_exp_times = hdr_exp_list
 
+    def hdr_manual_compression(self, experiment_directory, cycle_number):
+        '''
+        Read off cycle and channel highest scaling numbers from excel sheet and apply to flattened, subbed images
+        and scale them from 32bit to 16bit. Lowest bound is lowest pixel value
+        :param experiment_directory:
+        :return:
+        '''
+
+        compression_directory = experiment_directory + r'/compression'
+        os.chdir(compression_directory)
+        wb.load('compression.xlsx')
+        ws = wb.active()
+
+        # load in data structures
+        numpy_path = experiment_directory + '/' + 'np_arrays'
+        os.chdir(numpy_path)
+        file_name = 'fm_array.npy'
+        fm_array = np.load(file_name, allow_pickle=False)
+        tissue_fm = fm_array[10]
+        x_tile_count = np.shape(tissue_fm)[1]
+        y_tile_count = np.shape(tissue_fm)[0]
+
+        channels = ['A488', 'A555', 'A647']
+
+        row_number = cycle_number + 1
+
+
+        for channel in channels:
+            high_col = (np.where(channels == channel)[0] + 1) * 2
+            print(channel, high_col)
+            low_col = high_col + 1
+            tile_directory = experiment_directory + '//' + str(channel) + r'\Stain\cy_' + str(cycle_number) + r'\Tiles\focused_subbed_basic_corrected'
+            os.chdir(tile_directory)
+            for x in range(0, x_tile_count):
+                for y in range(0, y_tile_count):
+                    if tissue_fm[y][x] > 2:
+
+                        tile_filename = 'x' + str(x) + '_y_' + str(y) + '_c_' + str(channel) + '.tif'
+                        im = io.imread(tile_filename)
+                        low_value = ws.cell(row=row_number, column=low_col).value
+                        high_value = ws.cell(row=row_number, column=high_col).value
+                        im -= low_value
+                        high_value -= low_value
+                        im/high_value
+                        im[im > 1] = 1
+                        im = skimage.util.img_as_uint(im)
+                        io.imsave(tile_filename, im)
+                    else:
+                        pass
+
+
+
+
+
     def hdr_compression(self, experiment_directory, cycle_number, apply_2_subbed = 1, apply_2_bleached = 1, apply_2_focused = 1, apply_2_flattened = 1,  channels = ['DAPI', 'A488','A555', 'A647']):
         '''
         Looks through all tiles and compresses 32bit images into 16 bit based on 2^16 = highest pixel in any tile.
