@@ -193,7 +193,7 @@ class cycif:
         x_tiles = np.shape(fm_array[0])[1]
 
         exp_calc_array = np.random.rand(4, 3, y_tiles, x_tiles)
-        exp_array = [50, 50, 50, 50]
+        exp_array = [10, 50, 50, 50]
         exp_calc_array[::, 0, ::, ::] = 100
 
         file_name = 'exp_calc_array.npy'
@@ -480,8 +480,8 @@ class cycif:
 
         compression_directory = experiment_directory + r'/compression'
         os.chdir(compression_directory)
-        wb.load('compression.xlsx')
-        ws = wb.active()
+        wb = load_workbook('compression.xlsx')
+        ws = wb.active
 
         # load in data structures
         numpy_path = experiment_directory + '/' + 'np_arrays'
@@ -492,18 +492,19 @@ class cycif:
         x_tile_count = np.shape(tissue_fm)[1]
         y_tile_count = np.shape(tissue_fm)[0]
 
-        channels = ['A488', 'A555', 'A647']
+        channels = np.array(['A488', 'A555', 'A647'])
 
-        row_number = cycle_number + 1
+        row_number = int(cycle_number + 1)
 
 
 
         for channel in channels:
             low_value = 1000000 #its set higher than it ever will be after adjustments per tile
-            high_col = (np.where(channels == channel)[0] + 1) * 2
+            high_col = (np.where(channels == channel)[0][0] + 1) * 2
             print(channel, high_col)
             low_col = high_col + 1
             tile_directory = experiment_directory + '//' + str(channel) + r'\Stain\cy_' + str(cycle_number) + r'\Tiles\focused_subbed_basic_corrected'
+            print(tile_directory)
             os.chdir(tile_directory)
             #determine low value
             for x in range(0, x_tile_count):
@@ -512,7 +513,11 @@ class cycif:
 
                         tile_filename = 'x' + str(x) + '_y_' + str(y) + '_c_' + str(channel) + '.tif'
                         im = io.imread(tile_filename)
-                        tile_low_value = np.min(im)
+                        tile_low_value = np.min(im).astype('float32')
+                        if tile_low_value < 0:
+                            tile_low_value = 0
+                        else:
+                            pass
                         if tile_low_value < low_value:
                             low_value = tile_low_value
                         else:
@@ -535,9 +540,16 @@ class cycif:
                         else:
                             pass
 
+                        tile_filename = 'x' + str(x) + '_y_' + str(y) + '_c_' + str(channel) + '.tif'
+                        im = io.imread(tile_filename)
+
+                        im[im < 0] = 0
+                        im = im.astype('float32')
                         im -= low_value
+
                         high_value -= low_value
-                        im/high_value
+                        im[im < 0] = 0
+                        im  = im/high_value
                         im[im > 1] = 1
                         im = skimage.util.img_as_uint(im)
                         io.imsave(tile_filename, im)
@@ -545,10 +557,8 @@ class cycif:
                     else:
                         pass
 
+        os.chdir(compression_directory)
         wb.save('compression.xlsx')
-
-
-
 
 
     def hdr_compression(self, experiment_directory, cycle_number, apply_2_subbed = 1, apply_2_bleached = 1, apply_2_focused = 1, apply_2_flattened = 1,  channels = ['DAPI', 'A488','A555', 'A647']):
@@ -1610,10 +1620,10 @@ class cycif:
         new_labelled_image[np.nonzero(new_labelled_image)] = new_labelled_image[np.nonzero(new_labelled_image)] - (65535 - number_actual_clusters_retained)
 
         #new_labelled_image = self.cluster_neighborhood(new_labelled_image, sorted_cluster_areas)
-        os.chdir(r'E:\7-8-24 gutage\Tissue_Binary')
+        os.chdir(r'E:\20-8-24 gutage\Tissue_Binary')
         filename = r'labelled_tissue_filtered.tif'
         new_labelled_image = io.imread(filename)
-        new_labelled_image = new_labelled_image.astype('int16')
+        #new_labelled_image = new_labelled_image.astype('int16')
         io.imsave('labelled_tissue_filtered.tif', new_labelled_image)
 
     
@@ -2339,21 +2349,27 @@ class cycif:
 
 
 
-        #self.image_cycle_acquire(0, experiment_directory, 7, 'Bleach', offset_array, x_frame_size=x_frame_size,establish_fm_array=0, auto_focus_run=0, auto_expose_run=0, channels=['DAPI'],focus_position=focus_position)
+        #self.image_cycle_acquire(0, experiment_directory, 9, 'Bleach', offset_array, x_frame_size=x_frame_size,establish_fm_array=1, auto_focus_run=0, auto_expose_run=0, channels=['DAPI'],focus_position=focus_position)
         #self.generate_nuc_mask(experiment_directory, cycle_number=0)
         #self.tissue_region_identifier(experiment_directory, clusters_retained=number_clusters_retained)
         #self.recursive_stardist_autofocus(experiment_directory, cycle=0)
         #self.image_cycle_acquire(0, experiment_directory, 9, 'Bleach', offset_array, x_frame_size=x_frame_size,establish_fm_array=0, auto_focus_run=0, auto_expose_run=0, channels=['DAPI'],focus_position=focus_position)
         #self.generate_nuc_mask(experiment_directory, cycle_number=0)
+        #self.recursive_stardist_autofocus(experiment_directory, cycle=0)
         #self.tissue_region_identifier(experiment_directory, clusters_retained=number_clusters_retained)
         #self.recursive_stardist_autofocus(experiment_directory, cycle=0)
 
 
+
+
+
+        
         numpy_path = experiment_directory + '/' + 'np_arrays'
         os.chdir(numpy_path)
         fm_array = np.load('fm_array.npy', allow_pickle=False)
 
-        fm_array[2] -= 4
+
+        fm_array[2] -= 6
         fm_array[3] = z_slices
         fm_array[5] = z_slices
         fm_array[7] = z_slices
@@ -2361,6 +2377,9 @@ class cycif:
 
         os.chdir(numpy_path)
         np.save('fm_array.npy', fm_array)
+
+
+
 
 
 
@@ -2383,8 +2402,12 @@ class cycif:
         except:
             pass
 
-        #self.image_cycle_acquire(0, experiment_directory, 1, 'Bleach', offset_array, x_frame_size=x_frame_size,establish_fm_array=1, auto_focus_run=0, auto_expose_run=0, channels=['DAPI'],focus_position=focus_position)
-        #self.wide_net_auto_focus(experiment_directory, x_frame_size, offset_array,z_slices, focus_position, number_clusters_retained=number_clusters)
+        self.wide_net_auto_focus(experiment_directory, x_frame_size, offset_array,z_slices, focus_position, number_clusters_retained=number_clusters)
+        #self.image_cycle_acquire(0, experiment_directory, 3, 'Bleach', offset_array, x_frame_size=x_frame_size,establish_fm_array=0, auto_focus_run=0, auto_expose_run=0, channels=['DAPI'],focus_position=focus_position)
+        #self.recursive_stardist_autofocus(experiment_directory, cycle=0)
+        #self.image_cycle_acquire(0, experiment_directory, 3, 'Bleach', offset_array, x_frame_size=x_frame_size,establish_fm_array=0, auto_focus_run=0, auto_expose_run=0, channels=['DAPI'],focus_position=focus_position)
+        #self.recursive_stardist_autofocus(experiment_directory, cycle=0)
+
         self.image_cycle_acquire(0, experiment_directory, z_slices, 'Bleach', offset_array,x_frame_size=x_frame_size, fm_array_adjuster=0, establish_fm_array=0, auto_focus_run=0,auto_expose_run=3, focus_position=focus_position)
         #self.generate_nuc_mask(experiment_directory, cycle_number=0)
         #self.tissue_region_identifier(experiment_directory, clusters_retained=4)
@@ -3384,7 +3407,8 @@ class cycif:
 
 
         start = time.time()
-        '''
+
+
 
 
 
@@ -3407,7 +3431,7 @@ class cycif:
 
         end = time.time()
         print('focus', end - start)
-        '''
+
         
 
         #subtract background
@@ -3420,10 +3444,12 @@ class cycif:
 
 
         #flatten image
-        self.illumination_flattening(experiment_directory, cycle_number, rolling_ball=0)
+
+        #self.illumination_flattening(experiment_directory, cycle_number, rolling_ball=0)
 
         end = time.time()
         print('flatten', end - start)
+
         
 
 
@@ -3432,9 +3458,10 @@ class cycif:
 
         #compress to 16bit
         #self.hdr_compression(experiment_directory, cycle_number, apply_2_subbed=1, apply_2_bleached=0, apply_2_focused = 1, apply_2_flattened=1)
+        #self.hdr_manual_compression(experiment_directory, cycle_number=cycle_number)
 
         end = time.time()
-        #print('compress', end - start)
+        print('compress', end - start)
 
         #make Mcmicro file
 
@@ -3793,9 +3820,9 @@ class cycif:
 
             if type == 'Bleach':
 
-                im_path = experiment_directory + '/' + channel + '/' + type + '\cy_' + str(cycle_number - 1) + '\Tiles'
+                im_path = experiment_directory + '/' + channel + '/' + type + '\cy_' + str(cycle_number ) + '\Tiles'
                 os.chdir(im_path)
-                saving_path = experiment_directory + '/' + channel + '/' + type + '\cy_' + str(cycle_number - 1) + '\Tiles//focused'
+                saving_path = experiment_directory + '/' + channel + '/' + type + '\cy_' + str(cycle_number) + '\Tiles//focused'
                 try:
                     os.mkdir('focused')
                 except:
