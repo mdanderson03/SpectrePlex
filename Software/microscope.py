@@ -30,8 +30,8 @@ import itertools
 
 
 
-magellan = Magellan()
-core = Core()
+#magellan = Magellan()
+#core = Core()
 
 
 class cycif:
@@ -3096,7 +3096,7 @@ class cycif:
                             cycle_number) + '\Tiles' + r'\focused_basic_corrected'
                     else:
                         im_path = experiment_directory + '/' + channel + "/" + type + '\cy_' + str(
-                            cycle_number) + '\Tiles' + '/focused_subbed_basic_corrected'
+                            cycle_number) + '\Tiles' + '/subbed_focused_basic_brightness_corrected'
 
                 elif type == 'Bleach':
                     im_path = experiment_directory + '/' + channel + "/" + type + '\cy_' + str(
@@ -4040,8 +4040,8 @@ class cycif:
                 pass
 
             #populate overlap image array and multipier arrays
-            for x in range(0, x_tiles):
-                for y in range(0, y_tiles):
+            for x in range(0, x_tile_count):
+                for y in range(0, y_tile_count):
                     tile_list = self.tissue_fm_decode(tissue_fm[y][x])
                     if cluster_number in tile_list:
 
@@ -4076,8 +4076,8 @@ class cycif:
 
 
             for i in range(0, iteration_count):
-                for x in range(0, x_tiles):
-                    for y in range(0, y_tiles):
+                for x in range(0, x_tile_count):
+                    for y in range(0, y_tile_count):
                         if cluster_number in tile_list:
 
                             tile_north = np.multiply(overlap_images[y+1][x+1][0][1],multiplier_array[y+1][x+1])
@@ -4117,6 +4117,8 @@ class cycif:
 
                         else:
                             pass
+
+        print(multiplier_array)
 
 
 
