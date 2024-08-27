@@ -4,7 +4,7 @@ import os
 
 
 
-os.chdir(r'E:\20-8-24 gutage\Tissue_Binary')
+os.chdir(r'E:\23-8-24 gutage\Tissue_Binary')
 
 
 im = io.imread(r'labelled_tissue_filtered.tif')
