@@ -18,11 +18,9 @@ power_strip = SmartPowerStrip('10.3.141.157')
 power_strip.toggle_plug('on', plug_num=2)
 #run actions
 pump.flow('ON')
-time.sleep(230)
+time.sleep(190)
 pump.flow('OFF')
 
-#turn off upper fluid filter pump
-power_strip.toggle_plug('off', plug_num=2)
 
 #save array that confirms that file was run
 numpy_path = experiment_path + '/' + 'np_arrays'
@@ -34,7 +32,8 @@ os.chdir(numpy_path)
 fluid_array[1] = 1
 np.save(np_file_name, fluid_array)
 
-
+#turn off upper fluid filter pump
+power_strip.toggle_plug('off', plug_num=2)
 
 #end communication
 pump.ob1_end()

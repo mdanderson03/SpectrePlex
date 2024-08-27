@@ -30,8 +30,8 @@ import itertools
 
 
 
-#magellan = Magellan()
-#core = Core()
+magellan = Magellan()
+core = Core()
 
 
 class cycif:
@@ -142,11 +142,13 @@ class cycif:
             self.establish_exp_arrays(experiment_directory)
             self.auto_exposure(experiment_directory, x_frame_size, percentage_cut_off = 0.99, target_percentage = 0.25)
         if autofocus == 1 and auto_expose == 0:
-            #self.DAPI_surface_autofocus(experiment_directory, 20, 2, x_frame_size)
-            if desired_cycle_count == 0:
-                self.recursive_stardist_autofocus(experiment_directory, desired_cycle_count)
-            else:
-                pass
+            self.recursive_stardist_autofocus(experiment_directory, desired_cycle_count)
+            self.hdr = 0
+
+            #self.fm_channel_initial(experiment_directory, off_array, z_slices, 2)
+        if autofocus == 0 and auto_expose == 0:
+            self.hdr = 0
+
             #self.fm_channel_initial(experiment_directory, off_array, z_slices, 2)
         if autofocus == 0 and auto_expose == 1:
             self.establish_exp_arrays(experiment_directory)
@@ -1620,7 +1622,7 @@ class cycif:
         new_labelled_image[np.nonzero(new_labelled_image)] = new_labelled_image[np.nonzero(new_labelled_image)] - (65535 - number_actual_clusters_retained)
 
         #new_labelled_image = self.cluster_neighborhood(new_labelled_image, sorted_cluster_areas)
-        os.chdir(r'E:\20-8-24 gutage\Tissue_Binary')
+        os.chdir(r'E:\23-8-24 gutage\Tissue_Binary')
         filename = r'labelled_tissue_filtered.tif'
         new_labelled_image = io.imread(filename)
         #new_labelled_image = new_labelled_image.astype('int16')
@@ -2192,7 +2194,7 @@ class cycif:
                     if tissue_fm[y][x] > 1:
 
                         core.set_xy_position(numpy_x[y][x], numpy_y[y][x])
-                        time.sleep(.2)
+                        time.sleep(.5)
 
                         for channel in channels:
 
@@ -2233,7 +2235,7 @@ class cycif:
 
                             for z in range(z_start, z_end, slice_gap):
                                 core.set_position(z)
-                                time.sleep(0.3)
+                                time.sleep(0.05)
                                 pixels = self.core_capture(experiment_directory,x_pixels, channel, hdr=hdr_value)
                                 zc_tif_stack[zc_index][z_counter] = pixels
 
@@ -2295,7 +2297,7 @@ class cycif:
 
                             for z in range(z_start, z_end, slice_gap):
                                 core.set_position(z)
-                                time.sleep(0.2)
+                                time.sleep(0.05)
 
                                 pixels = self.core_capture(experiment_directory, x_pixels, channel, hdr=hdr_value)
                                 zc_tif_stack[zc_index][z_counter] = pixels
@@ -2349,10 +2351,11 @@ class cycif:
 
 
 
-        #self.image_cycle_acquire(0, experiment_directory, 9, 'Bleach', offset_array, x_frame_size=x_frame_size,establish_fm_array=1, auto_focus_run=0, auto_expose_run=0, channels=['DAPI'],focus_position=focus_position)
+        #self.image_cycle_acquire(0, experiment_directory, 9, 'Bleach', offset_array, x_frame_size=x_frame_size,establish_fm_array=0, auto_focus_run=0, auto_expose_run=0, channels=['DAPI'],focus_position=focus_position)
         #self.generate_nuc_mask(experiment_directory, cycle_number=0)
         #self.tissue_region_identifier(experiment_directory, clusters_retained=number_clusters_retained)
         #self.recursive_stardist_autofocus(experiment_directory, cycle=0)
+        #self.tissue_region_identifier(experiment_directory, clusters_retained=number_clusters_retained)
         #self.image_cycle_acquire(0, experiment_directory, 9, 'Bleach', offset_array, x_frame_size=x_frame_size,establish_fm_array=0, auto_focus_run=0, auto_expose_run=0, channels=['DAPI'],focus_position=focus_position)
         #self.generate_nuc_mask(experiment_directory, cycle_number=0)
         #self.recursive_stardist_autofocus(experiment_directory, cycle=0)
@@ -2363,7 +2366,7 @@ class cycif:
 
 
 
-        
+
         numpy_path = experiment_directory + '/' + 'np_arrays'
         os.chdir(numpy_path)
         fm_array = np.load('fm_array.npy', allow_pickle=False)
@@ -2377,6 +2380,7 @@ class cycif:
 
         os.chdir(numpy_path)
         np.save('fm_array.npy', fm_array)
+
 
 
 
@@ -2408,7 +2412,7 @@ class cycif:
         #self.image_cycle_acquire(0, experiment_directory, 3, 'Bleach', offset_array, x_frame_size=x_frame_size,establish_fm_array=0, auto_focus_run=0, auto_expose_run=0, channels=['DAPI'],focus_position=focus_position)
         #self.recursive_stardist_autofocus(experiment_directory, cycle=0)
 
-        self.image_cycle_acquire(0, experiment_directory, z_slices, 'Bleach', offset_array,x_frame_size=x_frame_size, fm_array_adjuster=0, establish_fm_array=0, auto_focus_run=0,auto_expose_run=3, focus_position=focus_position)
+        #self.image_cycle_acquire(0, experiment_directory, z_slices, 'Bleach', offset_array,x_frame_size=x_frame_size, fm_array_adjuster=0, establish_fm_array=0, auto_focus_run=0,auto_expose_run=0, focus_position=focus_position)
         #self.generate_nuc_mask(experiment_directory, cycle_number=0)
         #self.tissue_region_identifier(experiment_directory, clusters_retained=4)
 
@@ -2432,7 +2436,7 @@ class cycif:
             pump.liquid_action('Bleach', stain_valve=stain_valve)  # nuc is valve=7, pbs valve=8, bleach valve=1 (action, stain_valve, heater state (off = 0, on = 1))
             time.sleep(5)
             # print(status_str)
-            self.image_cycle_acquire(cycle_number, experiment_directory, z_slices, 'Bleach', offset_array, x_frame_size=x_frame_size, establish_fm_array=0, auto_focus_run=0,auto_expose_run=3)
+            self.image_cycle_acquire(cycle_number, experiment_directory, z_slices, 'Bleach', offset_array, x_frame_size=x_frame_size, establish_fm_array=0, auto_focus_run=0,auto_expose_run=0)
             #self.inter_cycle_processing(experiment_directory, cycle_number=cycle_number, x_frame_size=x_frame_size)
             time.sleep(3)
 
@@ -3096,11 +3100,11 @@ class cycif:
                             cycle_number) + '\Tiles' + r'\focused_basic_corrected'
                     else:
                         im_path = experiment_directory + '/' + channel + "/" + type + '\cy_' + str(
-                            cycle_number) + '\Tiles' + '/subbed_focused_basic_brightness_corrected'
+                            cycle_number) + '\Tiles' + '/focused_basic_corrected'
 
                 elif type == 'Bleach':
                     im_path = experiment_directory + '/' + channel + "/" + type + '\cy_' + str(
-                        cycle_number - 1) + '\Tiles' + '/focused'
+                        cycle_number) + '\Tiles' + '/focused'
                 os.chdir(im_path)
 
                 # place images into large array
@@ -3201,9 +3205,9 @@ class cycif:
 
             else:
                 if rolling_ball != 1:
-                    stain_directory = directory_start + channel_name + '\Stain\cy_' + str(cycle_number) + r'\Tiles\focused_subbed'
-                    training_directory = directory_start + channel_name + '\Stain\cy_' + str(cycle_number) + r'\Tiles\focused_subbed'
-                    stain_output_directory = directory_start + channel_name + '\Stain\cy_' + str(cycle_number) + r'\Tiles\focused_subbed_basic_corrected'
+                    stain_directory = directory_start + channel_name + '\Stain\cy_' + str(cycle_number) + r'\Tiles\focused'
+                    training_directory = directory_start + channel_name + '\Stain\cy_' + str(cycle_number) + r'\Tiles\focused'
+                    stain_output_directory = directory_start + channel_name + '\Stain\cy_' + str(cycle_number) + r'\Tiles\focused_basic_corrected'
 
                 if rolling_ball == 1:
                     directory = directory_start + channel_name + '\Stain\cy_' + str(cycle_number) + r'\Tiles\focused\background_subbed_rolling'
@@ -3416,6 +3420,7 @@ class cycif:
 
 
 
+
         #make tissue exist array if needed
         if cycle_number == 1:
             self.tissue_exist_array_generate(experiment_directory)
@@ -3435,7 +3440,7 @@ class cycif:
         
 
         #subtract background
-        self.background_sub(experiment_directory, cycle_number, rolling_ball=0)
+        #self.background_sub(experiment_directory, cycle_number, rolling_ball=0)
 
         end = time.time()
         print('sub background', end - start)
@@ -3445,7 +3450,7 @@ class cycif:
 
         #flatten image
 
-        #self.illumination_flattening(experiment_directory, cycle_number, rolling_ball=0)
+        self.illumination_flattening(experiment_directory, cycle_number, rolling_ball=0)
 
         end = time.time()
         print('flatten', end - start)
@@ -3474,6 +3479,7 @@ class cycif:
         #print('mcmicro', end - start)
 
         #generate stage placement
+
 
 
         self.stage_placement(experiment_directory, cycle_number, x_pixels = x_frame_size, down_sample_factor=4)
@@ -4040,8 +4046,8 @@ class cycif:
                 pass
 
             #populate overlap image array and multipier arrays
-            for x in range(0, x_tile_count):
-                for y in range(0, y_tile_count):
+            for x in range(0, x_tiles):
+                for y in range(0, y_tiles):
                     tile_list = self.tissue_fm_decode(tissue_fm[y][x])
                     if cluster_number in tile_list:
 
@@ -4076,8 +4082,8 @@ class cycif:
 
 
             for i in range(0, iteration_count):
-                for x in range(0, x_tile_count):
-                    for y in range(0, y_tile_count):
+                for x in range(0, x_tiles):
+                    for y in range(0, y_tiles):
                         if cluster_number in tile_list:
 
                             tile_north = np.multiply(overlap_images[y+1][x+1][0][1],multiplier_array[y+1][x+1])
@@ -4117,8 +4123,6 @@ class cycif:
 
                         else:
                             pass
-
-        print(multiplier_array)
 
 
 
