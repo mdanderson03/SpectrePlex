@@ -3992,7 +3992,7 @@ class cycif:
                 else:
                     pass
 
-    def brightness_uniformer(self, experiment_directory, cycle_number, hdr_sub = 1):
+    def brightness_uniformer(self, experiment_directory, cycle_number, cluster_number):
 
         experiment_directory = experiment_directory + '/'
         #import numpy focus map info
@@ -4000,343 +4000,131 @@ class cycif:
         os.chdir(numpy_path)
         file_name = 'fm_array.npy'
         fm_array = np.load(file_name, allow_pickle=False)
-        tissue_exist = np.load('tissue_exist.npy', allow_pickle=False)
         channels = ['DAPI', 'A488', 'A555', 'A647']
-        #channels = ['A488']
 
-        #opposite direction list. opposite_direction[index] = opposite index
-        #ie south index = 1, north index = 0, opposite_direction[1] = 0, opposite_direction[0] = 1
-        opposite_direction = [1,0,3,2]
+        #predetermine step sizes for search range on tile multiplier
+        step_count = 5
+        multiplier_mod_values = np.linspace(0.8, 1.2, step_count)
+
+        #define desired number iterations through tiles
+        iteration_count = 1
+
+        tissue_fm = fm_array[10]
+        y_tile_count = np.shape(fm_array[0])[0]
+        x_tile_count = np.shape(fm_array[0])[1]
+
+        #make arrays +2 in each dimension. This creates a border region around the original array
+        #this makes each tile have 4 'neighbors' even if the neighbor = 0 everywhere
+        overlap_images = np.zeros([y_tile_count + 2, x_tile_count + 2, 4, 2, 2960, 296])
+        multiplier_array = np.zeros([y_tile_count + 2, x_tile_count + 2])
+
+        #bound_width
+        x_width = 296
+        y_width = 296
 
         for channel in channels:
 
-            #find number of tiles in xy grid
-            x_tiles = np.shape(fm_array[0])[1]
-            y_tiles = np.shape(fm_array[0])[0]
             #paths to needed folders
 
-            if hdr_sub == 0:
-                if channel == 'DAPI':
-                    channel_file_path = experiment_directory + '/' + channel + '/Stain/cy_' + str(cycle_number) + '/Tiles/focused_basic_corrected'
-                else:
-                    channel_file_path = experiment_directory + '/' + channel + '/Stain/cy_' + str(cycle_number) + '/Tiles/focused_basic_corrected'
-                tissue_path = experiment_directory + '/Tissue_Binary'
-                if channel == 'DAPI':
-                    channel_output_path = experiment_directory + '/' + channel + '/Stain/cy_' + str(cycle_number) + '/Tiles/focused_basic_brightness_corrected'
-                else:
-                    channel_output_path = experiment_directory + '/' + channel + '/Stain/cy_' + str(cycle_number) + '/Tiles/focused_basic_brightness_corrected'
-                #make array to store brightness information in
-                bright_array = np.zeros((y_tiles, x_tiles, 6))
+            dapi_file_path = experiment_directory + '/' + channel + '/Stain/cy_' + str(cycle_number) + '/Tiles/subbed_focused_basic_corrected'
 
-                os.chdir(channel_file_path)
-            if hdr_sub == 1:
-                if channel == 'DAPI':
-                    channel_file_path = experiment_directory + '/' + channel + '/Stain/cy_' + str(cycle_number) + '/Tiles/subbed_focused_basic_corrected'
-                else:
-                    channel_file_path = experiment_directory + '/' + channel + '/Stain/cy_' + str(cycle_number) + '/Tiles/subbed_focused_basic_corrected'
-                tissue_path = experiment_directory + '/Tissue_Binary'
-                if channel == 'DAPI':
-                    channel_output_path = experiment_directory + '/' + channel + '/Stain/cy_' + str(cycle_number) + '/Tiles/subbed_focused_basic_brightness_corrected'
-                else:
-                    channel_output_path = experiment_directory + '/' + channel + '/Stain/cy_' + str(cycle_number) + '/Tiles/subbed_focused_basic_brightness_corrected'
-                # make array to store brightness information in
-                bright_array = np.zeros((y_tiles, x_tiles, 6))
-
-                os.chdir(channel_file_path)
+            if channel == 'DAPI':
+                channel_file_path = dapi_file_path
+            else:
+                channel_file_path = experiment_directory + '/' + channel + '/Stain/cy_' + str(cycle_number) + '/Tiles/subbed_focused_basic_corrected'
+            tissue_path = experiment_directory + '/Tissue_Binary'
+            if channel == 'DAPI':
+                channel_output_path = experiment_directory + '/' + channel + '/Stain/cy_' + str(cycle_number) + '/Tiles/subbed_focused_basic_brightness_corrected'
+            else:
+                channel_output_path = experiment_directory + '/' + channel + '/Stain/cy_' + str(cycle_number) + '/Tiles/subbed_focused_basic_brightness_corrected'
 
 
+            os.chdir(channel_file_path)
             try:
                 os.mkdir(channel_output_path)
             except:
                 pass
 
-
+            #populate overlap image array and multipier arrays
             for x in range(0, x_tiles):
                 for y in range(0, y_tiles):
-                    if tissue_exist[y][x] == 1:
+                    tile_list = self.tissue_fm_decode(tissue_fm[y][x])
+                    if cluster_number in tile_list:
+
+                        multiplier_array[y][x] = 1
                         #load in image
                         os.chdir(channel_file_path)
                         filename = 'x' + str(x) + '_y_' + str(y) + '_c_' + channel + '.tif'
                         image = io.imread(filename)
-                        image[image < 0] = 0
 
-                        os.chdir(tissue_path)
-                        tissue_name = 'x' + str(x) +'_y_' + str(y) +'_tissue.tif'
-                        tissue_mask = io.imread(tissue_name)
+                        os.chdir(dapi_file_path)
+                        filename = 'x' + str(x) +'_y_' + str(y) +'_tissue.tif'
+                        dapi_im = io.imread(filename)
 
-                        image = image * tissue_mask
+                        #interlace into overlap array (north=0, east=1, south=2, west=3)
+                        #1 is added to each of x and y to take blank border into account
 
-                        #find dimensions
-                        x_pixels = np.shape(image)[1]
-                        y_pixels = np.shape(image)[0]
+                        overlap_images[y+1][x+1][0][0] = np.transpose(dapi_im[0:y_width, ::])
+                        overlap_images[y+1][x+1][1][0] = dapi_im[::, -x_width:-1]
+                        overlap_images[y+1][x+1][2][0] = np.transpose(dapi_im[-y_width:-1, ::])
+                        overlap_images[y+1][x+1][3][0] = dapi_im[::, 0:x_width]
 
-                        #find the 4 border mean values
-                        overlap_x_pixel_length = int(x_pixels * .1)
-                        overlap_y_pixel_length = int(y_pixels * .1)
-
-                        west_image = image[::, 0:overlap_x_pixel_length]
-                        sum = np.sum(west_image)
-                        if sum == 0:
-                            west = 0
-                        else:
-                            non_zero_count = np.count_nonzero(west_image)
-                            west = sum / non_zero_count
-                            west = np.nan_to_num(west, nan=0)
-
-                        east_image = image[::, (x_pixels - overlap_x_pixel_length):x_pixels]
-                        sum = np.sum(east_image)
-                        if sum == 0:
-                            east = 0
-                        else:
-                            non_zero_count = np.count_nonzero(east_image)
-                            east = sum/non_zero_count
-                            east = np.nan_to_num(east, nan= 0)
-
-                        north_image = image[0:overlap_y_pixel_length, ::]
-                        sum = np.sum(north_image)
-                        if sum == 0:
-                            north = 0
-                        else:
-                            non_zero_count = np.count_nonzero(north_image)
-                            north = sum/non_zero_count
-                            north = np.nan_to_num(north, nan= 0)
-
-                        south_image = image[(y_tiles - overlap_y_pixel_length):y_pixels, ::]
-                        sum = np.sum(south_image)
-                        if sum == 0:
-                            south = 0
-                        else:
-                            non_zero_count = np.count_nonzero(south_image)
-                            south = sum/non_zero_count
-                            south = np.nan_to_num(south, nan= 0)
-
-                        #populate brightness array
-                        bright_array[y][x][0] = north
-                        bright_array[y][x][1] = south
-                        bright_array[y][x][2] = east
-                        bright_array[y][x][3] = west
-
+                        overlap_images[y+1][x+1][0][1] = np.transpose(image[0:y_width, ::])
+                        overlap_images[y+1][x+1][1][1] = image[::, -296:-1]
+                        overlap_images[y+1][x+1][2][1] = np.transpose(image[-y_width:-1, ::])
+                        overlap_images[y+1][x+1][3][1] = image[::, 0:x_width]
                     else:
                         pass
 
 
-
-            #Identify tile that is topmost left
-
-            #find upper row with data in it
-            row_found = -1
-            y = 0
-            while row_found == -1:
-
-                row_sum = np.sum(bright_array[y][::][0:3])
-                if row_sum == 0:
-                    y += 1
-                else:
-                    row_found = y
-
-            #find leftmost column in top row that has data in it
-            column_found = -1
-            x = 0
-            while column_found == -1:
-
-                pixel_sum = np.sum(bright_array[row_found][x][0:3])
-                if pixel_sum == 0:
-                    x += 1
-                else:
-                    column_found = x
-
-            #indicate left most upper tile designation with cycle number 1 and starting ratio of 1
-            bright_array[row_found][column_found][4] = 1
-            bright_array[row_found][column_found][5] = 1
+                        #make new folder and save brightness uniformed images
 
 
-            #find cycle 2 tiles (Y an X coordinates in that order)
-            cycle_tiles = []
-            cycle_overlaps = []
 
-            if bright_array[row_found][column_found][1] > 0:
-                #append tile coords
-                cycle_tiles.append([row_found + 1, column_found])
-                #append region where overlapped with cycle 1 tile from cycle 2 perspective
-                #ie, if south on tile 1, it will be denoted as north in this cycle
-                #arrangement is [N,S,E,W]
-                cycle_overlaps.append([1, 0, 0, 0])
-            if bright_array[row_found][column_found][2] > 0:
-                cycle_tiles.append([row_found, column_found + 1])
-                cycle_overlaps.append([0, 0, 0, 1])
-            else:
-                pass
+            for i in range(0, iteration_count):
+                for x in range(0, x_tiles):
+                    for y in range(0, y_tiles):
+                        if cluster_number in tile_list:
 
-            #find ratio for cycle 2 tiles
-            for tile in range(0, len(cycle_tiles)):
+                            tile_north = np.multiply(overlap_images[y+1][x+1][0][1],multiplier_array[y+1][x+1])
+                            tile_east =np.multiply(overlap_images[y+1][x+1][1][1],multiplier_array[y+1][x+1])
+                            tile_south = np.multiply(overlap_images[y+1][x+1][2][1],multiplier_array[y+1][x+1])
+                            tile_west = np.multiply(overlap_images[y+1][x+1][3][1],multiplier_array[y+1][x+1])
 
-                indices = [i for i, x in enumerate(cycle_overlaps[tile]) if x == 1]
-                #make array to hold overlap regions for all desired tiles
-                temp_sum_array = np.zeros((len(indices), 2))
-                for overlap_region_number in range(0, len(indices)):
-                    # index 0 in temp_sum_array = higher cycle # tile
-                    #current Y and X coords
-                    y_coord = cycle_tiles[tile][0]
-                    x_coord = cycle_tiles[tile][1]
-                    directionality_index = indices[overlap_region_number]
-                    temp_sum_array[overlap_region_number][0] = bright_array[y_coord][x_coord][directionality_index]
+                            adjacent_north = np.multiply(overlap_images[y][x+1][0][1],multiplier_array[y][x+1])
+                            adjacent_east = np.multiply(overlap_images[y + 1][x + 2][1][1],multiplier_array[y + 1][x + 2])
+                            adjacent_south = np.multiply(overlap_images[y + 2][x + 1][2][1],multiplier_array[y + 2][x + 1])
+                            adjacent_west = np.multiply(overlap_images[y][x + 1][3][1],multiplier_array[y][x + 1])
 
-                    #find previous cycles overlapped region
-                    if directionality_index == 0:
-                        prev_y_coord = y_coord - 1
-                        prev_x_coord = x_coord
-                    if directionality_index == 1:
-                        prev_y_coord = y_coord + 1
-                        prev_x_coord = x_coord
-                    if directionality_index == 2:
-                        prev_y_coord = y_coord
-                        prev_x_coord = x_coord + 1
-                    if directionality_index == 3:
-                        prev_y_coord = y_coord
-                        prev_x_coord = x_coord - 1
-                    #find opposite directionality index
-                    opposite_index = opposite_direction[directionality_index]
-                    # add to summing array
-                    temp_sum_array[overlap_region_number][1] = bright_array[prev_y_coord][prev_x_coord][opposite_index]
+                            scores = np.zeros(step_count).astype('float64')
+                            for m in range(0, step_count):
 
-                #find ratios of all overlap regions and find average ratio
-                ratios = temp_sum_array[::,1]/temp_sum_array[::,0]
-                average_ratio = np.average(ratios)
-                #add to bright_image array and denote tile cycle number
-                bright_array[y_coord][x_coord][5] = average_ratio
-                bright_array[y_coord][x_coord][4] = 2
-                #propogate ratio through overlapped regions of tile
-                bright_array[y_coord][x_coord][0:3] = bright_array[y_coord][x_coord][0:3] * average_ratio
+                                modded_multiplier = multiplier_mod_values[m]
 
-            # if keep_looping = 0, the cycle will break
-            keep_looping = 1
-            cycle_count = 3
+                                mod_north = np.multiply(tile_north, modded_multiplier)
+                                mod_east = np.multiply(tile_east, modded_multiplier)
+                                mod_south = np.multiply(tile_south, modded_multiplier)
+                                mod_west = np.multiply(tile_west, modded_multiplier)
 
-            while keep_looping == 1:
+                                mod_north_difference = np.mean(mod_north - adjacent_north)
+                                mod_east_difference = np.mean(mod_east - adjacent_east)
+                                mod_south_difference = np.mean(mod_south - adjacent_south)
+                                mod_west_difference = np.mean(mod_west - adjacent_west)
 
-                #extend to a generic process of finding next cycle images and ratioing them
+                                score = np.sqrt(mod_north_difference**2 + mod_south_difference**2 + mod_east_difference**2 + mod_west_difference**2)
+                                scores[m] = score
 
-                #make new data structure to hold previous cycle tiles and clear other
-                previous_cycle_tiles = copy.deepcopy(cycle_tiles)
-                cycle_tiles.clear()
-                cycle_overlaps.clear()
-
-                #iterate through previous cycle tiles and identify which tiles touch them
-                for tile in range(0, len(previous_cycle_tiles)):
-
-                    y_coord = previous_cycle_tiles[tile][0]
-                    x_coord = previous_cycle_tiles[tile][1]
-
-                    for directionality_index in range(0, 4):
-                        overlapped_brightness = bright_array[y_coord][x_coord][directionality_index]
-                        #determine if tile has non zero overlapped region
-                        if overlapped_brightness > 0:
-                            # find previous cycles overlapped region
-                            if directionality_index == 0:
-                                next_y_coord = y_coord - 1
-                                next_x_coord = x_coord
-                            if directionality_index == 1:
-                                next_y_coord = y_coord + 1
-                                next_x_coord = x_coord
-                            if directionality_index == 2:
-                                next_y_coord = y_coord
-                                next_x_coord = x_coord + 1
-                            if directionality_index == 3:
-                                next_y_coord = y_coord
-                                next_x_coord = x_coord - 1
+                            #find better multiplier mod value and update total multiplier
+                            lowest_score = np.min(scores)
+                            lowest_index = int(np.where(scores == lowest_score)[0][0])
+                            best_mod_multiplier = multiplier_mod_values[lowest_index]
+                            multiplier_array[y + 1][x + 1] = multiplier_array[y+1][x+1] * best_mod_multiplier
 
 
-                            #determine if valid coordinates exist for bordering tile
-                            if ((next_y_coord and next_x_coord >= 0) and (next_x_coord <= x_tiles - 1) and (next_y_coord <= y_tiles - 1)):
-
-                                #determine if tile has been registered before
-                                if bright_array[next_y_coord][next_x_coord][4] == 0:
-
-                                    #find index of tile entry and add it if doesnt exist
-                                    #enter directionality into list as well
-                                    opposite_directionality = opposite_direction[directionality_index]
-                                    try:
-                                        cycle_tile_index= cycle_tiles.index([next_y_coord, next_x_coord])
-                                        cycle_overlaps[cycle_tile_index][opposite_directionality] = 1
-                                    except:
-                                        cycle_tiles.append([next_y_coord, next_x_coord])
-                                        cycle_overlaps.append([0,0,0,0])
-                                        cycle_tile_index = cycle_tiles.index([next_y_coord, next_x_coord])
-                                        cycle_overlaps[cycle_tile_index][opposite_directionality] = 1
-
-                                else:
-                                    pass
-                            else:
-                                pass
-
-                #determine if cycle should be broken.
-                #if no tiles are in list, then all tiles have been identified and program is finished
-                if len(cycle_tiles) > 0:
-                    # find ratio for cycle N tiles
-                    for tile in range(0, len(cycle_tiles)):
-
-                        indices = [i for i, x in enumerate(cycle_overlaps[tile]) if x == 1]
-                        # make array to hold overlap regions for all desired tiles
-                        temp_sum_array = np.zeros((len(indices), 2))
-                        for overlap_region_number in range(0, len(indices)):
-                            # index 0 in temp_sum_array = higher cycle # tile
-                            # current Y and X coords
-                            y_coord = cycle_tiles[tile][0]
-                            x_coord = cycle_tiles[tile][1]
-                            directionality_index = indices[overlap_region_number]
-                            temp_sum_array[overlap_region_number][0] = bright_array[y_coord][x_coord][
-                                directionality_index]
-
-                            # find previous cycles overlapped region
-                            if directionality_index == 0:
-                                prev_y_coord = y_coord - 1
-                                prev_x_coord = x_coord
-                            if directionality_index == 1:
-                                prev_y_coord = y_coord + 1
-                                prev_x_coord = x_coord
-                            if directionality_index == 2:
-                                prev_y_coord = y_coord
-                                prev_x_coord = x_coord + 1
-                            if directionality_index == 3:
-                                prev_y_coord = y_coord
-                                prev_x_coord = x_coord - 1
-                            # find opposite directionality index
-                            opposite_index = opposite_direction[directionality_index]
-                            # add to summing array
-                            temp_sum_array[overlap_region_number][1] = bright_array[prev_y_coord][prev_x_coord][
-                                opposite_index]
-
-                        # find ratios of all overlap regions and find average ratio
-                        ratios = temp_sum_array[::, 1] / temp_sum_array[::, 0]
-                        average_ratio = np.average(ratios)
-                        # add to bright_image array and denote tile cycle number
-                        bright_array[y_coord][x_coord][5] = average_ratio
-                        bright_array[y_coord][x_coord][4] = cycle_count
-                        # propogate ratio through overlapped regions of tile
-                        bright_array[y_coord][x_coord][0:3] = bright_array[y_coord][x_coord][0:3] * average_ratio
-                        # increase cycle counter by 1
-                    cycle_count += 1
-                else:
-                    keep_looping = 0
-
-                time.sleep(3)
+                        else:
+                            pass
 
 
-            #make new folder and save brightness uniformed images
-            for x in range(0, x_tiles):
-                for y in range(0, y_tiles):
-                    if tissue_exist[y][x] == 1:
-                        os.chdir(channel_file_path)
-                        filename = 'x' + str(x) + '_y_' + str(y) + '_c_' + channel + '.tif'
-                        color_im = io.imread(filename)
-                        color_im = np.nan_to_num(color_im, posinf=65500)
-                        color_im = color_im * bright_array[y][x][5]
-                        color_im[color_im > 65500] = 65500
-                        os.chdir(channel_output_path)
-                        io.imsave(filename, color_im)
-
-                    else:
-                        pass
 
     def max_projector(self, experiment_directory, cycle_number, x_frame_size):
 
