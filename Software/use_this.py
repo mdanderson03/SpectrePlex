@@ -14,7 +14,7 @@ offset_array = [0, -7, -7, -6]
 focus_position = -38
 
 #microscope.tissue_region_identifier(experiment_directory, x_frame_size=x_frame_size, clusters_retained=6)
-#pump.liquid_action('Stain', stain_valve=1)
+pump.liquid_action('Stain', stain_valve=7, incub_val=1)
 #pump.liquid_action('Wash')
 #microscope.image_cycle_acquire(1, experiment_directory, z_slices, 'Stain', offset_array,x_frame_size=x_frame_size, auto_focus_run=0, auto_expose_run=3)
 #pump.liquid_action('Bleach')
@@ -26,8 +26,8 @@ focus_position = -38
 #microscope.image_cycle_acquire(0, experiment_directory, z_slices, 'Bleach', offset_array,x_frame_size=x_frame_size, auto_focus_run=0, auto_expose_run=3)
 #microscope.post_acquisition_processor(experiment_directory, x_frame_size, rolling_ball=0)
 #microscope.brightness_uniformer(experiment_directory, cycle_number=1)
-for cycle in range(1, 11):
-    microscope.inter_cycle_processing(experiment_directory, cycle_number=cycle, x_frame_size=x_frame_size)
+#for cycle in range(1, 11):
+#    microscope.inter_cycle_processing(experiment_directory, cycle_number=cycle, x_frame_size=x_frame_size)
 #microscope.tissue_region_identifier(experiment_directory, x_frame_size=x_frame_size, clusters_retained=6)
 
 #microscope.recursive_stardist_autofocus(experiment_directory, 0,remake_nuc_binary=0)
