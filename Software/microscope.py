@@ -3316,11 +3316,11 @@ class cycif:
         dapi_im_path = experiment_directory + '\DAPI\Stain\cy_' + str(
             cycle_number) + '\Tiles' + '/focused_basic_corrected'
         a488_im_path = experiment_directory + '\A488\Stain\cy_' + str(
-            cycle_number) + '\Tiles' + '/focused_subbed_basic_corrected'
+            cycle_number) + '\Tiles' + '/focused_basic_corrected'
         a555_im_path = experiment_directory + '\A555\Stain\cy_' + str(
-            cycle_number) + '\Tiles' + '/focused_subbed_basic_corrected'
+            cycle_number) + '\Tiles' + '/focused_basic_corrected'
         a647_im_path = experiment_directory + '\A647\Stain\cy_' + str(
-            cycle_number) + '\Tiles' + '/focused_subbed_basic_corrected'
+            cycle_number) + '\Tiles' + '/focused_basic_corrected'
 
         mcmicro_path = experiment_directory + r'\mcmicro'
 
@@ -3834,6 +3834,43 @@ class cycif:
             optimizer._load_images()
             optimizer.write_images(stain_output_directory, epsilon=epsilon)
 
+    def bottom_int_correction(self, experiment_directory, cycle_number):
+        '''
+        Subs off smallest value in tile
+
+        :param experiment_directory:
+        :param cycle_number:
+        :return:
+        '''
+
+        # load in data structures
+        numpy_path = experiment_directory + '/' + 'np_arrays'
+        os.chdir(numpy_path)
+        file_name = 'fm_array.npy'
+        fm_array = np.load(file_name, allow_pickle=False)
+        tissue_fm = fm_array[10]
+        x_tile_count = np.shape(tissue_fm)[1]
+        y_tile_count = np.shape(tissue_fm)[0]
+
+        channels = np.array(['A488', 'A555', 'A647'])
+
+        for channel in channels:
+
+            flattened_path = experiment_directory + '//' + channel + '\Stain\cy_' + str(cycle_number) + r'\Tiles\focused_basic_corrected'
+            os.chdir(flattened_path)
+
+            for x in range(0, x_tile_count):
+                for y in range(0, y_tile_count):
+                    if tissue_fm[y][x] > 1:
+                        image_name = r'x' + str(x) + '_y_' + str(y) + '_c_' + channel + '.tif'
+                        flat_image = io.imread(image_name)
+                        low_pixel = np.sort(flat_image)[100]
+                        flat_image -+ low_pixel
+                        flat_image[flat_image<0] = 0
+                        io.imsave(image_name, flat_image)
+
+                    else:
+                        pass
 
     def illumination_flattening_per_tile(self, experiment_directory, cycle_number, rolling_ball = 1, hdr_sub = 1):
 
@@ -4003,15 +4040,6 @@ class cycif:
         start = time.time()
 
 
-
-
-
-
-
-
-
-
-
         #make tissue exist array if needed
         if cycle_number == 1:
             self.tissue_exist_array_generate(experiment_directory)
@@ -4021,9 +4049,9 @@ class cycif:
         print('binary create', end - start)
 
         #determine in focus parts first
-        self.focus_excel_creation(experiment_directory, cycle_number)
-        self.in_focus_excel_populate(experiment_directory, cycle_number, x_frame_size=x_frame_size)
-        self.excel_2_focus(experiment_directory, cycle_number, x_frame_size=x_frame_size)
+        #self.focus_excel_creation(experiment_directory, cycle_number)
+        #self.in_focus_excel_populate(experiment_directory, cycle_number, x_frame_size=x_frame_size)
+        #self.excel_2_focus(experiment_directory, cycle_number, x_frame_size=x_frame_size)
 
         end = time.time()
         print('focus', end - start)
@@ -4042,18 +4070,16 @@ class cycif:
         #flatten image
 
         self.illumination_flattening(experiment_directory, cycle_number, rolling_ball=0)
+        self.bottom_int_correction(experiment_directory, cycle_number=cycle_number)
 
         end = time.time()
         print('flatten', end - start)
 
-        
-
-
-
+        self.stage_placement(experiment_directory, cycle_number, x_pixels=x_frame_size, down_sample_factor=4)
 
 
         #compress to 16bit
-        #self.hdr_compression(experiment_directory, cycle_number, apply_2_subbed=1, apply_2_bleached=0, apply_2_focused = 1, apply_2_flattened=1)
+        self.hdr_compression2(experiment_directory, cycle_number)
         #self.hdr_manual_compression(experiment_directory, cycle_number=cycle_number)
 
         end = time.time()
@@ -4064,7 +4090,7 @@ class cycif:
 
 
         #self.mcmicro_image_stack_generator(cycle_number, experiment_directory, x_fram
-        #self.mcmicro_image_stack_generator_separate_clusters(cycle_number, experiment_directory, x_frame_si
+        self.mcmicro_image_stack_generator_separate_clusters(cycle_number, experiment_directory, x_frame_size)
 
         end = time.time()
         #print('mcmicro', end - start)
