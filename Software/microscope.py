@@ -4290,67 +4290,76 @@ class cycif:
 
         for channel in channels:
 
-            #load in sheet
-
-            sheet_name = channel + '_cycle' + str(cycle_number)
-            ws = wb[sheet_name]
-
-            # generate imstack of z slices for tile
-            im_path = experiment_directory + '/' + channel + '\Stain\cy_' + str(cycle_number) + '\Tiles'
-
-            os.chdir(im_path)
-
-            z_stack = np.random.rand(z_slice_count, 2960, x_frame_size).astype('float32')
-            for x in range(0, x_tile_count):
-                for y in range(0, y_tile_count):
-                    if tissue_exist[y][x] >= 1:
-                        for z in range(0, z_slice_count):
-                            im_path = experiment_directory + '/' + channel + '\Stain\cy_' + str(cycle_number) + '\Tiles'
-                            os.chdir(im_path)
-                            file_name = 'z_' + str(z) + '_x' + str(x) + '_y_' + str(y) + '_c_' + str(channel) + '.tif'
-                            image = tf.imread(file_name)
-                            z_stack[z] = image
-
-                            # break into sub sections (2x2)
-
-                        number_bins = len(bin_values)
-                        brenner_sub_selector = np.random.rand(z_slice_count, number_bins, y_sub_section_count,
-                                                              x_sub_section_count)
-                        for z in range(0, z_slice_count):
-                            for y_sub in range(0, y_sub_section_count):
-                                for x_sub in range(0, x_sub_section_count):
-
-                                    y_end = int((y_sub + 1) * (2960 / y_sub_section_count))
-                                    y_start = int(y_sub * (2960 / y_sub_section_count))
-                                    x_end = int((x_sub + 1) * (x_frame_size / x_sub_section_count))
-                                    x_start = int(x_sub * (x_frame_size / x_sub_section_count))
-                                    sub_image = z_stack[z][y_start:y_end, x_start:x_end]
-
-                                    if channel == 'DAPI':
-                                        sub_tissue_bin = nuc_binary_stack[y][x][y_start:y_end, x_start:x_end]
-                                    else:
-                                        sub_tissue_bin = tissue_binary_stack[y][x][y_start:y_end, x_start:x_end]
-
-                                    for b in range(0, number_bins):
-                                        bin_value = int(bin_values[b])
-                                        score = self.focus_score(sub_image, bin_value, sub_tissue_bin)
-                                        # score = self.focus_score_post_processing(sub_image, bin_value)
-                                        # score = 500
-                                        brenner_sub_selector[z][b][y_sub][x_sub] = score
-
-                        reconstruct_array = self.brenner_reconstruct_array(brenner_sub_selector, z_slice_count,
-                                                                           number_bins)
-
-                        #transfer reconstruct array to excel sheet
-                        ws.cell(row=(y + 1),column=(x + 1)).value = reconstruct_array[0][0]
+            if channel == 'DAPI':
 
 
-                        # reconstruct_array = skimage.filters.median(reconstruct_array)
-                        #self.image_reconstructor(experiment_directory, reconstruct_array, channel, cycle_number,
-                        #                         x_frame_size, y, x)
+                #load in sheet
+
+                sheet_name = channel + '_cycle' + str(cycle_number)
+                ws = wb[sheet_name]
+
+                # generate imstack of z slices for tile
+                im_path = experiment_directory + '/' + channel + '\Stain\cy_' + str(cycle_number) + '\Tiles'
+
+                os.chdir(im_path)
+
+                z_stack = np.random.rand(z_slice_count, 2960, x_frame_size).astype('float32')
+                for x in range(0, x_tile_count):
+                    for y in range(0, y_tile_count):
+                        if tissue_exist[y][x] >= 1:
+                            for z in range(0, z_slice_count):
+                                im_path = experiment_directory + '/' + channel + '\Stain\cy_' + str(cycle_number) + '\Tiles'
+                                os.chdir(im_path)
+                                file_name = 'z_' + str(z) + '_x' + str(x) + '_y_' + str(y) + '_c_' + str(channel) + '.tif'
+                                image = tf.imread(file_name)
+                                z_stack[z] = image
+
+                                # break into sub sections (2x2)
+
+                            number_bins = len(bin_values)
+                            brenner_sub_selector = np.random.rand(z_slice_count, number_bins, y_sub_section_count,
+                                                                  x_sub_section_count)
+                            for z in range(0, z_slice_count):
+                                for y_sub in range(0, y_sub_section_count):
+                                    for x_sub in range(0, x_sub_section_count):
+
+                                        y_end = int((y_sub + 1) * (2960 / y_sub_section_count))
+                                        y_start = int(y_sub * (2960 / y_sub_section_count))
+                                        x_end = int((x_sub + 1) * (x_frame_size / x_sub_section_count))
+                                        x_start = int(x_sub * (x_frame_size / x_sub_section_count))
+                                        sub_image = z_stack[z][y_start:y_end, x_start:x_end]
+
+                                        if channel == 'DAPI':
+                                            sub_tissue_bin = nuc_binary_stack[y][x][y_start:y_end, x_start:x_end]
+                                        else:
+                                            sub_tissue_bin = tissue_binary_stack[y][x][y_start:y_end, x_start:x_end]
+
+                                        for b in range(0, number_bins):
+                                            bin_value = int(bin_values[b])
+                                            score = self.focus_score(sub_image, bin_value, sub_tissue_bin)
+                                            # score = self.focus_score_post_processing(sub_image, bin_value)
+                                            # score = 500
+                                            brenner_sub_selector[z][b][y_sub][x_sub] = score
+
+                            reconstruct_array = self.brenner_reconstruct_array(brenner_sub_selector, z_slice_count,
+                                                                               number_bins)
+
+                            #transfer reconstruct array to excel sheet
+                            for channel in channels:
+                                sheet_name = channel + '_cycle' + str(cycle_number)
+                                ws = wb[sheet_name]
+                                ws.cell(row=(y + 1),column=(x + 1)).value = reconstruct_array[0][0]
+
+    
+                            # reconstruct_array = skimage.filters.median(reconstruct_array)
+                            #self.image_reconstructor(experiment_directory, reconstruct_array, channel, cycle_number,
+                            #                         x_frame_size, y, x)
 
                     else:
                         pass
+
+            else:
+                pass
 
 
         os.chdir(experiment_directory + '/' + excel_folder_name)
