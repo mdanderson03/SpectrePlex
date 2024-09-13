@@ -546,11 +546,7 @@ class cycif:
                         tile_filename = 'x' + str(x) + '_y_' + str(y) + '_c_' + str(channel) + '.tif'
                         im = io.imread(tile_filename)
 
-                        im[im < 0] = 0
                         im = im.astype('float32')
-                        im -= low_value
-
-                        high_value -= low_value
                         im[im < 0] = 0
                         im  = im/high_value
                         im[im > 1] = 1
@@ -563,6 +559,89 @@ class cycif:
         os.chdir(compression_directory)
         wb.save('compression.xlsx')
 
+    def hdr_compression_2(self, experiment_directory, cycle_number):
+        '''
+        Takes quick tiled image and clips some high and low pixels to define a smaller range to
+        use when doing a linear conversion form 32bit space to 16bit space.
+
+        :param experiment_directory:
+        :param cycle_number:
+        :return:
+        '''
+
+        compression_directory = experiment_directory + r'/compression'
+        os.chdir(compression_directory)
+        try:
+            wb = load_workbook('compression.xlsx')
+        except:
+            wb = Workbook()
+        ws = wb.active
+
+        # load in data structures
+        numpy_path = experiment_directory + '/' + 'np_arrays'
+        os.chdir(numpy_path)
+        file_name = 'fm_array.npy'
+        fm_array = np.load(file_name, allow_pickle=False)
+        tissue_fm = fm_array[10]
+        x_tile_count = np.shape(tissue_fm)[1]
+        y_tile_count = np.shape(tissue_fm)[0]
+
+        row_number = int(cycle_number + 1)
+
+        min_bin_fraction = 0.000001
+        channels = ['DAPI', 'A488', 'A555', 'A647']
+
+        for channel in channels:
+
+            quicktile_path = experiment_directory + '\Quick_Tile/' + channel
+            flattened_path = experiment_directory + '//' + channel + '\Stain\cy_' + str(
+                cycle_number) + r'\Tiles\focused_basic_corrected'
+            high_col = (np.where(channels == channel)[0][0] + 1) * 2
+
+            os.chdir(quicktile_path)
+            filename = channel + '_cy_' + str(cycle_number) + '_Stain_placed.tif'
+            im = io.imread(filename)
+            im -= 1
+            im[im < 0] = 0
+            non_zero_indicies = np.nonzero(im)
+            histogram, bin_edges = np.histogram(im[non_zero_indicies], bins=256)
+
+            total_pixels = np.sum(histogram)
+            min_bin_size = math.ceil(min_bin_fraction * total_pixels)
+            # print(min_bin_size)
+            histogram -= min_bin_size
+            histogram[histogram < 0] = 0
+            threshold_bin_number = np.where(histogram == 0)[0][0]
+            top_int = bin_edges[threshold_bin_number - 1]
+
+            if top_int < 65500:
+                top_int = 65500
+            else:
+                pass
+
+            ws.cell(row=row_number, column=high_col).value = top_int
+
+            # apply compression on flattened images
+            os.chdir(flattened_path)
+
+            for x in range(0, x_tile_count):
+                for y in range(0, y_tile_count):
+                    if tissue_fm[y][x] > 1:
+                        image_name = r'x' + str(x) + '_y_' + str(y) + '_c_' + channel + 'tif'
+                        flat_image = io.imread(image_name)
+
+                        flat_image[flat_image < 0] = 0
+                        flat_image = flat_image.astype('float32')
+                        flat_image = flat_image / top_int
+                        flat_image[flat_image > 1] = 1
+                        flat_image = util.img_as_uint(flat_image)
+                        io.imsave(image_name, flat_image)
+
+                    else:
+                        pass
+
+        os.chdir(compression_directory)
+        wb.save('compression.xlsx')
 
     def hdr_compression(self, experiment_directory, cycle_number, apply_2_subbed = 1, apply_2_bleached = 1, apply_2_focused = 1, apply_2_flattened = 1,  channels = ['DAPI', 'A488','A555', 'A647']):
         '''
