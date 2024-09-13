@@ -56,6 +56,8 @@ class fluidics:
         self.pressure_off = 0
         self.flow_on = 500
         self.flow_off = -3
+        self.low_flow_on = 65
+        self.high_flow_on = 500
 
         return
 
@@ -95,6 +97,12 @@ class fluidics:
         wb.save(filename)
 
     def flow(self, on_off_state):
+        '''
+        ON turns flow on as dictated in init function and ON LOW does it for th low flow in the init function
+
+        :param on_off_state: 'ON', 'ON LOW', 'ON HIGH', 'OFF'
+        :return:
+        '''
 
         # load in data structures
         numpy_path = self.experiment_directory + '/' + 'np_arrays'
@@ -105,6 +113,10 @@ class fluidics:
         # set target to achieve
         if self.flow_control == 1 and on_off_state == 'ON':
             set_target = self.flow_on
+        if self.flow_control == 1 and on_off_state == 'ON LOW':
+            set_target = self.low_flow_on
+        if self.flow_control == 1 and on_off_state == 'ON HIGH':
+            set_target = self.high_flow_on
         if self.flow_control == 1 and on_off_state == 'OFF':
             set_target = self.flow_off
         if self.flow_control == 0 and on_off_state == 'ON':
@@ -115,15 +127,17 @@ class fluidics:
 
         set_channel = int(1)  # convert to int
         set_channel = c_int32(set_channel)  # convert to c_int32
+        data_sens = c_double()
+        data_reg = c_double()
+
+        error = OB1_Get_Remote_Data(self.pump_ID, set_channel, byref(data_reg), byref(data_sens))
+        starting_flow_rate = data_sens.value
+        self.fluidics_logger(str(OB1_Get_Remote_Data), error, starting_flow_rate)
 
         # OB1_Start_Remote_Measurement(self.pump_ID, self.calibration_array, 1000)
         error = OB1_Set_Remote_Target(self.pump_ID, set_channel, set_target_c_types)
         self.fluidics_logger(str(OB1_Set_Remote_Target), error, set_target)
 
-        data_sens = c_double()
-        data_reg = c_double()
-        set_channel = int(1)  # convert to int
-        set_channel = c_int32(set_channel)  # convert to c_int32
         time.sleep(3)  # wait 3 seconds to stabilize
         error = OB1_Get_Remote_Data(self.pump_ID, set_channel, byref(data_reg), byref(data_sens))
 
@@ -135,13 +149,16 @@ class fluidics:
 
         self.fluidics_logger(str(OB1_Get_Remote_Data), error, current_flow_rate)
 
+        delta_flow_rate = current_flow_rate - starting_flow_rate
+        #print('start', starting_flow_rate, 'end', current_flow_rate, 'del', delta_flow_rate)
+
         # error = OB1_Get_Remote_Data(self.pump_ID, set_channel, byref(data_reg), byref(data_sens))
         # current_flow_rate = data_sens.value
         # self.fluidics_logger(str(OB1_Get_Remote_Data), error, current_flow_rate)
 
         if self.flow_control == 1:
 
-            if set_target > 400 and current_flow_rate < 0.25 * set_target:
+            if set_target != self.flow_off  and delta_flow_rate < 0.5 * set_target:
                 print('flow failed')
                 zero_target = c_double(self.flow_off)
 
@@ -156,7 +173,7 @@ class fluidics:
                 # run = 1 # restart flow function
                 fluid_array[2] = 1
 
-            if set_target < 40 and current_flow_rate > 100:
+            if set_target == self.flow_off and delta_flow_rate > -0.5*starting_flow_rate:
                 # self.flow_control = 0
 
                 # set_channel = int(1)
