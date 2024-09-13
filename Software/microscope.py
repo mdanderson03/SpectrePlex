@@ -4,7 +4,7 @@ import ome_types
 from pycromanager import Core, Magellan, Studio
 import numpy as np
 import time
-from skimage import io, filters, morphology, restoration
+from skimage import io, filters, morphology, restoration, util
 import skimage
 import os
 import math
@@ -589,13 +589,12 @@ class cycif:
         row_number = int(cycle_number + 1)
 
         min_bin_fraction = 0.000001
-        channels = ['DAPI', 'A488', 'A555', 'A647']
+        channels = np.array(['A488', 'A555', 'A647'])
 
         for channel in channels:
 
             quicktile_path = experiment_directory + '\Quick_Tile/' + channel
-            flattened_path = experiment_directory + '//' + channel + '\Stain\cy_' + str(
-                cycle_number) + r'\Tiles\focused_basic_corrected'
+            flattened_path = experiment_directory + '//' + channel + '\Stain\cy_' + str(cycle_number) + r'\Tiles\focused_basic_corrected'
             high_col = (np.where(channels == channel)[0][0] + 1) * 2
 
             os.chdir(quicktile_path)
@@ -627,7 +626,7 @@ class cycif:
             for x in range(0, x_tile_count):
                 for y in range(0, y_tile_count):
                     if tissue_fm[y][x] > 1:
-                        image_name = r'x' + str(x) + '_y_' + str(y) + '_c_' + channel + 'tif'
+                        image_name = r'x' + str(x) + '_y_' + str(y) + '_c_' + channel + '.tif'
                         flat_image = io.imread(image_name)
 
                         flat_image[flat_image < 0] = 0
