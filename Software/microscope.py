@@ -1729,6 +1729,10 @@ class cycif:
         #check to see if labelled image exists in folder. If it does, load in and use
         #if not, remake. Delete image in folder if you want to remake
         labelled_image_path = file_path + '/labelled_tissue_filtered.tif'
+
+        new_labelled_image = self.cluster_neighborhood(new_labelled_image, sorted_cluster_areas)
+        '''
+        
         if os.path.isfile(labelled_image_path) == True:
             os.chdir(r'E:\12-9-24 gutage\Tissue_Binary')
             filename = r'labelled_tissue_filtered.tif'
@@ -1737,6 +1741,7 @@ class cycif:
             new_labelled_image = self.cluster_neighborhood(new_labelled_image, sorted_cluster_areas)
             new_labelled_image = new_labelled_image.astype('int16')
             io.imsave('labelled_tissue_filtered.tif', new_labelled_image)
+        '''
 
         '''
         #make new binary image
@@ -1884,15 +1889,34 @@ class cycif:
             neighborhood_matrix[int(combo[0])][int(combo[1])] = net_distance
             neighborhood_matrix[int(combo[1])][int(combo[0])] = net_distance
 
-        '''
+        print(neighborhood_matrix)
+
         for x in range(1, number_clusters + 1):
-            for y in range(2, number_clusters - (x - 2)):
+            for y in range(x + 1, number_clusters + 1):
                 net_distance = neighborhood_matrix[y][x]
 
                 if net_distance < threshold:
 
-                    cluster_reference_index = int(neighborhood_matrix[0][x])
-                    cluster_2_be_merged_index = int(neighborhood_matrix[y][0])
+                    #cluster_reference_index = int(neighborhood_matrix[0][x])
+                    #cluster_2_be_merged_index = int(neighborhood_matrix[y][0])
+                    #remove unique label from list
+                    try:
+                        unique_second_cluster_index = np.where(unique_labels == neighborhood_matrix[y][0])[0][0]
+                        unique_labels = np.delete(unique_labels, unique_second_cluster_index)
+                    except:
+                        pass
+
+                    #make label in image match
+                    image[image == neighborhood_matrix[y][0]] = neighborhood_matrix[0][x]
+
+                    #alter label number to be that of the starting index on x axis
+                    neighborhood_matrix[y][0] = neighborhood_matrix[0][x]
+                    neighborhood_matrix[0][y] = neighborhood_matrix[0][x]
+                    
+                    #remove a cluster count as it merged with another cluster
+                    new_cluster_count -= 1
+
+                    '''
                     print(cluster_2_be_merged_index, unique_labels)
                     image[image == cluster_2_be_merged_index] = cluster_reference_index
                     try:
@@ -1904,6 +1928,7 @@ class cycif:
                     neighborhood_matrix[0][y] = cluster_reference_index
 
                     new_cluster_count -= 1
+                    '''
 
                 else:
                     pass
@@ -1917,9 +1942,7 @@ class cycif:
                 image[image==labels_to_be_replaced[x]] = not_used_desired_numbers[x]
         else:
             pass
-        '''
 
-        print(neighborhood_matrix)
 
         io.imshow(image)
         io.show()
