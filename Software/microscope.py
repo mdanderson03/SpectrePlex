@@ -1893,8 +1893,6 @@ class cycif:
             neighborhood_matrix[int(combo[0])][int(combo[1])] = net_distance
             neighborhood_matrix[int(combo[1])][int(combo[0])] = net_distance
 
-        print(neighborhood_matrix)
-
         for x in range(1, number_clusters + 1):
             for y in range(x + 1, number_clusters + 1):
                 net_distance = neighborhood_matrix[y][x]
@@ -1920,22 +1918,9 @@ class cycif:
                     #remove a cluster count as it merged with another cluster
                     new_cluster_count -= 1
 
-                    '''
-                    print(cluster_2_be_merged_index, unique_labels)
-                    image[image == cluster_2_be_merged_index] = cluster_reference_index
-                    try:
-                        unique_second_cluster_index = np.where(unique_labels ==cluster_2_be_merged_index)[0][0]
-                        unique_labels = np.delete(unique_labels, unique_second_cluster_index)
-                    except:
-                        pass
-                    neighborhood_matrix[y][0] = cluster_reference_index
-                    neighborhood_matrix[0][y] = cluster_reference_index
-
-                    new_cluster_count -= 1
-                    '''
-
                 else:
                     pass
+
 
         #renumber clusters to be 1 int steps and continuous starting from 1
         desired_numbers = np.linspace(1, new_cluster_count, new_cluster_count)
@@ -1950,8 +1935,6 @@ class cycif:
 
         io.imshow(image)
         io.show()
-
-
 
 
         return image
