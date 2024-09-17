@@ -3,8 +3,8 @@ import numpy as np
 from autocyplex import *
 from optparse import OptionParser
 microscope = cycif() # initialize cycif object
-experiment_directory = r'Z:\Public\Thiagarajah Lab\Mike_A\SpectrePlex\11-9-24 gutage'
-pump = fluidics(experiment_directory, 6, 13, flow_control=1)
+experiment_directory = r'E:\12-9-24 gutage'
+#pump = fluidics(experiment_directory, 6, 13, flow_control=1)
 core = Core()
 
 
@@ -14,7 +14,7 @@ offset_array = [0, -7, -7, -6]
 focus_position = -342  #make sure this is upper left hand corner focus z position
 
 #microscope.hdr_compression_2(experiment_directory, cycle_number=1)
-microscope.stage_placement(experiment_directory, 1, x_pixels=x_frame_size, down_sample_factor=4)
+#microscope.stage_placement(experiment_directory, 1, x_pixels=x_frame_size, down_sample_factor=4)
 #microscope.fm_stage_tilt_compensation(experiment_directory, tilt=3.75)
 
 #pump.liquid_action('low flow on')
@@ -42,8 +42,8 @@ microscope.stage_placement(experiment_directory, 1, x_pixels=x_frame_size, down_
 # es, 'Bleach', offset_array,x_frame_size=x_frame_size, auto_focus_run=0, auto_expose_run=3)
 #microscope.post_acquisition_processor(experiment_directory, x_frame_size, rolling_ball=0)
 #microscope.brightness_uniformer(experiment_directory, cycle_number=1)
-#for cycle in range(1, 11):
-#    microscope.inter_cycle_processing(experiment_directory, cycle_number=cycle, x_frame_size=x_frame_size)
+for cycle in range(3, 6):
+    microscope.inter_cycle_processing(experiment_directory, cycle_number=cycle, x_frame_size=x_frame_size)
 #microscope.tissue_region_identifier(experiment_directory, x_frame_size=x_frame_size, clusters_retained=6)
 
 #microscope.recursive_stardist_autofocus(experiment_directory, 0,remake_nuc_binary=0)

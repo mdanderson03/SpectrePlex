@@ -3102,6 +3102,7 @@ class cycif:
         self.folder_addon(experiment_directory, ['np_arrays'])
         self.folder_addon(experiment_directory, ['mcmicro'])
         self.folder_addon(experiment_directory, ['exposure_times'])
+        self.folder_addon(experiment_directory, ['compression'])
         self.folder_addon(experiment_directory, channels)
 
         # folder layer two
@@ -3864,8 +3865,9 @@ class cycif:
                     if tissue_fm[y][x] > 1:
                         image_name = r'x' + str(x) + '_y_' + str(y) + '_c_' + channel + '.tif'
                         flat_image = io.imread(image_name)
-                        low_pixel = np.sort(flat_image)[100]
-                        flat_image -+ low_pixel
+                        low_pixel = np.sort(flat_image, axis=None)[100]
+                        #print('x', x, 'y', y, 'low pixel', low_pixel)
+                        flat_image -= low_pixel
                         flat_image[flat_image<0] = 0
                         io.imsave(image_name, flat_image)
 
@@ -4049,9 +4051,9 @@ class cycif:
         print('binary create', end - start)
 
         #determine in focus parts first
-        #self.focus_excel_creation(experiment_directory, cycle_number)
-        #self.in_focus_excel_populate(experiment_directory, cycle_number, x_frame_size=x_frame_size)
-        #self.excel_2_focus(experiment_directory, cycle_number, x_frame_size=x_frame_size)
+        self.focus_excel_creation(experiment_directory, cycle_number)
+        self.in_focus_excel_populate(experiment_directory, cycle_number, x_frame_size=x_frame_size)
+        self.excel_2_focus(experiment_directory, cycle_number, x_frame_size=x_frame_size)
 
         end = time.time()
         print('focus', end - start)
@@ -4070,7 +4072,7 @@ class cycif:
         #flatten image
 
         self.illumination_flattening(experiment_directory, cycle_number, rolling_ball=0)
-        self.bottom_int_correction(experiment_directory, cycle_number=cycle_number)
+        #self.bottom_int_correction(experiment_directory, cycle_number=cycle_number)
 
         end = time.time()
         print('flatten', end - start)
@@ -4079,7 +4081,7 @@ class cycif:
 
 
         #compress to 16bit
-        self.hdr_compression2(experiment_directory, cycle_number)
+        self.hdr_compression_2(experiment_directory, cycle_number)
         #self.hdr_manual_compression(experiment_directory, cycle_number=cycle_number)
 
         end = time.time()
