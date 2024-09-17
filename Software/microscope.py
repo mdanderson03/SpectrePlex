@@ -1726,12 +1726,17 @@ class cycif:
         new_labelled_image[new_labelled_image < (65535 - number_actual_clusters_retained -1)] = 0
         new_labelled_image[np.nonzero(new_labelled_image)] = new_labelled_image[np.nonzero(new_labelled_image)] - (65535 - number_actual_clusters_retained)
 
-        new_labelled_image = self.cluster_neighborhood(new_labelled_image, sorted_cluster_areas)
-        #os.chdir(r'E:\12-9-24 gutage\Tissue_Binary')
-        #filename = r'labelled_tissue_filtered.tif'
-        #new_labelled_image = io.imread(filename)
-        new_labelled_image = new_labelled_image.astype('int16')
-        io.imsave('labelled_tissue_filtered.tif', new_labelled_image)
+        #check to see if labelled image exists in folder. If it does, load in and use
+        #if not, remake. Delete image in folder if you want to remake
+        labelled_image_path = file_path + '/labelled_tissue_filtered.tif'
+        if os.path.isfile(labelled_image_path) == True:
+            os.chdir(r'E:\12-9-24 gutage\Tissue_Binary')
+            filename = r'labelled_tissue_filtered.tif'
+            new_labelled_image = io.imread(filename)
+        else:
+            new_labelled_image = self.cluster_neighborhood(new_labelled_image, sorted_cluster_areas)
+            new_labelled_image = new_labelled_image.astype('int16')
+            io.imsave('labelled_tissue_filtered.tif', new_labelled_image)
 
         '''
         #make new binary image
