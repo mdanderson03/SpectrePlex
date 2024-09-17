@@ -1728,22 +1728,20 @@ class cycif:
 
         #check to see if labelled image exists in folder. If it does, load in and use
         #if not, remake. Delete image in folder if you want to remake
+
         labelled_image_path = file_path + '/labelled_tissue_filtered.tif'
 
-        new_labelled_image = self.cluster_neighborhood(new_labelled_image, sorted_cluster_areas)
-        '''
-        
         if os.path.isfile(labelled_image_path) == True:
-            os.chdir(r'E:\12-9-24 gutage\Tissue_Binary')
+            os.chdir(file_path)
             filename = r'labelled_tissue_filtered.tif'
             new_labelled_image = io.imread(filename)
+            new_labelled_image -= np.min(new_labelled_image)
         else:
             new_labelled_image = self.cluster_neighborhood(new_labelled_image, sorted_cluster_areas)
             new_labelled_image = new_labelled_image.astype('int16')
             io.imsave('labelled_tissue_filtered.tif', new_labelled_image)
-        '''
 
-        '''
+
         #make new binary image
         new_image = copy.deepcopy(new_labelled_image)
         new_image[new_image > 0] = 1
@@ -1777,7 +1775,7 @@ class cycif:
 
         io.imsave('whole_tissue.tif', super_image)
         io.imsave('whole_tissue_filtered.tif', new_image)
-        '''
+
 
     def tissue_binary_generate(self, experiment_directory, x_frame_size = 2960, clusters_retained = 1, area_threshold = 0.25):
         '''
@@ -2956,37 +2954,21 @@ class cycif:
             highest_index = np.where(scores[region] == highest_value)[0][0]
             print('region', region, 'index', highest_index + 1)
 
-    def wide_net_auto_focus(self, experiment_directory, x_frame_size, offset_array, z_slices, focus_position, number_clusters_retained = 4):
+    def wide_net_auto_focus(self, experiment_directory, x_frame_size, offset_array, z_slices, focus_position, number_clusters_retained = 6):
 
+        z_wide_range = 11
 
-
-        #self.image_cycle_acquire(0, experiment_directory,11, 'Bleach', offset_array, x_frame_size=x_frame_size,establish_fm_array=1, auto_focus_run=0, auto_expose_run=0, channels=['DAPI'],focus_position=focus_position)
-        #self.recursive_stardist_autofocus(experiment_directory, cycle=0)
-        #self.generate_nuc_mask(experiment_directory, cycle_number=0)
-        #self.recursive_stardist_autofocus(experiment_directory, cycle=0)
+        self.image_cycle_acquire(0, experiment_directory,z_wide_range, 'Bleach', offset_array, x_frame_size=x_frame_size,establish_fm_array=1, auto_focus_run=0, auto_expose_run=0, channels=['DAPI'],focus_position=focus_position)
+        self.recursive_stardist_autofocus(experiment_directory, cycle=0, remake_nuc_binary=1)
         self.tissue_region_identifier(experiment_directory, clusters_retained=number_clusters_retained)
-        #self.recursive_stardist_autofocus(experiment_directory, cycle=0)
-        #self.tissue_region_identifier(experiment_directory, clusters_retained=number_clusters_retained)
-        #self.image_cycle_acquire(0, experiment_directory, 11, 'Bleach', offset_array, x_frame_size=x_frame_size,establish_fm_array=0, auto_focus_run=0, auto_expose_run=0, channels=['DAPI'],focus_position=focus_position)
-        #self.generate_nuc_mask(experiment_directory, cycle_number=0)
-        #self.recursive_stardist_autofocus(experiment_directory, cycle=0)
-        #self.generate_nuc_mask(experiment_directory, cycle_number=0)
-        #self.tissue_region_identifier(experiment_directory, clusters_retained=number_clusters_retained)
-        #self.recursive_stardist_autofocus(experiment_directory, cycle=0)
-
-
-
-
-
-
-
+        self.image_cycle_acquire(0, experiment_directory, z_wide_range, 'Bleach', offset_array, x_frame_size=x_frame_size,establish_fm_array=0, auto_focus_run=0, auto_expose_run=0, channels=['DAPI'],focus_position=focus_position)
+        self.recursive_stardist_autofocus(experiment_directory, cycle=0, remake_nuc_binary=1)
 
         numpy_path = experiment_directory + '/' + 'np_arrays'
         os.chdir(numpy_path)
         fm_array = np.load('fm_array.npy', allow_pickle=False)
 
-
-        fm_array[2] -= 8
+        fm_array[2] -= (z_wide_range-z_slices)
         fm_array[3] = z_slices
         fm_array[5] = z_slices
         fm_array[7] = z_slices
@@ -2995,7 +2977,9 @@ class cycif:
         os.chdir(numpy_path)
         np.save('fm_array.npy', fm_array)
 
-    def initialize(self, experiment_directory, offset_array, z_slices, x_frame_size=2960, focus_position = 'none', number_clusters = 4):
+        self.image_cycle_acquire(0, experiment_directory, z_slices, 'Bleach', offset_array, x_frame_size=x_frame_size,establish_fm_array=0, auto_focus_run=0, auto_expose_run=0, channels=['DAPI'],focus_position=focus_position)
+
+    def initialize(self, experiment_directory, offset_array, z_slices, x_frame_size=2960, focus_position = 'none', number_clusters = 6):
         '''initialization section. Takes DAPI images, cluster filters tissue, minimally frames sampling grid, acquires all channels.
 
         :param experiment_directory:
@@ -3024,12 +3008,12 @@ class cycif:
         #self.generate_nuc_mask(experiment_directory, cycle_number=0)
         #self.tissue_region_identifier(experiment_directory, clusters_retained=4)
 
-    def full_cycle(self, experiment_directory, cycle_number, offset_array, stain_valve, fluidics_object, z_slices, incub_val=45, x_frame_size=2960, focus_position = 'none'):
+    def full_cycle(self, experiment_directory, cycle_number, offset_array, stain_valve, fluidics_object, z_slices, incub_val=45, x_frame_size=2960, focus_position = 'none', number_clusters = 6):
 
         pump = fluidics_object
 
         if cycle_number == 0:
-            self.initialize(experiment_directory, offset_array, z_slices, x_frame_size=x_frame_size, focus_position = focus_position)
+            self.initialize(experiment_directory, offset_array, z_slices, x_frame_size=x_frame_size, focus_position = focus_position, number_clusters=number_clusters)
         else:
 
             # print(status_str)
