@@ -1779,7 +1779,7 @@ class cycif:
         io.imsave('whole_tissue_filtered.tif', new_image)
         '''
 
-    def tissue_binary_generate(self, experiment_directory, x_frame_size = 2960, clusters_retained = 1, area_threshold = 0.1):
+    def tissue_binary_generate(self, experiment_directory, x_frame_size = 2960, clusters_retained = 1, area_threshold = 0.25):
         '''
         Generates tissue binary maps from star dist binary maps
 
@@ -1838,7 +1838,7 @@ class cycif:
         :return:
         '''
 
-        threshold = 500 # in pixels
+        threshold = 1500 # in pixels
         sorted_y_centroid = sorted_cluster_areas[2]
         sorted_x_centroid = sorted_cluster_areas[3]
         sorted_index = sorted_cluster_areas[1]
