@@ -610,7 +610,10 @@ class cycif:
             # print(min_bin_size)
             histogram -= min_bin_size
             histogram[histogram < 0] = 0
-            threshold_bin_number = np.where(histogram == 0)[0][0]
+            try:
+                threshold_bin_number = np.where(histogram == 0)[0][0]
+            except:
+                threshold_bin_number = 255
             top_int = bin_edges[threshold_bin_number - 1]
 
             if top_int < 65500:
@@ -1723,14 +1726,14 @@ class cycif:
         new_labelled_image[new_labelled_image < (65535 - number_actual_clusters_retained -1)] = 0
         new_labelled_image[np.nonzero(new_labelled_image)] = new_labelled_image[np.nonzero(new_labelled_image)] - (65535 - number_actual_clusters_retained)
 
-        #new_labelled_image = self.cluster_neighborhood(new_labelled_image, sorted_cluster_areas)
-        os.chdir(r'E:\12-9-24 gutage\Tissue_Binary')
-        filename = r'labelled_tissue_filtered.tif'
-        new_labelled_image = io.imread(filename)
-        #new_labelled_image = new_labelled_image.astype('int16')
+        new_labelled_image = self.cluster_neighborhood(new_labelled_image, sorted_cluster_areas)
+        #os.chdir(r'E:\12-9-24 gutage\Tissue_Binary')
+        #filename = r'labelled_tissue_filtered.tif'
+        #new_labelled_image = io.imread(filename)
+        new_labelled_image = new_labelled_image.astype('int16')
         io.imsave('labelled_tissue_filtered.tif', new_labelled_image)
 
-    
+        '''
         #make new binary image
         new_image = copy.deepcopy(new_labelled_image)
         new_image[new_image > 0] = 1
@@ -1764,6 +1767,7 @@ class cycif:
 
         io.imsave('whole_tissue.tif', super_image)
         io.imsave('whole_tissue_filtered.tif', new_image)
+        '''
 
     def tissue_binary_generate(self, experiment_directory, x_frame_size = 2960, clusters_retained = 1, area_threshold = 0.1):
         '''
@@ -1875,6 +1879,7 @@ class cycif:
             neighborhood_matrix[int(combo[0])][int(combo[1])] = net_distance
             neighborhood_matrix[int(combo[1])][int(combo[0])] = net_distance
 
+        '''
         for x in range(1, number_clusters + 1):
             for y in range(2, number_clusters - (x - 2)):
                 net_distance = neighborhood_matrix[y][x]
@@ -1907,6 +1912,12 @@ class cycif:
                 image[image==labels_to_be_replaced[x]] = not_used_desired_numbers[x]
         else:
             pass
+        '''
+
+        print(neighborhood_matrix)
+
+        io.imshow(image)
+        io.show()
 
 
 
@@ -2969,11 +2980,6 @@ class cycif:
         os.chdir(numpy_path)
         np.save('fm_array.npy', fm_array)
 
-
-        
-
-
-
     def initialize(self, experiment_directory, offset_array, z_slices, x_frame_size=2960, focus_position = 'none', number_clusters = 4):
         '''initialization section. Takes DAPI images, cluster filters tissue, minimally frames sampling grid, acquires all channels.
 
@@ -3765,7 +3771,6 @@ class cycif:
                 io.imsave(filenames[x], im2)
             except:
                 pass
-
 
     def illumination_flattening(self, experiment_directory, cycle_number, rolling_ball = 0):
 
