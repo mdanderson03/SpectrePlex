@@ -3,7 +3,7 @@ import numpy as np
 from autocyplex import *
 from optparse import OptionParser
 microscope = cycif() # initialize cycif object
-experiment_directory = r'Z:\Public\Thiagarajah Lab\Mike_A\SpectrePlex\5-9-24 gutage'
+experiment_directory = r'E:\11-9-24 gutage'
 #pump = fluidics(experiment_directory, 6, 13, flow_control=1)
 core = Core()
 

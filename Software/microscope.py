@@ -1817,6 +1817,10 @@ class cycif:
                 star_dist_im = io.imread(star_dist_filename)
 
                 tissue_binary_im = morphology.binary_dilation(star_dist_im, foot_print)
+                #tissue_binary_im = morphology.binary_erosion(tissue_binary_im, foot_print)
+                #tissue_binary_im = morphology.binary_erosion(tissue_binary_im, foot_print)
+                #tissue_binary_im = morphology.binary_dilation(tissue_binary_im, foot_print)
+
                 tissue_binary_im = tissue_binary_im.astype(np.uint8)
                 filtered_image = self.tissue_filter(tissue_binary_im)
                 os.chdir(tissue_path)
