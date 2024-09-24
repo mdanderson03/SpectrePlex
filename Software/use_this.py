@@ -4,31 +4,47 @@ from autocyplex import *
 from optparse import OptionParser
 microscope = cycif() # initialize cycif object
 experiment_directory = r'Z:\Public\Thiagarajah Lab\Mike_A\SpectrePlex\13-8-24 gutage'
-pump = fluidics(experiment_directory, 6, 13, flow_control=1)
+#pump = fluidics(experiment_directory, 6, 13, flow_control=1)
 core = Core()
 
 
 z_slices = 3
 x_frame_size = 2960
 offset_array = [0, -7, -7, -6]
-focus_position = -38
+focus_position = -342  #make sure this is upper left hand corner focus z position
 
+#microscope.hdr_compression_2(experiment_directory, cycle_number=1)
+#microscope.stage_placement(experiment_directory, 1, x_pixels=x_frame_size, down_sample_factor=4)
+#microscope.fm_stage_tilt_compensation(experiment_directory, tilt=3.75)
+
+#pump.liquid_action('low flow on')
+#time.sleep(30)
+#pump.liquid_action('flow off')
+
+#microscope.tilt_determination()
 #microscope.tissue_region_identifier(experiment_directory, x_frame_size=x_frame_size, clusters_retained=6)
-pump.liquid_action('Stain', stain_valve=7, incub_val=1)
-#pump.liquid_action('Wash')
+#pump.liquid_action('Stain', stain_valve=1)
+#microscope.recursive_stardist_autofocus(experiment_directory, cycle=2,remake_nuc_binary=0)
 #microscope.image_cycle_acquire(1, experiment_directory, z_slices, 'Stain', offset_array,x_frame_size=x_frame_size, auto_focus_run=0, auto_expose_run=3)
+#pump.liquid_action('Wash')
+#pump.liquid_action('low flow on')
+#pump.liquid_action('Wash')
+#microscope.image_cycle_acquire(10, experiment_directory, z_slices, 'Stain', offset_array,x_frame_size=x_frame_size, auto_focus_run=0, auto_expose_run=3)
+#pump.liquid_action('flow off')
 #pump.liquid_action('Bleach')
-#microscope.image_cycle_acquire(1, experiment_directory, z_slices, 'Bleach', offset_array,x_frame_size=x_frame_size, auto_focus_run=0, auto_expose_run=3)
-#for cycle in range(2, 11):
+#microscope.image_cycle_acquire(10, experiment_directory, z_slices, 'Bleach', offset_array,x_frame_size=x_frame_size, auto_focus_run=0, auto_expose_run=0)
+#microscope.recursive_stardist_autofocus(experiment_directory, 0,remake_nuc_binary=0)
+#for cycle in range(1, 11):
     #microscope.inter_cycle_processing(experiment_directory, cycle_number=cycle, x_frame_size=x_frame_size)
 #    microscope.full_cycle(experiment_directory, cycle, offset_array, cycle, pump, z_slices, focus_position=focus_position)
 #microscope.image_cycle_acquire(1, experiment_directory, z_slices, 'Stain', offset_array,x_frame_size=x_frame_size, auto_focus_run=0, auto_expose_run=3)
-#microscope.image_cycle_acquire(0, experiment_directory, z_slices, 'Bleach', offset_array,x_frame_size=x_frame_size, auto_focus_run=0, auto_expose_run=3)
+#microscope.image_cycle_acquire(0, experiment_directory, z_slic
+# es, 'Bleach', offset_array,x_frame_size=x_frame_size, auto_focus_run=0, auto_expose_run=3)
 #microscope.post_acquisition_processor(experiment_directory, x_frame_size, rolling_ball=0)
 #microscope.brightness_uniformer(experiment_directory, cycle_number=1)
-#for cycle in range(1, 11):
+#for cycle in range(3, 6):
 #    microscope.inter_cycle_processing(experiment_directory, cycle_number=cycle, x_frame_size=x_frame_size)
-#microscope.tissue_region_identifier(experiment_directory, x_frame_size=x_frame_size, clusters_retained=6)
+microscope.tissue_region_identifier(experiment_directory, x_frame_size=x_frame_size, clusters_retained=6)
 
 #microscope.recursive_stardist_autofocus(experiment_directory, 0,remake_nuc_binary=0)
 #microscope.hdr_compression(experiment_directory, cycle_number=1, apply_2_subbed=0, apply_2_bleached=0)

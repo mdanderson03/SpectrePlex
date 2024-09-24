@@ -4,23 +4,26 @@ import tifffile
 import cv2
 import numpy as np
 from matplotlib import pyplot as plt
-from microscope import *
+from microscope_bright import *
 
 microscope = cycif()
 
 #experiment_directory = r'D:\Images\AutoCyPlex\test_set'
-experiment_directory = r'D:\Images\AutoCyPlex\13-8-24 gutage'
+experiment_directory = r'E:\30-8-24 gutage'
 os.chdir(experiment_directory)
 
-##microscope.illumination_flattening(experiment_directory, cycle_number=7)
-#microscope.brightness_uniformer(experiment_directory, 7, 1)
-#microscope.brightness_uniformer(experiment_directory, 7, 2)
-#microscope.brightness_uniformer(experiment_directory, 7, 3)
-#microscope.brightness_uniformer(experiment_directory, 7, 4)
-#microscope.brightness_uniformer(experiment_directory, 7, 5)
-#microscope.brightness_uniformer(experiment_directory, 7, 6)
 
-microscope.stage_placement(experiment_directory, 7, 2960, down_sample_factor=4)
+for cycle in range(10, 11):
+
+#microscope.illumination_flattening(experiment_directory, cycle_number=7)
+    microscope.brightness_uniformer(experiment_directory, cycle, 1)
+    microscope.brightness_uniformer(experiment_directory, cycle, 2)
+    microscope.brightness_uniformer(experiment_directory, cycle, 3)
+    microscope.brightness_uniformer(experiment_directory, cycle, 4)
+    microscope.brightness_uniformer(experiment_directory, cycle, 5)
+    #microscope.brightness_uniformer(experiment_directory, cycle, 6)
+
+    microscope.stage_placement(experiment_directory, cycle, 2960, down_sample_factor=4)
 
 
 

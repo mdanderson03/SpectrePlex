@@ -3072,7 +3072,7 @@ class cycif:
 
         # load images into python
 
-        channels = ['A555']
+        channels = ['DAPI', 'A488', 'A555', 'A647']
         types = ['Stain']
 
         for type in types:
@@ -4004,7 +4004,7 @@ class cycif:
         os.chdir(numpy_path)
         file_name = 'fm_array.npy'
         fm_array = np.load(file_name, allow_pickle=False)
-        channels = ['A555']
+        channels = ['DAPI', 'A488', 'A555', 'A647']
 
         # predetermine step sizes for search range on tile multiplier
         step_count = 40
@@ -4021,6 +4021,7 @@ class cycif:
         # this makes each tile have 4 'neighbors' even if the neighbor = 0 everywhere
         overlap_images = np.zeros([y_tile_count + 2, x_tile_count + 2, 4, 2, 2960, 296])
         multiplier_array = np.zeros([y_tile_count + 2, x_tile_count + 2])
+        mean_int_array = np.zeros([y_tile_count + 2, x_tile_count + 2])
 
         # bound_width
         x_width = 296
@@ -4037,7 +4038,7 @@ class cycif:
                 channel_file_path = dapi_file_path
             else:
                 channel_file_path = experiment_directory + '/' + channel + '/Stain/cy_' + str(
-                    cycle_number) + '/Tiles/focused_subbed_basic_corrected'
+                    cycle_number) + '/Tiles/focused_basic_corrected'
 
             if channel == 'DAPI':
                 channel_output_path = experiment_directory + '/' + channel + '/Stain/cy_' + str(
@@ -4052,17 +4053,24 @@ class cycif:
             except:
                 pass
 
+            average_cluster_int = 0
+
             # populate overlap image array and multipier arrays
             for x in range(0, x_tile_count):
                 for y in range(0, y_tile_count):
                     tile_list = self.tissue_fm_decode(tissue_fm[y][x])
                     if cluster_number in tile_list:
 
+
                         multiplier_array[y+1][x+1] = 1
                         # load in image
                         os.chdir(channel_file_path)
                         filename = 'x' + str(x) + '_y_' + str(y) + '_c_' + channel + '.tif'
                         image = io.imread(filename)
+
+                        mean_int_tile = np.mean(image)
+                        average_cluster_int += mean_int_tile
+                        mean_int_array[y+1][x+1] = mean_int_tile
 
                         os.chdir(dapi_file_path)
                         filename = 'x' + str(x) + '_y_' + str(y) + '_c_DAPI.tif'
@@ -4085,6 +4093,68 @@ class cycif:
 
 
                         # make new folder and save brightness uniformed images
+
+
+            #register order areas
+            for x in range(0, x_tile_count):
+                for y in range(0, y_tile_count):
+                    tile_list = self.tissue_fm_decode(tissue_fm[y][x])
+                    if cluster_number in tile_list:
+
+                        for side in range(0, 4):
+
+                            ref = overlap_images[y + 1][x + 1][side][0]
+
+                            if side == 0:
+                                y_adj = y
+                                x_adj = x + 1
+                                side_adj = 2
+                            if side == 1:
+                                y_adj = y + 1
+                                x_adj = x + 2
+                                side_adj = 3
+                            if side == 2:
+                                y_adj = y + 2
+                                x_adj = x + 1
+                                side_adj = 0
+                            if side == 3:
+                                y_adj = y + 1
+                                x_adj = x
+                                side_adj = 1
+                            else:
+                                pass
+
+                            adjacent_overlap = overlap_images[y_adj][x_adj][side_adj][0]
+                            chan = overlap_images[y + 1][x + 1][side][1]
+                            chan_adj = overlap_images[y_adj][x_adj][side_adj][1]
+
+                            sr = StackReg(StackReg.TRANSLATION)
+                            out_tra = sr.register_transform(ref, adjacent_overlap)
+                            #io.imshow(out_tra)
+                            #io.show()
+                            padding_image = copy.deepcopy(out_tra)
+                            padding_image[padding_image > 0] = 1
+
+                            ref = ref * padding_image
+                            chan_adj = sr.transform(chan_adj)
+                            chan = chan * padding_image
+
+                            out_tra[out_tra < 1] = 0
+                            ref[ref < 1] = 0
+
+                            overlap_images[y + 1][x + 1][side][0] = ref
+                            overlap_images[y_adj][x_adj][side_adj][0] = out_tra
+                            overlap_images[y + 1][x + 1][side][1] = chan
+                            overlap_images[y_adj][x_adj][side_adj][1] = chan_adj
+
+
+            os.chdir(experiment_directory)
+            np.save('overlap.npy', overlap_images)
+            #io.imsave('ref_2.tif', overlap_images[13][2][2][0])
+            #io.imsave('mov_2.tif', overlap_images[14][2][0][0])
+            #io.imshow(overlap_images[13][2][2][0])
+            #io.show()
+
 
             temp_multipier = copy.deepcopy(multiplier_array)
             tile_exist = copy.deepcopy(multiplier_array)
@@ -4147,28 +4217,7 @@ class cycif:
                                     mod_south_component = mod_south_unit_difference + (modded_multiplier - mod_step_size) * south_sum
                                     mod_west_component = mod_west_unit_difference + (modded_multiplier - mod_step_size) * west_sum
 
-
-                                    '''
-                                    mod_north = np.multiply(tile_north, modded_multiplier)
-                                    mod_east = np.multiply(tile_east, modded_multiplier)
-                                    mod_south = np.multiply(tile_south, modded_multiplier)
-                                    mod_west = np.multiply(tile_west, modded_multiplier)
-
-                                    mod_north_difference = np.mean(mod_north - adjacent_north) * tile_exist[y][x + 1]
-                                    mod_east_difference = np.mean(mod_east - adjacent_east) * tile_exist[y + 1][x + 2]
-                                    mod_south_difference = np.mean(mod_south - adjacent_south) * tile_exist[y + 2][x + 1]
-                                    mod_west_difference = np.mean(mod_west - adjacent_west) * tile_exist[y + 1][x]
-                                    
-
-
-
-
-
-                                    score = np.sqrt(mod_north_difference ** 2 + mod_south_difference ** 2 + mod_east_difference ** 2 + mod_west_difference ** 2)
-                                    '''
-
                                     score = np.sqrt(mod_north_component ** 2 + mod_south_component ** 2 + mod_east_component ** 2 + mod_west_component ** 2)
-                                    #score = np.sqrt(mod_south_difference ** 2 + mod_north_difference ** 2)
                                     scores[m] = score
 
                                 # find better multiplier mod value and update total multiplier
@@ -4184,12 +4233,26 @@ class cycif:
                                 pass
                         else:
                             pass
-                multiplier_array = multiplier_array * temp_multipier
 
                 print(net_score[i])
-                #print(multiplier_array)
-            plt.scatter(iteration_axis, net_score)
-            #plt.show()
+
+            # plt.scatter(iteration_axis, net_score)
+            # plt.show()
+
+            #find new cluster average and normalize to original cluster average per pixel
+            average_multiplied_cluster_int = 0
+            for x in range(0, x_tile_count):
+                for y in range(0, y_tile_count):
+                    tile_list = self.tissue_fm_decode(tissue_fm[y][x])
+                    if cluster_number in tile_list:
+
+                        average_multiplied_cluster_int += multiplier_array[y + 1][x + 1] * mean_int_array[y + 1][x + 1]
+
+                    else:
+                        pass
+
+            correction_factor = average_cluster_int/average_multiplied_cluster_int
+            multiplier_array = multiplier_array * correction_factor
 
             for x in range(0, x_tile_count):
                 for y in range(0, y_tile_count):
@@ -4202,6 +4265,7 @@ class cycif:
                         os.chdir(channel_output_path)
                         image = (image) * multiplier_array[y+1][x+1]
                         io.imsave(filename, image)
+
 
 
     def max_projector(self, experiment_directory, cycle_number, x_frame_size):

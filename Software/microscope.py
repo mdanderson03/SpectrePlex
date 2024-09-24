@@ -4,7 +4,7 @@ import ome_types
 from pycromanager import Core, Magellan, Studio
 import numpy as np
 import time
-from skimage import io, filters, morphology, restoration
+from skimage import io, filters, morphology, restoration, util
 import skimage
 import os
 import math
@@ -127,6 +127,7 @@ class cycif:
 
             if x_frame_size != 5056:
                 self.x_overlap_adjuster(x_frame_size, experiment_directory)
+                self.fm_stage_tilt_compensation(experiment_directory, tilt=3.75)
                 self.establish_exp_arrays(experiment_directory)
             else:
                 pass
@@ -545,11 +546,7 @@ class cycif:
                         tile_filename = 'x' + str(x) + '_y_' + str(y) + '_c_' + str(channel) + '.tif'
                         im = io.imread(tile_filename)
 
-                        im[im < 0] = 0
                         im = im.astype('float32')
-                        im -= low_value
-
-                        high_value -= low_value
                         im[im < 0] = 0
                         im  = im/high_value
                         im[im > 1] = 1
@@ -562,6 +559,91 @@ class cycif:
         os.chdir(compression_directory)
         wb.save('compression.xlsx')
 
+    def hdr_compression_2(self, experiment_directory, cycle_number):
+        '''
+        Takes quick tiled image and clips some high and low pixels to define a smaller range to
+        use when doing a linear conversion form 32bit space to 16bit space.
+
+        :param experiment_directory:
+        :param cycle_number:
+        :return:
+        '''
+
+        compression_directory = experiment_directory + r'/compression'
+        os.chdir(compression_directory)
+        try:
+            wb = load_workbook('compression.xlsx')
+        except:
+            wb = Workbook()
+        ws = wb.active
+
+        # load in data structures
+        numpy_path = experiment_directory + '/' + 'np_arrays'
+        os.chdir(numpy_path)
+        file_name = 'fm_array.npy'
+        fm_array = np.load(file_name, allow_pickle=False)
+        tissue_fm = fm_array[10]
+        x_tile_count = np.shape(tissue_fm)[1]
+        y_tile_count = np.shape(tissue_fm)[0]
+
+        row_number = int(cycle_number + 1)
+
+        min_bin_fraction = 0.000001
+        channels = np.array(['A488', 'A555', 'A647'])
+
+        for channel in channels:
+
+            quicktile_path = experiment_directory + '\Quick_Tile/' + channel
+            flattened_path = experiment_directory + '//' + channel + '\Stain\cy_' + str(cycle_number) + r'\Tiles\focused_basic_corrected'
+            high_col = (np.where(channels == channel)[0][0] + 1) * 2
+
+            os.chdir(quicktile_path)
+            filename = channel + '_cy_' + str(cycle_number) + '_Stain_placed.tif'
+            im = io.imread(filename)
+            im -= 1
+            im[im < 0] = 0
+            non_zero_indicies = np.nonzero(im)
+            histogram, bin_edges = np.histogram(im[non_zero_indicies], bins=256)
+
+            total_pixels = np.sum(histogram)
+            min_bin_size = math.ceil(min_bin_fraction * total_pixels)
+            # print(min_bin_size)
+            histogram -= min_bin_size
+            histogram[histogram < 0] = 0
+            try:
+                threshold_bin_number = np.where(histogram == 0)[0][0]
+            except:
+                threshold_bin_number = 255
+            top_int = bin_edges[threshold_bin_number - 1]
+
+            if top_int < 65500:
+                top_int = 65500
+            else:
+                pass
+
+            ws.cell(row=row_number, column=high_col).value = top_int
+
+            # apply compression on flattened images
+            os.chdir(flattened_path)
+
+            for x in range(0, x_tile_count):
+                for y in range(0, y_tile_count):
+                    if tissue_fm[y][x] > 1:
+                        image_name = r'x' + str(x) + '_y_' + str(y) + '_c_' + channel + '.tif'
+                        flat_image = io.imread(image_name)
+
+                        flat_image[flat_image < 0] = 0
+                        flat_image = flat_image.astype('float32')
+                        flat_image = flat_image / top_int
+                        flat_image[flat_image > 1] = 1
+                        flat_image = util.img_as_uint(flat_image)
+                        io.imsave(image_name, flat_image)
+
+                    else:
+                        pass
+
+        os.chdir(compression_directory)
+        wb.save('compression.xlsx')
 
     def hdr_compression(self, experiment_directory, cycle_number, apply_2_subbed = 1, apply_2_bleached = 1, apply_2_focused = 1, apply_2_flattened = 1,  channels = ['DAPI', 'A488','A555', 'A647']):
         '''
@@ -1153,6 +1235,29 @@ class cycif:
 
         return fm_array
 
+    def fm_stage_tilt_compensation(self, experiment_directory, tilt=3.75):
+        '''
+        takes intial seed value and adds in a tilt to give focus values roughly in line with actual positions
+        :param experiment_directory:
+        :param tilt: slope of displacement in microns per FOV in the y axis
+        :return:
+        '''
+
+        # load in fm array
+        numpy_path = experiment_directory + '/' + 'np_arrays'
+        os.chdir(numpy_path)
+        file_name = 'fm_array.npy'
+        fm_array = np.load(file_name, allow_pickle=False)
+
+        x_tile_count = np.shape(fm_array[0])[1]
+        y_tile_count = np.shape(fm_array[0])[0]
+        z_planes = fm_array[2]
+        starting_focus = z_planes[0][0]
+        for x in range(0, x_tile_count):
+            for y in range(0, y_tile_count):
+                z_planes[y][x] = starting_focus - y * tilt
+        np.save('fm_array.npy', fm_array)
+
     def x_overlap_adjuster(self, new_x_pixel_count, experiment_directory):
         '''
         Increases overlap in focus map while cropping in the x dimension to preserve effective 10% overlap of cropped images
@@ -1621,21 +1726,29 @@ class cycif:
         new_labelled_image[new_labelled_image < (65535 - number_actual_clusters_retained -1)] = 0
         new_labelled_image[np.nonzero(new_labelled_image)] = new_labelled_image[np.nonzero(new_labelled_image)] - (65535 - number_actual_clusters_retained)
 
-        #new_labelled_image = self.cluster_neighborhood(new_labelled_image, sorted_cluster_areas)
-        os.chdir(r'E:\23-8-24 gutage\Tissue_Binary')
-        filename = r'labelled_tissue_filtered.tif'
-        new_labelled_image = io.imread(filename)
-        #new_labelled_image = new_labelled_image.astype('int16')
-        io.imsave('labelled_tissue_filtered.tif', new_labelled_image)
+        #check to see if labelled image exists in folder. If it does, load in and use
+        #if not, remake. Delete image in folder if you want to remake
 
-    
+        labelled_image_path = file_path + '/labelled_tissue_filtered.tif'
+
+        if os.path.isfile(labelled_image_path) == True:
+            os.chdir(file_path)
+            filename = r'labelled_tissue_filtered.tif'
+            new_labelled_image = io.imread(filename)
+            new_labelled_image -= np.min(new_labelled_image)
+        else:
+            new_labelled_image = self.cluster_neighborhood(new_labelled_image, sorted_cluster_areas)
+            new_labelled_image = new_labelled_image.astype('int16')
+            io.imsave('labelled_tissue_filtered.tif', new_labelled_image)
+
+
         #make new binary image
         new_image = copy.deepcopy(new_labelled_image)
         new_image[new_image > 0] = 1
         new_image = new_image.astype('int16')
 
         # fill small holes
-        new_image = skimage.morphology.remove_small_holes(new_image, area_threshold=5000)
+        #new_image = skimage.morphology.remove_small_holes(new_image, area_threshold=5000)
 
         for y in range(0, y_tile_count):
             for x in range(0, x_tile_count):
@@ -1663,7 +1776,8 @@ class cycif:
         io.imsave('whole_tissue.tif', super_image)
         io.imsave('whole_tissue_filtered.tif', new_image)
 
-    def tissue_binary_generate(self, experiment_directory, x_frame_size = 2960, clusters_retained = 1, area_threshold = 0.1):
+
+    def tissue_binary_generate(self, experiment_directory, x_frame_size = 2960, clusters_retained = 1, area_threshold = 0.25):
         '''
         Generates tissue binary maps from star dist binary maps
 
@@ -1701,6 +1815,10 @@ class cycif:
                 star_dist_im = io.imread(star_dist_filename)
 
                 tissue_binary_im = morphology.binary_dilation(star_dist_im, foot_print)
+                #tissue_binary_im = morphology.binary_erosion(tissue_binary_im, foot_print)
+                #tissue_binary_im = morphology.binary_erosion(tissue_binary_im, foot_print)
+                #tissue_binary_im = morphology.binary_dilation(tissue_binary_im, foot_print)
+
                 tissue_binary_im = tissue_binary_im.astype(np.uint8)
                 filtered_image = self.tissue_filter(tissue_binary_im)
                 os.chdir(tissue_path)
@@ -1718,7 +1836,7 @@ class cycif:
         :return:
         '''
 
-        threshold = 500 # in pixels
+        threshold = 1500 # in pixels
         sorted_y_centroid = sorted_cluster_areas[2]
         sorted_x_centroid = sorted_cluster_areas[3]
         sorted_index = sorted_cluster_areas[1]
@@ -1774,27 +1892,33 @@ class cycif:
             neighborhood_matrix[int(combo[1])][int(combo[0])] = net_distance
 
         for x in range(1, number_clusters + 1):
-            for y in range(2, number_clusters - (x - 2)):
+            for y in range(x + 1, number_clusters + 1):
                 net_distance = neighborhood_matrix[y][x]
 
                 if net_distance < threshold:
 
-                    cluster_reference_index = int(neighborhood_matrix[0][x])
-                    cluster_2_be_merged_index = int(neighborhood_matrix[y][0])
-                    print(cluster_2_be_merged_index, unique_labels)
-                    image[image == cluster_2_be_merged_index] = cluster_reference_index
+                    #cluster_reference_index = int(neighborhood_matrix[0][x])
+                    #cluster_2_be_merged_index = int(neighborhood_matrix[y][0])
+                    #remove unique label from list
                     try:
-                        unique_second_cluster_index = np.where(unique_labels ==cluster_2_be_merged_index)[0][0]
+                        unique_second_cluster_index = np.where(unique_labels == neighborhood_matrix[y][0])[0][0]
                         unique_labels = np.delete(unique_labels, unique_second_cluster_index)
                     except:
                         pass
-                    neighborhood_matrix[y][0] = cluster_reference_index
-                    neighborhood_matrix[0][y] = cluster_reference_index
 
+                    #make label in image match
+                    image[image == neighborhood_matrix[y][0]] = neighborhood_matrix[0][x]
+
+                    #alter label number to be that of the starting index on x axis
+                    neighborhood_matrix[y][0] = neighborhood_matrix[0][x]
+                    neighborhood_matrix[0][y] = neighborhood_matrix[0][x]
+                    
+                    #remove a cluster count as it merged with another cluster
                     new_cluster_count -= 1
 
                 else:
                     pass
+
 
         #renumber clusters to be 1 int steps and continuous starting from 1
         desired_numbers = np.linspace(1, new_cluster_count, new_cluster_count)
@@ -1807,12 +1931,11 @@ class cycif:
             pass
 
 
+        io.imshow(image)
+        io.show()
 
 
         return image
-
-
-
 
 
     #recursize autofocusfunctions#####################################
@@ -2313,6 +2436,300 @@ class cycif:
 
         return
 
+    def multi_channel_z_stack_capture_dapi_focus(self, experiment_directory, cycle_number, Stain_or_Bleach,
+                                      x_pixels=5056, slice_gap=2, channels=['DAPI', 'A488', 'A555', 'A647']):
+        '''
+        Captures and saves all images in XY and Z dimensions. Order of operation is ZC XY(snake). Entire z stack with all
+        channels is made into a numpy data structure and saved before going to next tile and being reused. This is done
+        to reduce overall memory usage. Uses DAPI images from tile to focus and determine focus for other colors. DAPI is
+        a multi stack and focused and then acquires one plane for other channels
+
+
+        :param experiment_directory: directory that main experiment data is stored in
+        :param cycle_number: integer of what cycle number it is. Counts from 0
+        :param Stain_or_Bleach: string of Stain or Bleach depending on what action it is
+        :param slice_gap: micron spacing in z slices
+        :param channels: string list of what channels to acquire
+        :return:
+        '''
+
+        core = Core()
+        hdr_value = self.hdr
+
+        # load in focus map and exp array
+        numpy_path = experiment_directory + '/' + 'np_arrays'
+        dapi_bin_path = experiment_directory + '/' + 'Labelled_Nuc'
+        os.chdir(numpy_path)
+        full_array = np.load('fm_array.npy', allow_pickle=False)
+        exp_time_array = np.load('exp_array.npy', allow_pickle=False)
+
+        height_pixels = 2960
+        width_pixels = x_pixels
+        # determine attributes like tile counts,z slices and channel counts
+        numpy_x = full_array[0]
+        numpy_y = full_array[1]
+        tissue_fm = full_array[10]
+
+        side_pixel_count = int((5056 - x_pixels)/2)
+
+        x_tile_count = np.unique(numpy_x).size
+        y_tile_count = np.unique(numpy_y).size
+
+        z_slices = full_array[5][0][0]
+        z_slices_dapi = full_array[3][0][0]
+        # go to upper left corner to start pattern
+        core.set_xy_position(numpy_x[0][0], numpy_y[0][0])
+        time.sleep(1)
+        # generate numpy data structures
+        zc_tif_stack = np.random.rand(4, int(z_slices), height_pixels, width_pixels).astype('float32')
+        zc_dapi_tif_stack = np.random.rand(int(z_slices_dapi), height_pixels, width_pixels).astype('float32')
+
+        image_number_counter = 0
+
+        for y in range(0, y_tile_count):
+            if y % 2 != 0:
+                for x in range(x_tile_count - 1, -1, -1):
+
+                    if tissue_fm[y][x] > 1:
+
+                        core.set_xy_position(numpy_x[y][x], numpy_y[y][x])
+                        time.sleep(.5)
+
+                        for channel in channels:
+
+                            # determine the proper indecies to use for focus map z positions and exp array
+                            if channel == 'DAPI':
+                                channel_index = 2
+                                tif_stack_c_index = 0
+                                zc_index = 0
+                            if channel == 'A488':
+                                channel_index = 4
+                                tif_stack_c_index = 1
+                                zc_index = 1
+                            if channel == 'A555':
+                                channel_index = 6
+                                tif_stack_c_index = 2
+                                zc_index = 2
+                            if channel == 'A647':
+                                channel_index = 8
+                                tif_stack_c_index = 3
+                                zc_index = 3
+
+                            z_slices = int(full_array[channel_index + 1][0][0])
+
+                            if channel == 'DAPI':
+
+                                os.chdir(dapi_bin_path)
+                                tissue_name = 'x' + str(x) + '_y_' + str(y) + '_c_DAPI.tif'
+                                try:
+                                    tissue_im = io.imread(tissue_name)
+                                except:
+                                    tissue_im = np.ones(2960, x_pixels)
+
+                                numpy_z = full_array[channel_index]
+                                exp_time = int(exp_time_array[tif_stack_c_index])
+                                core.set_config("Color", channel)
+                                core.set_exposure(exp_time)
+
+                                # burner image due to defect that makes signal 8% higher int he first one
+                                core.set_config("amp", 'high')
+                                core.snap_image()
+                                core.get_tagged_image()
+
+                                z_end = int(numpy_z[y][x]) + slice_gap
+                                z_start = int(z_end - (z_slices) * slice_gap)
+
+                                z_counter = 0
+
+                                #populate dapi z stack
+
+                                for z in range(z_start, z_end, slice_gap):
+                                    core.set_position(z)
+                                    time.sleep(0.05)
+                                    pixels = self.core_capture(experiment_directory, x_pixels, channel, hdr=hdr_value)
+                                    zc_dapi_tif_stack[z_counter] = pixels
+
+                                    image_number_counter += 1
+                                    z_counter += 1
+
+                                #score each z slice
+                                scores = []
+                                for z in range(0, z_slices):
+
+                                    image_slice = zc_dapi_tif_stack[zc_index][z]
+                                    score = self.focus_score(image_slice, 17, tissue_im)
+                                    scores.append(score)
+
+                                focus_index = self.highest_index(scores)
+                                z_middle = (z_slices-1)/2 #must be odd
+
+                                center_focus_index_difference = int(focus_index - z_middle)
+                                new_fm_z_position = center_focus_index_difference * slice_gap
+                                # update focus map for all channels
+                                full_array[2][y][x] += new_fm_z_position
+                                full_array[4][y][x] += new_fm_z_position
+                                full_array[6][y][x] += new_fm_z_position
+                                full_array[8][y][x] += new_fm_z_position
+
+                                zc_tif_stack[zc_index][0] = zc_dapi_tif_stack[focus_index]
+
+                            else:
+
+                                numpy_z = full_array[channel_index]
+                                exp_time = int(exp_time_array[tif_stack_c_index])
+                                core.set_config("Color", channel)
+                                core.set_exposure(exp_time)
+
+                                #burner image due to defect that makes signal 8% higher int he first one
+                                core.set_config("amp", 'high')
+                                core.snap_image()
+                                core.get_tagged_image()
+
+                                z_end = int(numpy_z[y][x]) + slice_gap
+                                z_start = int(z_end - (z_slices) * slice_gap)
+                                print(z_start, z_end, slice_gap)
+
+
+                                z_counter = 0
+
+                                for z in range(z_start, z_end, slice_gap):
+                                    core.set_position(z)
+                                    time.sleep(0.05)
+                                    pixels = self.core_capture(experiment_directory,x_pixels, channel, hdr=hdr_value)
+                                    zc_tif_stack[zc_index][z_counter] = pixels
+
+                                    image_number_counter += 1
+                                    z_counter += 1
+
+                        # save zc stack
+                        self.zc_save(zc_tif_stack, channels, x, y, cycle_number, x_pixels, experiment_directory,
+                                         Stain_or_Bleach)
+
+                    if tissue_fm[y][x] == 1:
+                        pass
+
+
+            elif y % 2 == 0:
+                for x in range(0, x_tile_count):
+
+                    if tissue_fm[y][x] > 1:
+
+                        core.set_xy_position(numpy_x[y][x], numpy_y[y][x])
+                        time.sleep(.5)
+
+                        for channel in channels:
+
+                            # determine the proper indecies to use for focus map z positions and exp array
+                            if channel == 'DAPI':
+                                channel_index = 2
+                                tif_stack_c_index = 0
+                                zc_index = 0
+                            if channel == 'A488':
+                                channel_index = 4
+                                tif_stack_c_index = 1
+                                zc_index = 1
+                            if channel == 'A555':
+                                channel_index = 6
+                                tif_stack_c_index = 2
+                                zc_index = 2
+                            if channel == 'A647':
+                                channel_index = 8
+                                tif_stack_c_index = 3
+                                zc_index = 3
+
+                            z_slices = int(full_array[channel_index + 1][0][0])
+
+                            if channel == 'DAPI':
+
+                                os.chdir(dapi_bin_path)
+                                tissue_name = 'x' + str(x) + '_y_' + str(y) + '_c_DAPI.tif'
+                                try:
+                                    tissue_im = io.imread(tissue_name)
+                                except:
+                                    tissue_im = np.ones(2960, x_pixels)
+
+                                numpy_z = full_array[channel_index]
+                                exp_time = int(exp_time_array[tif_stack_c_index])
+                                core.set_config("Color", channel)
+                                core.set_exposure(exp_time)
+
+                                # burner image due to defect that makes signal 8% higher int he first one
+                                core.set_config("amp", 'high')
+                                core.snap_image()
+                                core.get_tagged_image()
+
+                                z_end = int(numpy_z[y][x]) + slice_gap
+                                z_start = int(z_end - (z_slices) * slice_gap)
+
+                                z_counter = 0
+
+                                # populate dapi z stack
+
+                                for z in range(z_start, z_end, slice_gap):
+                                    core.set_position(z)
+                                    time.sleep(0.05)
+                                    pixels = self.core_capture(experiment_directory, x_pixels, channel, hdr=hdr_value)
+                                    zc_dapi_tif_stack[z_counter] = pixels
+
+                                    image_number_counter += 1
+                                    z_counter += 1
+
+                                # score each z slice
+                                scores = []
+                                for z in range(0, z_slices):
+                                    image_slice = zc_dapi_tif_stack[zc_index][z]
+                                    score = self.focus_score(image_slice, 17, tissue_im)
+                                    scores.append(score)
+
+                                focus_index = self.highest_index(scores)
+                                z_middle = (z_slices - 1) / 2  # must be odd
+
+                                center_focus_index_difference = int(focus_index - z_middle)
+                                new_fm_z_position = center_focus_index_difference * slice_gap
+                                # update focus map for all channels
+                                full_array[2][y][x] += new_fm_z_position
+                                full_array[4][y][x] += new_fm_z_position
+                                full_array[6][y][x] += new_fm_z_position
+                                full_array[8][y][x] += new_fm_z_position
+
+                                zc_tif_stack[zc_index][0] = zc_dapi_tif_stack[focus_index]
+
+                            else:
+
+                                numpy_z = full_array[channel_index]
+                                exp_time = int(exp_time_array[tif_stack_c_index])
+                                core.set_config("Color", channel)
+                                core.set_exposure(exp_time)
+
+                                # burner image due to defect that makes signal 8% higher int he first one
+                                core.set_config("amp", 'high')
+                                core.snap_image()
+                                core.get_tagged_image()
+
+                                z_end = int(numpy_z[y][x]) + slice_gap
+                                z_start = int(z_end - (z_slices) * slice_gap)
+                                print(z_start, z_end, slice_gap)
+
+                                z_counter = 0
+
+                                for z in range(z_start, z_end, slice_gap):
+                                    core.set_position(z)
+                                    time.sleep(0.05)
+                                    pixels = self.core_capture(experiment_directory, x_pixels, channel, hdr=hdr_value)
+                                    zc_tif_stack[zc_index][z_counter] = pixels
+
+                                    image_number_counter += 1
+                                    z_counter += 1
+
+                        # save zc stack
+                        self.zc_save(zc_tif_stack, channels, x, y, cycle_number, x_pixels, experiment_directory,
+                                     Stain_or_Bleach)
+
+                    if tissue_fm[y][x] == 1:
+                        pass
+
+        return
+
     def image_cycle_acquire(self, cycle_number, experiment_directory, z_slices, stain_bleach, offset_array, x_frame_size=5056, fm_array_adjuster = 0, establish_fm_array=0, auto_focus_run=0, auto_expose_run=0,
                             channels=['DAPI', 'A488', 'A555', 'A647'], focus_position = 'none'):
 
@@ -2347,32 +2764,211 @@ class cycif:
         end = time.time()
         print('acquistion time', end - start)
         # self.marker_excel_file_generation(experiment_directory, cycle_number)
+
+    def tilt_determination(self):
+
+        current_z = core.get_position()
+        number_slices = 25
+        z_gap = 1
+        bottom_z = current_z - int(math.floor(9/2)) * z_gap
+
+        frame_x_start = 1048
+        frame_x_end = frame_x_start + 2960
+
+        sides_scoring = 370
+
+
+        images = np.zeros((number_slices,2960, 2960))
+        mask = np.ones((sides_scoring,sides_scoring))
+
+        for slice in range(0, number_slices):
+
+            z = bottom_z + slice*z_gap
+            core.set_position(z)
+            time.sleep(0.2)
+            core.set_config("amp", 'high')
+            core.snap_image()
+            tagged_image = core.get_tagged_image()
+            pixels = np.reshape(tagged_image.pix, newshape=[tagged_image.tags["Height"], tagged_image.tags["Width"]])
+            pixels = np.nan_to_num(pixels, posinf=65500)
+            images[slice] = pixels[::, frame_x_start:frame_x_end]
+
+        core.set_position(current_z)
+
+        os.chdir(r'E:\5-9-24 gutage\tilt')
+        io.imsave('tilt.tif', images)
+
+
+        #find focus scores
+
+        scores = np.zeros((5, number_slices))
+
+        for region in range(0, 5):
+
+            if region == 0:
+                y_start = 0
+                y_end = y_start + sides_scoring
+                x_start =0
+                x_end = x_start + sides_scoring
+            if region == 1:
+                y_start = 0
+                y_end = y_start + sides_scoring
+                x_end = -1
+                x_start = x_end - sides_scoring
+            if region == 2:
+                y_end = -1
+                y_start = y_end - sides_scoring
+                x_start = 0
+                x_end = x_start + sides_scoring
+            if region == 3:
+                y_end = -1
+                y_start = y_end - sides_scoring
+                x_end = -1
+                x_start = x_end - sides_scoring
+            if region == 4:
+                y_start = 1480 - sides_scoring
+                y_end = y_start + sides_scoring
+                x_start = 1480 - sides_scoring
+                x_end = x_start + sides_scoring
+            else:
+                pass
+
+            for slice in range(0, number_slices):
+                image = images[slice]
+                sub_image = image[y_start:y_end, x_start:x_end]
+                #print(np.shape(sub_image), 'region', region)
+                scores[region][slice] = self.focus_score(sub_image, 17, mask)
+
+
+            highest_value = np.max(scores[region])
+            highest_index = np.where(scores[region] == highest_value)[0][0]
+            print('region', region, 'index', highest_index + 1)
+
+    def tilt_overlap_determination(self):
+
+        current_z = core.get_position()
+        number_slices = 25
+        z_gap = 1
+        bottom_z = current_z - int(math.floor(9/2)) * z_gap
+
+        starting_y = core.get_xy_stage_position().x
+        starting_x = core.get_xy_stage_position().y
+        displacement_magnitude = 532
+
+        position_list = np.zeros((5,2))
+        position_list[0][0] = starting_x
+        position_list[0][1] = starting_y
+
+        position_list[1][0] = starting_x
+        position_list[1][1] = starting_y - displacement_magnitude
+
+        position_list[2][0] = starting_x - displacement_magnitude
+        position_list[2][1] = starting_y
+
+        position_list[3][0] = starting_x - displacement_magnitude
+        position_list[3][1] = starting_y - displacement_magnitude
+
+        position_list[4][0] = starting_x - displacement_magnitude/2
+        position_list[4][1] = starting_y- displacement_magnitude/2
+
+
+        frame_x_start = 1048
+        frame_x_end = frame_x_start + 2960
+
+        sides_scoring = 370
+
+
+
+        images = np.zeros((5, number_slices,2960, 2960))
+        mask = np.ones((sides_scoring,sides_scoring))
+
+
+
+
+        for j in range(0, 5):
+            core.set_xy_position(position_list[j][1], position_list[j][0])
+            time.sleep(1)
+            for slice in range(0, number_slices):
+
+                z = bottom_z + slice*z_gap
+                core.set_position(z)
+                time.sleep(0.2)
+                core.set_config("amp", 'high')
+                core.snap_image()
+                tagged_image = core.get_tagged_image()
+                pixels = np.reshape(tagged_image.pix, newshape=[tagged_image.tags["Height"], tagged_image.tags["Width"]])
+                pixels = np.nan_to_num(pixels, posinf=65500)
+                images[j][slice] = pixels[::, frame_x_start:frame_x_end]
+
+        core.set_position(current_z)
+        core.set_xy_position(position_list[0][1], position_list[0][0])
+        os.chdir(r'E:\23-8-24 gutage\tilt')
+        io.imsave('tilt_0.tif', images[0])
+        io.imsave('tilt_1.tif', images[1])
+        io.imsave('tilt_2.tif', images[2])
+        io.imsave('tilt_3.tif', images[3])
+        io.imsave('tilt_4.tif', images[4])
+
+        #find focus scores
+
+        scores = np.zeros((5, number_slices))
+
+        for region in range(0, 5):
+
+            if region == 0:
+                y_start = 0
+                y_end = y_start + sides_scoring
+                x_start =0
+                x_end = x_start + sides_scoring
+            if region == 1:
+                y_start = 0
+                y_end = y_start + sides_scoring
+                x_end = -1
+                x_start = x_end - sides_scoring
+            if region == 2:
+                y_end = -1
+                y_start = y_end - sides_scoring
+                x_start = 0
+                x_end = x_start + sides_scoring
+            if region == 3:
+                y_end = -1
+                y_start = y_end - sides_scoring
+                x_end = -1
+                x_start = x_end - sides_scoring
+            if region == 4:
+                y_start = 1480 - sides_scoring
+                y_end = y_start + sides_scoring
+                x_start = 1480 - sides_scoring
+                x_end = x_start + sides_scoring
+            else:
+                pass
+
+            for slice in range(0, number_slices):
+                image = images[region][slice]
+                sub_image = image[y_start:y_end, x_start:x_end]
+                #print(np.shape(sub_image), 'region', region)
+                scores[region][slice] = self.focus_score(sub_image, 17, mask)
+
+
+            highest_value = np.max(scores[region])
+            highest_index = np.where(scores[region] == highest_value)[0][0]
+            print('region', region, 'index', highest_index + 1)
+
     def wide_net_auto_focus(self, experiment_directory, x_frame_size, offset_array, z_slices, focus_position, number_clusters_retained = 6):
 
+        z_wide_range = 11
 
-
-        #self.image_cycle_acquire(0, experiment_directory, 9, 'Bleach', offset_array, x_frame_size=x_frame_size,establish_fm_array=0, auto_focus_run=0, auto_expose_run=0, channels=['DAPI'],focus_position=focus_position)
-        #self.generate_nuc_mask(experiment_directory, cycle_number=0)
-        #self.tissue_region_identifier(experiment_directory, clusters_retained=number_clusters_retained)
-        #self.recursive_stardist_autofocus(experiment_directory, cycle=0)
-        #self.tissue_region_identifier(experiment_directory, clusters_retained=number_clusters_retained)
-        #self.image_cycle_acquire(0, experiment_directory, 9, 'Bleach', offset_array, x_frame_size=x_frame_size,establish_fm_array=0, auto_focus_run=0, auto_expose_run=0, channels=['DAPI'],focus_position=focus_position)
-        #self.generate_nuc_mask(experiment_directory, cycle_number=0)
-        #self.recursive_stardist_autofocus(experiment_directory, cycle=0)
-        #self.tissue_region_identifier(experiment_directory, clusters_retained=number_clusters_retained)
-        #self.recursive_stardist_autofocus(experiment_directory, cycle=0)
-
-
-
-
-
+        self.image_cycle_acquire(0, experiment_directory,z_wide_range, 'Bleach', offset_array, x_frame_size=x_frame_size,establish_fm_array=1, auto_focus_run=0, auto_expose_run=0, channels=['DAPI'],focus_position=focus_position)
+        self.recursive_stardist_autofocus(experiment_directory, cycle=0, remake_nuc_binary=1)
+        self.tissue_region_identifier(experiment_directory, clusters_retained=number_clusters_retained)
+        self.image_cycle_acquire(0, experiment_directory, z_wide_range, 'Bleach', offset_array, x_frame_size=x_frame_size,establish_fm_array=0, auto_focus_run=0, auto_expose_run=0, channels=['DAPI'],focus_position=focus_position)
+        self.recursive_stardist_autofocus(experiment_directory, cycle=0, remake_nuc_binary=1)
 
         numpy_path = experiment_directory + '/' + 'np_arrays'
         os.chdir(numpy_path)
         fm_array = np.load('fm_array.npy', allow_pickle=False)
 
-
-        fm_array[2] -= 6
+        fm_array[2] -= (z_wide_range-z_slices)
         fm_array[3] = z_slices
         fm_array[5] = z_slices
         fm_array[7] = z_slices
@@ -2381,11 +2977,7 @@ class cycif:
         os.chdir(numpy_path)
         np.save('fm_array.npy', fm_array)
 
-
-
-
-
-
+        self.image_cycle_acquire(0, experiment_directory, z_slices, 'Bleach', offset_array, x_frame_size=x_frame_size,establish_fm_array=0, auto_focus_run=0, auto_expose_run=0, channels=['DAPI'],focus_position=focus_position)
 
     def initialize(self, experiment_directory, offset_array, z_slices, x_frame_size=2960, focus_position = 'none', number_clusters = 6):
         '''initialization section. Takes DAPI images, cluster filters tissue, minimally frames sampling grid, acquires all channels.
@@ -2412,16 +3004,16 @@ class cycif:
         #self.image_cycle_acquire(0, experiment_directory, 3, 'Bleach', offset_array, x_frame_size=x_frame_size,establish_fm_array=0, auto_focus_run=0, auto_expose_run=0, channels=['DAPI'],focus_position=focus_position)
         #self.recursive_stardist_autofocus(experiment_directory, cycle=0)
 
-        #self.image_cycle_acquire(0, experiment_directory, z_slices, 'Bleach', offset_array,x_frame_size=x_frame_size, fm_array_adjuster=0, establish_fm_array=0, auto_focus_run=0,auto_expose_run=0, focus_position=focus_position)
+        self.image_cycle_acquire(0, experiment_directory, z_slices, 'Bleach', offset_array,x_frame_size=x_frame_size, fm_array_adjuster=0, establish_fm_array=0, auto_focus_run=0,auto_expose_run=0, focus_position=focus_position)
         #self.generate_nuc_mask(experiment_directory, cycle_number=0)
         #self.tissue_region_identifier(experiment_directory, clusters_retained=4)
 
-    def full_cycle(self, experiment_directory, cycle_number, offset_array, stain_valve, fluidics_object, z_slices, incub_val=45, x_frame_size=2960, focus_position = 'none'):
+    def full_cycle(self, experiment_directory, cycle_number, offset_array, stain_valve, fluidics_object, z_slices, incub_val=45, x_frame_size=2960, focus_position = 'none', number_clusters = 6):
 
         pump = fluidics_object
 
         if cycle_number == 0:
-            self.initialize(experiment_directory, offset_array, z_slices, x_frame_size=x_frame_size, focus_position = focus_position)
+            self.initialize(experiment_directory, offset_array, z_slices, x_frame_size=x_frame_size, focus_position = focus_position, number_clusters=number_clusters)
         else:
 
             # print(status_str)
@@ -2429,7 +3021,10 @@ class cycif:
             pump.liquid_action('Stain', incub_val=incub_val, stain_valve=stain_valve,  microscope_object = self, experiment_directory=experiment_directory)  # nuc is valve=7, pbs valve=8, bleach valve=1 (action, stain_valve, heater state (off = 0, on = 1))
             #self.reacquire_run_autofocus(experiment_directory, cycle_number, z_slices, offset_array, x_frame_size)
             # print(status_str)
+            #start low flow to constantly flow fluid while imaging to reduce fluorescence of fluidic over time
+            pump.liquid_action('low flow on')
             self.image_cycle_acquire(cycle_number, experiment_directory, z_slices, 'Stain', offset_array,x_frame_size=x_frame_size, establish_fm_array=0, auto_focus_run=0,auto_expose_run=3)
+            pump.liquid_action('flow off')
             time.sleep(5)
 
             # print(status_str)
@@ -2512,6 +3107,7 @@ class cycif:
         self.folder_addon(experiment_directory, ['np_arrays'])
         self.folder_addon(experiment_directory, ['mcmicro'])
         self.folder_addon(experiment_directory, ['exposure_times'])
+        self.folder_addon(experiment_directory, ['compression'])
         self.folder_addon(experiment_directory, channels)
 
         # folder layer two
@@ -2726,11 +3322,11 @@ class cycif:
         dapi_im_path = experiment_directory + '\DAPI\Stain\cy_' + str(
             cycle_number) + '\Tiles' + '/focused_basic_corrected'
         a488_im_path = experiment_directory + '\A488\Stain\cy_' + str(
-            cycle_number) + '\Tiles' + '/focused_subbed_basic_corrected'
+            cycle_number) + '\Tiles' + '/focused_basic_corrected'
         a555_im_path = experiment_directory + '\A555\Stain\cy_' + str(
-            cycle_number) + '\Tiles' + '/focused_subbed_basic_corrected'
+            cycle_number) + '\Tiles' + '/focused_basic_corrected'
         a647_im_path = experiment_directory + '\A647\Stain\cy_' + str(
-            cycle_number) + '\Tiles' + '/focused_subbed_basic_corrected'
+            cycle_number) + '\Tiles' + '/focused_basic_corrected'
 
         mcmicro_path = experiment_directory + r'\mcmicro'
 
@@ -3175,7 +3771,6 @@ class cycif:
             except:
                 pass
 
-
     def illumination_flattening(self, experiment_directory, cycle_number, rolling_ball = 0):
 
         # load numpy arrays in
@@ -3244,6 +3839,44 @@ class cycif:
             optimizer._load_images()
             optimizer.write_images(stain_output_directory, epsilon=epsilon)
 
+    def bottom_int_correction(self, experiment_directory, cycle_number):
+        '''
+        Subs off smallest value in tile
+
+        :param experiment_directory:
+        :param cycle_number:
+        :return:
+        '''
+
+        # load in data structures
+        numpy_path = experiment_directory + '/' + 'np_arrays'
+        os.chdir(numpy_path)
+        file_name = 'fm_array.npy'
+        fm_array = np.load(file_name, allow_pickle=False)
+        tissue_fm = fm_array[10]
+        x_tile_count = np.shape(tissue_fm)[1]
+        y_tile_count = np.shape(tissue_fm)[0]
+
+        channels = np.array(['A488', 'A555', 'A647'])
+
+        for channel in channels:
+
+            flattened_path = experiment_directory + '//' + channel + '\Stain\cy_' + str(cycle_number) + r'\Tiles\focused_basic_corrected'
+            os.chdir(flattened_path)
+
+            for x in range(0, x_tile_count):
+                for y in range(0, y_tile_count):
+                    if tissue_fm[y][x] > 1:
+                        image_name = r'x' + str(x) + '_y_' + str(y) + '_c_' + channel + '.tif'
+                        flat_image = io.imread(image_name)
+                        low_pixel = np.sort(flat_image, axis=None)[100]
+                        #print('x', x, 'y', y, 'low pixel', low_pixel)
+                        flat_image -= low_pixel
+                        flat_image[flat_image<0] = 0
+                        io.imsave(image_name, flat_image)
+
+                    else:
+                        pass
 
     def illumination_flattening_per_tile(self, experiment_directory, cycle_number, rolling_ball = 1, hdr_sub = 1):
 
@@ -3413,14 +4046,6 @@ class cycif:
         start = time.time()
 
 
-
-
-
-
-
-
-
-
         #make tissue exist array if needed
         if cycle_number == 1:
             self.tissue_exist_array_generate(experiment_directory)
@@ -3451,18 +4076,16 @@ class cycif:
         #flatten image
 
         self.illumination_flattening(experiment_directory, cycle_number, rolling_ball=0)
+        #self.bottom_int_correction(experiment_directory, cycle_number=cycle_number)
 
         end = time.time()
         print('flatten', end - start)
 
-        
-
-
-
+        self.stage_placement(experiment_directory, cycle_number, x_pixels=x_frame_size, down_sample_factor=4)
 
 
         #compress to 16bit
-        #self.hdr_compression(experiment_directory, cycle_number, apply_2_subbed=1, apply_2_bleached=0, apply_2_focused = 1, apply_2_flattened=1)
+        self.hdr_compression_2(experiment_directory, cycle_number)
         #self.hdr_manual_compression(experiment_directory, cycle_number=cycle_number)
 
         end = time.time()
@@ -3473,12 +4096,14 @@ class cycif:
 
 
         #self.mcmicro_image_stack_generator(cycle_number, experiment_directory, x_fram
-        #self.mcmicro_image_stack_generator_separate_clusters(cycle_number, experiment_directory, x_frame_size)
+        self.mcmicro_image_stack_generator_separate_clusters(cycle_number, experiment_directory, x_frame_size)
 
         end = time.time()
         #print('mcmicro', end - start)
 
+
         #generate stage placement
+
 
 
 
@@ -3671,67 +4296,76 @@ class cycif:
 
         for channel in channels:
 
-            #load in sheet
-
-            sheet_name = channel + '_cycle' + str(cycle_number)
-            ws = wb[sheet_name]
-
-            # generate imstack of z slices for tile
-            im_path = experiment_directory + '/' + channel + '\Stain\cy_' + str(cycle_number) + '\Tiles'
-
-            os.chdir(im_path)
-
-            z_stack = np.random.rand(z_slice_count, 2960, x_frame_size).astype('float32')
-            for x in range(0, x_tile_count):
-                for y in range(0, y_tile_count):
-                    if tissue_exist[y][x] >= 1:
-                        for z in range(0, z_slice_count):
-                            im_path = experiment_directory + '/' + channel + '\Stain\cy_' + str(cycle_number) + '\Tiles'
-                            os.chdir(im_path)
-                            file_name = 'z_' + str(z) + '_x' + str(x) + '_y_' + str(y) + '_c_' + str(channel) + '.tif'
-                            image = tf.imread(file_name)
-                            z_stack[z] = image
-
-                            # break into sub sections (2x2)
-
-                        number_bins = len(bin_values)
-                        brenner_sub_selector = np.random.rand(z_slice_count, number_bins, y_sub_section_count,
-                                                              x_sub_section_count)
-                        for z in range(0, z_slice_count):
-                            for y_sub in range(0, y_sub_section_count):
-                                for x_sub in range(0, x_sub_section_count):
-
-                                    y_end = int((y_sub + 1) * (2960 / y_sub_section_count))
-                                    y_start = int(y_sub * (2960 / y_sub_section_count))
-                                    x_end = int((x_sub + 1) * (x_frame_size / x_sub_section_count))
-                                    x_start = int(x_sub * (x_frame_size / x_sub_section_count))
-                                    sub_image = z_stack[z][y_start:y_end, x_start:x_end]
-
-                                    if channel == 'DAPI':
-                                        sub_tissue_bin = nuc_binary_stack[y][x][y_start:y_end, x_start:x_end]
-                                    else:
-                                        sub_tissue_bin = tissue_binary_stack[y][x][y_start:y_end, x_start:x_end]
-
-                                    for b in range(0, number_bins):
-                                        bin_value = int(bin_values[b])
-                                        score = self.focus_score(sub_image, bin_value, sub_tissue_bin)
-                                        # score = self.focus_score_post_processing(sub_image, bin_value)
-                                        # score = 500
-                                        brenner_sub_selector[z][b][y_sub][x_sub] = score
-
-                        reconstruct_array = self.brenner_reconstruct_array(brenner_sub_selector, z_slice_count,
-                                                                           number_bins)
-
-                        #transfer reconstruct array to excel sheet
-                        ws.cell(row=(y + 1),column=(x + 1)).value = reconstruct_array[0][0]
+            if channel == 'DAPI':
 
 
-                        # reconstruct_array = skimage.filters.median(reconstruct_array)
-                        #self.image_reconstructor(experiment_directory, reconstruct_array, channel, cycle_number,
-                        #                         x_frame_size, y, x)
+                #load in sheet
+
+                sheet_name = channel + '_cycle' + str(cycle_number)
+                ws = wb[sheet_name]
+
+                # generate imstack of z slices for tile
+                im_path = experiment_directory + '/' + channel + '\Stain\cy_' + str(cycle_number) + '\Tiles'
+
+                os.chdir(im_path)
+
+                z_stack = np.random.rand(z_slice_count, 2960, x_frame_size).astype('float32')
+                for x in range(0, x_tile_count):
+                    for y in range(0, y_tile_count):
+                        if tissue_exist[y][x] >= 1:
+                            for z in range(0, z_slice_count):
+                                im_path = experiment_directory + '/' + channel + '\Stain\cy_' + str(cycle_number) + '\Tiles'
+                                os.chdir(im_path)
+                                file_name = 'z_' + str(z) + '_x' + str(x) + '_y_' + str(y) + '_c_' + str(channel) + '.tif'
+                                image = tf.imread(file_name)
+                                z_stack[z] = image
+
+                                # break into sub sections (2x2)
+
+                            number_bins = len(bin_values)
+                            brenner_sub_selector = np.random.rand(z_slice_count, number_bins, y_sub_section_count,
+                                                                  x_sub_section_count)
+                            for z in range(0, z_slice_count):
+                                for y_sub in range(0, y_sub_section_count):
+                                    for x_sub in range(0, x_sub_section_count):
+
+                                        y_end = int((y_sub + 1) * (2960 / y_sub_section_count))
+                                        y_start = int(y_sub * (2960 / y_sub_section_count))
+                                        x_end = int((x_sub + 1) * (x_frame_size / x_sub_section_count))
+                                        x_start = int(x_sub * (x_frame_size / x_sub_section_count))
+                                        sub_image = z_stack[z][y_start:y_end, x_start:x_end]
+
+                                        if channel == 'DAPI':
+                                            sub_tissue_bin = nuc_binary_stack[y][x][y_start:y_end, x_start:x_end]
+                                        else:
+                                            sub_tissue_bin = tissue_binary_stack[y][x][y_start:y_end, x_start:x_end]
+
+                                        for b in range(0, number_bins):
+                                            bin_value = int(bin_values[b])
+                                            score = self.focus_score(sub_image, bin_value, sub_tissue_bin)
+                                            # score = self.focus_score_post_processing(sub_image, bin_value)
+                                            # score = 500
+                                            brenner_sub_selector[z][b][y_sub][x_sub] = score
+
+                            reconstruct_array = self.brenner_reconstruct_array(brenner_sub_selector, z_slice_count,
+                                                                               number_bins)
+
+                            #transfer reconstruct array to excel sheet
+                            for channel in channels:
+                                sheet_name = channel + '_cycle' + str(cycle_number)
+                                ws = wb[sheet_name]
+                                ws.cell(row=(y + 1),column=(x + 1)).value = reconstruct_array[0][0]
+
+    
+                            # reconstruct_array = skimage.filters.median(reconstruct_array)
+                            #self.image_reconstructor(experiment_directory, reconstruct_array, channel, cycle_number,
+                            #                         x_frame_size, y, x)
 
                     else:
                         pass
+
+            else:
+                pass
 
 
         os.chdir(experiment_directory + '/' + excel_folder_name)

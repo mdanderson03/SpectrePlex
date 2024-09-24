@@ -370,6 +370,8 @@ class fluidics:
                 time.sleep(60)
                 print('Staining Time Elapsed ', x)
 
+            #do double wash as unspecifically bound antibodies come off over time in single wash
+
             self.flow_checker()
             self.file_run('wash.py')
 
@@ -385,7 +387,7 @@ class fluidics:
         elif action_type == "Wash":
 
             self.valve_select(pbs_valve)
-            #self.flow_checker()
+            self.flow_checker()
             self.file_run('wash.py')
 
 
@@ -402,16 +404,13 @@ class fluidics:
             time.sleep(70)
             self.flow(0)
 
-        elif action_type == 'PBS_flow_on':
+        elif action_type == 'low flow on':
 
             self.valve_select(pbs_valve)
-            self.flow(500)
-            time.sleep(10)
+            self.file_run('low_flow_start.py')
 
-        elif action_type == 'PBS_flow_off':
+        elif action_type == 'flow off':
 
-            self.valve_select(pbs_valve)
-            self.flow(0)
-            time.sleep(10)
+            self.file_run('low_flow_stop.py')
 
 
