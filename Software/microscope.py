@@ -124,6 +124,8 @@ class cycif:
             self.fm_channel_initial(experiment_directory, off_array, z_slices)
             self.establish_exp_arrays(experiment_directory)
             self.hdr_exp_generator(experiment_directory, threshold_level=10000, max_exp=700, min_exp=20)
+            self.fm_stage_tilt_compensation(experiment_directory, tilt=2.4)
+            self.establish_exp_arrays(experiment_directory)
 
             if x_frame_size != 5056:
                 self.x_overlap_adjuster(x_frame_size, experiment_directory)
@@ -1776,7 +1778,6 @@ class cycif:
         io.imsave('whole_tissue.tif', super_image)
         io.imsave('whole_tissue_filtered.tif', new_image)
 
-
     def tissue_binary_generate(self, experiment_directory, x_frame_size = 2960, clusters_retained = 1, area_threshold = 0.25):
         '''
         Generates tissue binary maps from star dist binary maps
@@ -1836,7 +1837,7 @@ class cycif:
         :return:
         '''
 
-        threshold = 1500 # in pixels
+        threshold = 2000 # in pixels
         sorted_y_centroid = sorted_cluster_areas[2]
         sorted_x_centroid = sorted_cluster_areas[3]
         sorted_index = sorted_cluster_areas[1]
@@ -2556,8 +2557,8 @@ class cycif:
                                 scores = []
                                 for z in range(0, z_slices):
 
-                                    image_slice = zc_dapi_tif_stack[zc_index][z]
-                                    score = self.focus_score(image_slice, 17, tissue_im)
+                                    image_slice = zc_dapi_tif_stack[z]
+                                    score = self.focus_score(image_slice, 23, tissue_im)
                                     scores.append(score)
 
                                 focus_index = self.highest_index(scores)
@@ -2677,8 +2678,8 @@ class cycif:
                                 # score each z slice
                                 scores = []
                                 for z in range(0, z_slices):
-                                    image_slice = zc_dapi_tif_stack[zc_index][z]
-                                    score = self.focus_score(image_slice, 17, tissue_im)
+                                    image_slice = zc_dapi_tif_stack[z]
+                                    score = self.focus_score(image_slice, 23, tissue_im)
                                     scores.append(score)
 
                                 focus_index = self.highest_index(scores)
@@ -2748,7 +2749,7 @@ class cycif:
         else: 
             time.sleep(10)
         '''
-        time.sleep(10)  # wait for it to wake up
+        time.sleep(3)  # wait for it to wake up
         ''''
         exp_time = exp_time_array
         np.save('exp_array.npy', exp_time)
@@ -2760,6 +2761,7 @@ class cycif:
         '''
         self.exp_logbook(experiment_directory, cycle_number)
         start = time.time()
+        #self.multi_channel_z_stack_capture_dapi_focus(experiment_directory, cycle_number, stain_bleach,x_pixels=x_frame_size, slice_gap=2, channels=channels)
         self.multi_channel_z_stack_capture(experiment_directory, cycle_number, stain_bleach,x_pixels=x_frame_size, slice_gap=2, channels=channels)
         end = time.time()
         print('acquistion time', end - start)
@@ -2956,19 +2958,20 @@ class cycif:
 
     def wide_net_auto_focus(self, experiment_directory, x_frame_size, offset_array, z_slices, focus_position, number_clusters_retained = 6):
 
-        z_wide_range = 11
+        #z_wide_range = 11
 
-        self.image_cycle_acquire(0, experiment_directory,z_wide_range, 'Bleach', offset_array, x_frame_size=x_frame_size,establish_fm_array=1, auto_focus_run=0, auto_expose_run=0, channels=['DAPI'],focus_position=focus_position)
-        self.recursive_stardist_autofocus(experiment_directory, cycle=0, remake_nuc_binary=1)
-        self.tissue_region_identifier(experiment_directory, clusters_retained=number_clusters_retained)
-        self.image_cycle_acquire(0, experiment_directory, z_wide_range, 'Bleach', offset_array, x_frame_size=x_frame_size,establish_fm_array=0, auto_focus_run=0, auto_expose_run=0, channels=['DAPI'],focus_position=focus_position)
-        self.recursive_stardist_autofocus(experiment_directory, cycle=0, remake_nuc_binary=1)
+        #self.image_cycle_acquire(0, experiment_directory,z_wide_range, 'Bleach', offset_array, x_frame_size=x_frame_size,establish_fm_array=1, auto_focus_run=0, auto_expose_run=0, channels=['DAPI'],focus_position=focus_position)
+        #self.recursive_stardist_autofocus(experiment_directory, cycle=0, remake_nuc_binary=1)
+        #self.tissue_region_identifier(experiment_directory, x_frame_size = x_frame_size, clusters_retained=number_clusters_retained)
+        #self.image_cycle_acquire(0, experiment_directory, z_wide_range, 'Bleach', offset_array, x_frame_size=x_frame_size,establish_fm_array=0, auto_focus_run=0, auto_expose_run=0, channels=['DAPI'],focus_position=focus_position)
+        #self.recursive_stardist_autofocus(experiment_directory, cycle=0, remake_nuc_binary=1)
 
         numpy_path = experiment_directory + '/' + 'np_arrays'
         os.chdir(numpy_path)
         fm_array = np.load('fm_array.npy', allow_pickle=False)
 
-        fm_array[2] -= (z_wide_range-z_slices)
+        #fm_array[2] -= (z_wide_range-z_slices)
+        fm_array[2] -= 2
         fm_array[3] = z_slices
         fm_array[5] = z_slices
         fm_array[7] = z_slices
@@ -2977,7 +2980,7 @@ class cycif:
         os.chdir(numpy_path)
         np.save('fm_array.npy', fm_array)
 
-        self.image_cycle_acquire(0, experiment_directory, z_slices, 'Bleach', offset_array, x_frame_size=x_frame_size,establish_fm_array=0, auto_focus_run=0, auto_expose_run=0, channels=['DAPI'],focus_position=focus_position)
+        #self.image_cycle_acquire(0, experiment_directory, z_slices, 'Bleach', offset_array, x_frame_size=x_frame_size,establish_fm_array=0, auto_focus_run=0, auto_expose_run=0, channels=['DAPI'],focus_position=focus_position)
 
     def initialize(self, experiment_directory, offset_array, z_slices, x_frame_size=2960, focus_position = 'none', number_clusters = 6):
         '''initialization section. Takes DAPI images, cluster filters tissue, minimally frames sampling grid, acquires all channels.
@@ -3514,8 +3517,8 @@ class cycif:
         #    numpy_y[r][1] = numpy_y[r + 1][1] - y_gap - col_col_gap
 
         # sub in needed pixel size and pixel grid changes
-        ome.pixels.physical_size_x = 0.2
-        ome.pixels.physical_size_y = 0.2
+        ome.pixels.physical_size_x = 0.147
+        ome.pixels.physical_size_y = 0.147
         ome.pixels.size_x = x_frame_size
         ome.pixels.size_y = 2960
         # sub in other optional numbers to make metadata more accurate
@@ -3638,7 +3641,7 @@ class cycif:
         os.chdir(star_dist_path)
         tf.imwrite('star_dist_placed.tif', placed_image)
 
-    def stage_placement(self, experiment_directory, cycle_number, x_pixels, down_sample_factor = 1):
+    def stage_placement(self, experiment_directory, cycle_number, x_pixels, down_sample_factor = 1, single_fov = 0):
         '''
         Goal to place images via rough stage coords in a larger image. WIll have nonsense borders
         '''
@@ -3660,7 +3663,7 @@ class cycif:
 
         fov_x_pixels = x_pixels
         fov_y_pixels = 2960
-        um_pixel = 0.20
+        um_pixel = 0.147
 
         # generate large numpy image with rand numbers. Big enough to hold all images + 10%
 
@@ -3699,8 +3702,10 @@ class cycif:
                             cycle_number) + '\Tiles' + '/focused_basic_corrected'
 
                 elif type == 'Bleach':
-                    im_path = experiment_directory + '/' + channel + "/" + type + '\cy_' + str(
-                        cycle_number) + '\Tiles' + '/focused'
+                    if single_fov != 1:
+                        im_path = experiment_directory + '/' + channel + "/" + type + '\cy_' + str(cycle_number) + '\Tiles' + '/focused'
+                    elif single_fov == 1:
+                        im_path = experiment_directory + '/' + channel + "/" + type + '\cy_' + str(cycle_number) + '\Tiles'
                 os.chdir(im_path)
 
                 # place images into large array
@@ -3771,7 +3776,7 @@ class cycif:
             except:
                 pass
 
-    def illumination_flattening(self, experiment_directory, cycle_number, rolling_ball = 0):
+    def illumination_flattening(self, experiment_directory, cycle_number, single_fov = 0):
 
         # load numpy arrays in
         numpy_path = experiment_directory + '/' + 'np_arrays'
@@ -3794,18 +3799,25 @@ class cycif:
             print('channel', channel_name, 'cycle', cycle_number)
 
             if channel == 0:
-                stain_directory = directory_start + channel_name + '\Stain\cy_' + str(cycle_number) + r'\Tiles\focused'
-                training_directory = directory_start + channel_name + '\Stain\cy_' + str(cycle_number) + r'\Tiles\focused'
-                stain_output_directory = directory_start + channel_name + '\Stain\cy_' + str(cycle_number) + r'\Tiles\focused_basic_corrected'
+                if single_fov != 1:
+                    stain_directory = directory_start + channel_name + '\Stain\cy_' + str(cycle_number) + r'\Tiles\focused'
+                    training_directory = directory_start + channel_name + '\Stain\cy_' + str(cycle_number) + r'\Tiles\focused'
+                    stain_output_directory = directory_start + channel_name + '\Stain\cy_' + str(cycle_number) + r'\Tiles\focused_basic_corrected'
+                if single_fov == 1:
+                    stain_directory = directory_start + channel_name + '\Stain\cy_' + str(cycle_number) + r'\Tiles'
+                    training_directory = directory_start + channel_name + '\Stain\cy_' + str(cycle_number) + r'\Tiles'
+                    stain_output_directory = directory_start + channel_name + '\Stain\cy_' + str(cycle_number) + r'\Tiles\focused_basic_corrected'
 
             else:
-                if rolling_ball != 1:
+                if single_fov != 1:
                     stain_directory = directory_start + channel_name + '\Stain\cy_' + str(cycle_number) + r'\Tiles\focused'
                     training_directory = directory_start + channel_name + '\Stain\cy_' + str(cycle_number) + r'\Tiles\focused'
                     stain_output_directory = directory_start + channel_name + '\Stain\cy_' + str(cycle_number) + r'\Tiles\focused_basic_corrected'
 
-                if rolling_ball == 1:
-                    directory = directory_start + channel_name + '\Stain\cy_' + str(cycle_number) + r'\Tiles\focused\background_subbed_rolling'
+                if single_fov == 1:
+                    stain_directory = directory_start + channel_name + '\Stain\cy_' + str(cycle_number) + r'\Tiles'
+                    training_directory = directory_start + channel_name + '\Stain\cy_' + str(cycle_number) + r'\Tiles'
+                    stain_output_directory = directory_start + channel_name + '\Stain\cy_' + str(cycle_number) + r'\Tiles\focused_basic_corrected'
 
 
 
@@ -4030,6 +4042,41 @@ class cycif:
                 os.remove(output_path_file)
             '''
 
+    def single_fov_file_rename(self, experiment_directory, cycle_number):
+
+        # load numpy arrays in
+        numpy_path = experiment_directory + '/' + 'np_arrays'
+        os.chdir(numpy_path)
+        fm_array = np.load('fm_array.npy', allow_pickle=False)
+        tissue_fm = fm_array[10]
+
+        x_tiles = np.shape(fm_array[0])[1]
+        y_tiles = np.shape(fm_array[0])[0]
+
+        directory_start = experiment_directory + '//'
+        channels = ['DAPI', 'A488', 'A555', 'A647']
+        for x in range(0, x_tiles):
+            for y in range(0, y_tiles):
+                if tissue_fm[y][x] > 1:
+                    for channel in channels:
+
+                        stain_directory = directory_start + channel + '\Stain\cy_' + str(cycle_number) + r'\Tiles'
+                        os.chdir(stain_directory)
+                        file_name = 'z_0_x' + str(x) + '_y_' + str(y) + '_c_' + channel + '.tif'
+                        new_file_name = 'x' + str(x) + '_y_' + str(y) + '_c_' + channel + '.tif'
+                        im = io.imread(file_name)
+                        io.imsave(new_file_name, im)
+
+                        stain_directory = directory_start + channel + '\Bleach\cy_' + str(cycle_number) + r'\Tiles'
+                        os.chdir(stain_directory)
+                        file_name = 'z_0_x' + str(x) + '_y_' + str(y) + '_c_' + channel + '.tif'
+                        new_file_name = 'x' + str(x) + '_y_' + str(y) + '_c_' + channel + '.tif'
+                        im = io.imread(file_name)
+                        io.imsave(new_file_name, im)
+                else:
+                    pass
+
+
     def inter_cycle_processing(self, experiment_directory, cycle_number, x_frame_size):
 
         '''
@@ -4048,16 +4095,17 @@ class cycif:
 
         #make tissue exist array if needed
         if cycle_number == 1:
-            self.tissue_exist_array_generate(experiment_directory)
+            self.tissue_exist_array_generate(experiment_directory, x_frame_size=x_frame_size)
         else:
             pass
         end = time.time()
         print('binary create', end - start)
 
         #determine in focus parts first
-        self.focus_excel_creation(experiment_directory, cycle_number)
-        self.in_focus_excel_populate(experiment_directory, cycle_number, x_frame_size=x_frame_size)
-        self.excel_2_focus(experiment_directory, cycle_number, x_frame_size=x_frame_size)
+        #self.focus_excel_creation(experiment_directory, cycle_number)
+        #self.in_focus_excel_populate(experiment_directory, cycle_number, x_frame_size=x_frame_size)
+        #self.excel_2_focus(experiment_directory, cycle_number, x_frame_size=x_frame_size)
+        self.single_fov_file_rename(experiment_directory, cycle_number)
 
         end = time.time()
         print('focus', end - start)
@@ -4075,13 +4123,13 @@ class cycif:
 
         #flatten image
 
-        self.illumination_flattening(experiment_directory, cycle_number, rolling_ball=0)
+        self.illumination_flattening(experiment_directory, cycle_number, single_fov=1)
         #self.bottom_int_correction(experiment_directory, cycle_number=cycle_number)
 
         end = time.time()
         print('flatten', end - start)
 
-        self.stage_placement(experiment_directory, cycle_number, x_pixels=x_frame_size, down_sample_factor=4)
+        self.stage_placement(experiment_directory, cycle_number, x_pixels=x_frame_size, down_sample_factor=4, single_fov=1)
 
 
         #compress to 16bit
@@ -4107,7 +4155,7 @@ class cycif:
 
 
 
-        self.stage_placement(experiment_directory, cycle_number, x_pixels = x_frame_size, down_sample_factor=4)
+        self.stage_placement(experiment_directory, cycle_number, x_pixels = x_frame_size, down_sample_factor=4, single_fov=1)
 
         #end = time.time()
         #print('stage placement', end - start)
@@ -4965,7 +5013,7 @@ class cycif:
                 image = zc_tif_stack[zc_index][z]
                 imwrite(file_name, image, photometric='minisblack')
 
-    def tissue_exist_array_generate(self, experiment_directory):
+    def tissue_exist_array_generate(self, experiment_directory, x_frame_size):
 
         tissue_path = experiment_directory + '/Tissue_Binary'
 
@@ -4981,7 +5029,7 @@ class cycif:
         x_tile_count = numpy_y.shape[1]
 
         # make object to hold all tissue binary maps
-        tissue_binary_stack = np.random.rand(y_tile_count, x_tile_count, 2960, 2960).astype('uint16')
+        tissue_binary_stack = np.random.rand(y_tile_count, x_tile_count, 2960, x_frame_size).astype('uint16')
         for x in range(0, x_tile_count):
             for y in range(0, y_tile_count):
                 os.chdir(tissue_path)

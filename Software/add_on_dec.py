@@ -4,16 +4,14 @@ import os
 
 
 
-os.chdir(r'E:\12-9-24 gutage\Tissue_Binary')
+os.chdir(r'E:\test_olympus\np_arrays')
 
-#full_array = np.load('fm_array.npy', allow_pickle=False)
-
-
-im = io.imread(r'labelled_tissue_filtered.tif')
-
-im -= np.min(im)
-
-io.imsave(r'labelled_tissue_filtered.tif', im)
+fm_array = np.load('fm_array.npy', allow_pickle=False)
+print(fm_array[3][0][0])
+fm_array[5] = 1
+fm_array[7] = 1
+fm_array[9] = 1
+np.save('fm_array.npy', fm_array)
 
 #x_tile_count = np.shape(full_array[0])[1]
 #y_tile_count = np.shape(full_array[0])[0]

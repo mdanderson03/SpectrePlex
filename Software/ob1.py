@@ -56,8 +56,8 @@ class fluidics:
         self.pressure_off = 0
         self.flow_on = 500
         self.flow_off = -3
-        self.low_flow_on = 65
-        self.high_flow_on = 500
+        self.low_flow_on = 150
+        self.high_flow_on = 900
 
         return
 
@@ -207,6 +207,7 @@ class fluidics:
             current_flow_rate = data_sens.value
             self.fluidics_logger('checking if frozen_' + str(OB1_Get_Remote_Data), error, current_flow_rate)
             flows[x] = current_flow_rate
+            print(current_flow_rate)
             time.sleep(0.5)
 
         # determine if frozen, ie see how many unique values there are
