@@ -4102,10 +4102,10 @@ class cycif:
         print('binary create', end - start)
 
         #determine in focus parts first
-        #self.focus_excel_creation(experiment_directory, cycle_number)
-        #self.in_focus_excel_populate(experiment_directory, cycle_number, x_frame_size=x_frame_size)
-        #self.excel_2_focus(experiment_directory, cycle_number, x_frame_size=x_frame_size)
-        self.single_fov_file_rename(experiment_directory, cycle_number)
+        self.focus_excel_creation(experiment_directory, cycle_number)
+        self.in_focus_excel_populate(experiment_directory, cycle_number, x_frame_size=x_frame_size)
+        self.excel_2_focus(experiment_directory, cycle_number, x_frame_size=x_frame_size)
+        #self.single_fov_file_rename(experiment_directory, cycle_number)
 
         end = time.time()
         print('focus', end - start)
@@ -4123,13 +4123,13 @@ class cycif:
 
         #flatten image
 
-        self.illumination_flattening(experiment_directory, cycle_number, single_fov=1)
+        self.illumination_flattening(experiment_directory, cycle_number, single_fov=0)
         #self.bottom_int_correction(experiment_directory, cycle_number=cycle_number)
 
         end = time.time()
         print('flatten', end - start)
 
-        self.stage_placement(experiment_directory, cycle_number, x_pixels=x_frame_size, down_sample_factor=4, single_fov=1)
+        self.stage_placement(experiment_directory, cycle_number, x_pixels=x_frame_size, down_sample_factor=4, single_fov=0)
 
 
         #compress to 16bit
@@ -4155,7 +4155,7 @@ class cycif:
 
 
 
-        self.stage_placement(experiment_directory, cycle_number, x_pixels = x_frame_size, down_sample_factor=4, single_fov=1)
+        self.stage_placement(experiment_directory, cycle_number, x_pixels = x_frame_size, down_sample_factor=4, single_fov=0)
 
         #end = time.time()
         #print('stage placement', end - start)

@@ -41,7 +41,7 @@ pump.liquid_action('Wash')
 # es, 'Bleach', offset_array,x_frame_size=x_frame_size, auto_focus_run=0, auto_expose_run=3)
 #microscope.post_acquisition_processor(experiment_directory, x_frame_size, rolling_ball=0)
 #microscope.brightness_uniformer(experiment_directory, cycle_number=1)
-#for cycle in range(1, 11):
+#for cycle in range(1, 5):
 
 #    microscope.inter_cycle_processing(experiment_directory, cycle_number=cycle, x_frame_size=x_frame_size)
 #microscope.tissue_region_identifier(experiment_directory, x_frame_size=x_frame_size, clusters_retained=6)
