@@ -1260,6 +1260,42 @@ class cycif:
                 z_planes[y][x] = starting_focus - y * tilt
         np.save('fm_array.npy', fm_array)
 
+    def fm_map_z_shifter(self, experiment_directory, desired_z_slices_dapi, desired_z_slices_other):
+        '''
+        Looks at focus map and shifts stack and alters desired slice counts from original
+        values to new desired values
+        :param experiment_directory:
+        :param desired_z_slices_dapi:
+        :param desired_z_slices_other:
+        :return:
+        '''
+
+        # load in fm array
+        numpy_path = experiment_directory + '/' + 'np_arrays'
+        os.chdir(numpy_path)
+        file_name = 'fm_array.npy'
+        fm_array = np.load(file_name, allow_pickle=False)
+
+        slice_gap = 2
+
+        original_z_dapi = fm_array[3][0][0]
+        original_z_others = fm_array[5][0][0]
+
+
+        #shift stacks
+        fm_array[2] -= (original_z_dapi - desired_z_slices_dapi) * slice_gap #dapi
+        fm_array[4] -= (original_z_others - desired_z_slices_other) * slice_gap #a488
+        fm_array[6] -= (original_z_others - desired_z_slices_other) * slice_gap #a555
+        fm_array[8] -= (original_z_others - desired_z_slices_other) * slice_gap #a647
+
+        #update z slices
+        fm_array[3] = desired_z_slices_dapi
+        fm_array[5] = desired_z_slices_other
+        fm_array[7] = desired_z_slices_other
+        fm_array[9] = desired_z_slices_other
+
+        np.save('fm_array.npy', fm_array)
+
     def x_overlap_adjuster(self, new_x_pixel_count, experiment_directory):
         '''
         Increases overlap in focus map while cropping in the x dimension to preserve effective 10% overlap of cropped images
@@ -2966,20 +3002,7 @@ class cycif:
         #self.image_cycle_acquire(0, experiment_directory, z_wide_range, 'Bleach', offset_array, x_frame_size=x_frame_size,establish_fm_array=0, auto_focus_run=0, auto_expose_run=0, channels=['DAPI'],focus_position=focus_position)
         #self.recursive_stardist_autofocus(experiment_directory, cycle=0, remake_nuc_binary=1)
 
-        numpy_path = experiment_directory + '/' + 'np_arrays'
-        os.chdir(numpy_path)
-        fm_array = np.load('fm_array.npy', allow_pickle=False)
-
-        #fm_array[2] -= (z_wide_range-z_slices)
-        fm_array[2] -= 2
-        fm_array[3] = z_slices
-        fm_array[5] = z_slices
-        fm_array[7] = z_slices
-        fm_array[9] = z_slices
-
-        os.chdir(numpy_path)
-        np.save('fm_array.npy', fm_array)
-
+        self.fm_map_z_shifter(experiment_directory, desired_z_slices_dapi=5, desired_z_slices_other=1)
         #self.image_cycle_acquire(0, experiment_directory, z_slices, 'Bleach', offset_array, x_frame_size=x_frame_size,establish_fm_array=0, auto_focus_run=0, auto_expose_run=0, channels=['DAPI'],focus_position=focus_position)
 
     def initialize(self, experiment_directory, offset_array, z_slices, x_frame_size=2960, focus_position = 'none', number_clusters = 6):
