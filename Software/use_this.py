@@ -3,14 +3,14 @@ import numpy as np
 from autocyplex import *
 from optparse import OptionParser
 microscope = cycif() # initialize cycif object
-experiment_directory = r'E:\tissue_olympus'
+experiment_directory = r'Z:\Public\Thiagarajah Lab\Mike_A\SpectrePlex\13-8-24 gutage'
 pump = fluidics(experiment_directory, 6, 10, flow_control=1)
-core = Core()
+#core = Core()
 
 
 z_slices = 3
-#x_frame_size = 2960
-x_frame_size = 5056
+x_frame_size = 2960
+#x_frame_size = 5056
 #offset_array = [0, -7, -7, -6]
 offset_array = [0, 0, 0, 0]
 focus_position = -784 #make sure this is upper left hand corner focus z position
@@ -25,7 +25,7 @@ focus_position = -784 #make sure this is upper left hand corner focus z position
 #pump.liquid_action('Stain', stain_valve=10)
 #microscope.recursive_stardist_autofocus(experiment_directory, cycle=5,remake_nuc_binary=0)
 #microscope.image_cycle_acquire(5, experiment_directory, z_slices, 'Stain', offset_array,x_frame_size=x_frame_size, auto_focus_run=0, auto_expose_run=3)
-pump.liquid_action('Wash')
+#pump.liquid_action('Wash')
 #pump.liquid_action('low flow on')
 #pump.liquid_action('Wash')
 #microscope.image_cycle_acquire(4, experiment_directory, z_slices, 'Bleach', offset_array,x_frame_size=x_frame_size, auto_focus_run=0, auto_expose_run=0)
@@ -41,9 +41,9 @@ pump.liquid_action('Wash')
 # es, 'Bleach', offset_array,x_frame_size=x_frame_size, auto_focus_run=0, auto_expose_run=3)
 #microscope.post_acquisition_processor(experiment_directory, x_frame_size, rolling_ball=0)
 #microscope.brightness_uniformer(experiment_directory, cycle_number=1)
-#for cycle in range(1, 5):
+for cycle in range(1, 2):
 
-#    microscope.inter_cycle_processing(experiment_directory, cycle_number=cycle, x_frame_size=x_frame_size)
+    microscope.inter_cycle_processing(experiment_directory, cycle_number=cycle, x_frame_size=x_frame_size)
 #microscope.tissue_region_identifier(experiment_directory, x_frame_size=x_frame_size, clusters_retained=6)
 
 #microscope.recursive_stardist_autofocus(experiment_directory, 0,remake_nuc_binary=0)

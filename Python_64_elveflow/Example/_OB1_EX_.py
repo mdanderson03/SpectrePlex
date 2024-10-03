@@ -1,6 +1,6 @@
 # tested with Python 3.6.10 (IDE Notepad++ v8.5.4)
 # add python_xx and python_xx/DLL to the project path
-# coding: utf8
+# coding: utf8de
 
 import sys
 from email.header import UTF8

@@ -4,7 +4,7 @@ import ome_types
 from pycromanager import Core, Magellan, Studio
 import numpy as np
 import time
-from skimage import io, filters, morphology, restoration, util
+from skimage import io, filters, morphology, restoration, util, transform
 import skimage
 import os
 import math
@@ -30,8 +30,8 @@ import itertools
 
 
 
-magellan = Magellan()
-core = Core()
+#magellan = Magellan()
+#core = Core()
 
 
 class cycif:
@@ -3540,8 +3540,8 @@ class cycif:
         #    numpy_y[r][1] = numpy_y[r + 1][1] - y_gap - col_col_gap
 
         # sub in needed pixel size and pixel grid changes
-        ome.pixels.physical_size_x = 0.147
-        ome.pixels.physical_size_y = 0.147
+        ome.pixels.physical_size_x = 0.200
+        ome.pixels.physical_size_y = 0.2004
         ome.pixels.size_x = x_frame_size
         ome.pixels.size_y = 2960
         # sub in other optional numbers to make metadata more accurate
@@ -3686,7 +3686,7 @@ class cycif:
 
         fov_x_pixels = x_pixels
         fov_y_pixels = 2960
-        um_pixel = 0.147
+        um_pixel = 0.2004
 
         # generate large numpy image with rand numbers. Big enough to hold all images + 10%
 
@@ -3823,8 +3823,8 @@ class cycif:
 
             if channel == 0:
                 if single_fov != 1:
-                    stain_directory = directory_start + channel_name + '\Stain\cy_' + str(cycle_number) + r'\Tiles\focused'
-                    training_directory = directory_start + channel_name + '\Stain\cy_' + str(cycle_number) + r'\Tiles\focused'
+                    stain_directory = directory_start + channel_name + '\Stain\cy_' + str(cycle_number) + r'\Tiles\focused_darkframe'
+                    training_directory = directory_start + channel_name + '\Stain\cy_' + str(cycle_number) + r'\Tiles\focused_darkframe'
                     stain_output_directory = directory_start + channel_name + '\Stain\cy_' + str(cycle_number) + r'\Tiles\focused_basic_corrected'
                 if single_fov == 1:
                     stain_directory = directory_start + channel_name + '\Stain\cy_' + str(cycle_number) + r'\Tiles'
@@ -3833,8 +3833,8 @@ class cycif:
 
             else:
                 if single_fov != 1:
-                    stain_directory = directory_start + channel_name + '\Stain\cy_' + str(cycle_number) + r'\Tiles\focused'
-                    training_directory = directory_start + channel_name + '\Stain\cy_' + str(cycle_number) + r'\Tiles\focused'
+                    stain_directory = directory_start + channel_name + '\Stain\cy_' + str(cycle_number) + r'\Tiles\focused_darkframe'
+                    training_directory = directory_start + channel_name + '\Stain\cy_' + str(cycle_number) + r'\Tiles\focused_darkframe'
                     stain_output_directory = directory_start + channel_name + '\Stain\cy_' + str(cycle_number) + r'\Tiles\focused_basic_corrected'
 
                 if single_fov == 1:
@@ -4125,9 +4125,9 @@ class cycif:
         print('binary create', end - start)
 
         #determine in focus parts first
-        self.focus_excel_creation(experiment_directory, cycle_number)
-        self.in_focus_excel_populate(experiment_directory, cycle_number, x_frame_size=x_frame_size)
-        self.excel_2_focus(experiment_directory, cycle_number, x_frame_size=x_frame_size)
+        #self.focus_excel_creation(experiment_directory, cycle_number)
+        #self.in_focus_excel_populate(experiment_directory, cycle_number, x_frame_size=x_frame_size)
+        #self.excel_2_focus(experiment_directory, cycle_number, x_frame_size=x_frame_size)
         #self.single_fov_file_rename(experiment_directory, cycle_number)
 
         end = time.time()
@@ -4137,26 +4137,27 @@ class cycif:
 
         #subtract background
         #self.background_sub(experiment_directory, cycle_number, rolling_ball=0)
+        #self.darkframe_sub(experiment_directory, cycle_number)
 
         end = time.time()
-        print('sub background', end - start)
+        print('dark frame subtraction', end - start)
 
 
 
 
         #flatten image
 
-        self.illumination_flattening(experiment_directory, cycle_number, single_fov=0)
+        #self.illumination_flattening(experiment_directory, cycle_number, single_fov=0)
         #self.bottom_int_correction(experiment_directory, cycle_number=cycle_number)
 
         end = time.time()
         print('flatten', end - start)
 
-        self.stage_placement(experiment_directory, cycle_number, x_pixels=x_frame_size, down_sample_factor=4, single_fov=0)
+        #self.stage_placement(experiment_directory, cycle_number, x_pixels=x_frame_size, down_sample_factor=4, single_fov=0)
 
 
         #compress to 16bit
-        self.hdr_compression_2(experiment_directory, cycle_number)
+        #self.hdr_compression_2(experiment_directory, cycle_number)
         #self.hdr_manual_compression(experiment_directory, cycle_number=cycle_number)
 
         end = time.time()
@@ -4697,6 +4698,62 @@ class cycif:
                 else:
                     pass
 
+    def darkframe_sub(self, experiment_directory, cycle_number):
+        '''
+
+
+        :param experimental_directory:
+        :param cycle_number:
+        :return:
+        '''
+
+        experiment_directory = experiment_directory + '/'
+
+
+        numpy_path = experiment_directory + '/' + 'np_arrays'
+        os.chdir(numpy_path)
+        file_name = 'fm_array.npy'
+        fm_array = np.load(file_name, allow_pickle=False)
+        tissue_exist = np.load('tissue_exist.npy', allow_pickle=False)
+
+
+        y_tile_count = np.shape(fm_array[0])[0]
+        x_tile_count = np.shape(fm_array[0])[1]
+
+        block_y_pixels = 50
+        block_x_pixels = 50
+
+        channels = ['DAPI', 'A488', 'A555', 'A647']
+
+        for y in range(0, y_tile_count):
+            for x in range(0, x_tile_count):
+
+                if tissue_exist[y][x] == 1:
+                    for channel in channels:
+                        # stain_color_path = experiment_directory + channel + r'/Stain/cy_' + str(cycle) + '\Tiles/focused_basic_corrected'
+                        stain_color_path = experiment_directory + channel + r'/Stain/cy_' + str(cycle_number) + '\Tiles/focused'
+                        darkframe_color_path = experiment_directory + channel + r'/Stain/cy_' + str(cycle_number) + '\Tiles/focused_darkframe'
+
+                        os.chdir(stain_color_path)
+                        filename = 'x' + str(x) + '_y_' + str(y) + '_c_' + channel + '.tif'
+                        color_im = io.imread(filename)
+
+
+                        darkframe_im = self.dark_frame_generate(color_im, block_y_pixels, block_x_pixels)
+                        darkframe_subbed_im = color_im - darkframe_im
+                        darkframe_subbed_im[darkframe_subbed_im < 0] = 0
+
+                        try:
+                            os.mkdir(darkframe_color_path)
+                            os.chdir(darkframe_color_path)
+                        except:
+                            os.chdir(darkframe_color_path)
+
+                        io.imsave(filename, darkframe_subbed_im)
+
+                else:
+                    pass
+
     def brightness_uniformer(self, experiment_directory, cycle_number, cluster_number):
 
         experiment_directory = experiment_directory + '/'
@@ -4829,7 +4886,100 @@ class cycif:
                         else:
                             pass
 
+    def block_proc_min(self, array, block_y_pixels, block_x_pixels):
+        '''
+        breaks image up into blocks of size (block_y_pixels x block_x_pixels
+        and then returns array that is the minimum of each block and is
+        effectively down sampled by the block size
 
+        :param array:
+        :param block_y_pixels:
+        :param block_x_pixles:
+        :return:
+        '''
+
+        y_pixels = np.shape(array)[0]
+        x_pixels = np.shape(array)[1]
+
+        y_num_blocks = int(y_pixels / block_y_pixels)
+        x_num_blocks = int(x_pixels / block_x_pixels)
+
+        im = array
+
+        blocked_array = np.lib.stride_tricks.as_strided(im, shape=(
+        x_num_blocks, y_num_blocks, block_x_pixels, block_y_pixels), strides=(
+        im.strides[0] * block_x_pixels, im.strides[1] * block_y_pixels, im.strides[0], im.strides[1]))
+        min = np.min(blocked_array, axis=2)
+        min = np.min(min, axis=2)
+
+        return min
+
+    def block_proc_reshaper(self, array, block_y_pixels, block_x_pixels):
+        '''
+        takes in array and evenly clips off rows and columns to to their counts be integers
+        when divided by block size pixel counts. Does no padding, only shrinks.
+        :param array:
+        :param block_y_pixels:
+        :param block_x_pixels:
+        :return:
+        '''
+
+        y_pixels = np.shape(array)[0]
+        x_pixels = np.shape(array)[1]
+
+        y_num_blocks = math.floor(y_pixels / block_y_pixels)
+        x_num_blocks = math.floor(x_pixels / block_x_pixels)
+
+        adjusted_y_pixels = block_y_pixels * y_num_blocks
+        adjusted_x_pixels = block_x_pixels * x_num_blocks
+
+        clipped_y_pixel_num = y_pixels - adjusted_y_pixels
+        clipped_x_pixel_num = x_pixels - adjusted_x_pixels
+
+        # deal with even and odd cases for y axis
+        if clipped_y_pixel_num % 2 == 0:
+            top_rows_2_clip = int(clipped_y_pixel_num / 2)
+            bottom_rows_2_clip = int(clipped_y_pixel_num / 2)
+            bottom_adjusted_row_num = y_pixels - bottom_rows_2_clip
+            array = array[top_rows_2_clip:bottom_adjusted_row_num, ::]
+        elif clipped_y_pixel_num % 2 != 0:
+            top_rows_2_clip = int(clipped_y_pixel_num / 2)
+            bottom_rows_2_clip = int((clipped_y_pixel_num / 2) + 1)
+            bottom_adjusted_row_num = y_pixels - bottom_rows_2_clip
+            array = array[top_rows_2_clip:bottom_adjusted_row_num, ::]
+
+        # deal with even and odd cases for x axis
+        if clipped_x_pixel_num % 2 == 0:
+            left_col_2_clip = int(clipped_x_pixel_num / 2)
+            right_col_2_clip = int(clipped_x_pixel_num / 2)
+            right_adjusted_col_num = int(x_pixels - right_col_2_clip)
+            array = array[::, left_col_2_clip:right_adjusted_col_num]
+        elif clipped_x_pixel_num % 2 != 0:
+            left_col_2_clip = int(clipped_x_pixel_num / 2)
+            right_col_2_clip = int((clipped_x_pixel_num / 2) + 1)
+            right_adjusted_col_num = int(x_pixels - right_col_2_clip)
+            array = array[::, left_col_2_clip:right_adjusted_col_num]
+
+        return array
+
+    def dark_frame_generate(self, array, block_y_pixels, block_x_pixels):
+        '''
+
+        :param array:
+        :param block_y_pixels:
+        :param block_x_pixels:
+        :return:
+        '''
+
+        original_y_pixels = np.shape(array)[0]
+        original_x_pixels = np.shape(array)[1]
+
+        adjusted_array = self.block_proc_reshaper(array, block_y_pixels, block_x_pixels)
+        min_array = self.block_proc_min(adjusted_array, block_y_pixels, block_x_pixels)
+        resized_min_array = transform.resize(min_array, (original_y_pixels, original_x_pixels), preserve_range=True,
+                                             anti_aliasing=True)
+
+        return resized_min_array
 
     def max_projector(self, experiment_directory, cycle_number, x_frame_size):
 
