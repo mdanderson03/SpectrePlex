@@ -4976,8 +4976,8 @@ class cycif:
 
         adjusted_array = self.block_proc_reshaper(array, block_y_pixels, block_x_pixels)
         min_array = self.block_proc_min(adjusted_array, block_y_pixels, block_x_pixels)
-        resized_min_array = transform.resize(min_array, (original_y_pixels, original_x_pixels), preserve_range=True,
-                                             anti_aliasing=True)
+        resized_min_array = transform.resize(min_array, (original_y_pixels, original_x_pixels), preserve_range=True,anti_aliasing=True)
+        resized_min_array = filters.butterworth(resized_min_array, cutoff_frequency_ratio=0.005, high_pass=False, order=2, npad=1000)
 
         return resized_min_array
 
