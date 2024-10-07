@@ -3346,13 +3346,13 @@ class cycif:
         tile_count = int(tissue_exist.sum())
 
         dapi_im_path = experiment_directory + '\DAPI\Stain\cy_' + str(
-            cycle_number) + '\Tiles' + '/focused_basic_corrected'
+            cycle_number) + '\Tiles' + '/focused_basic_corrected_darkframe'
         a488_im_path = experiment_directory + '\A488\Stain\cy_' + str(
-            cycle_number) + '\Tiles' + '/focused_basic_corrected'
+            cycle_number) + '\Tiles' + '/focused_basic_corrected_darkframe'
         a555_im_path = experiment_directory + '\A555\Stain\cy_' + str(
-            cycle_number) + '\Tiles' + '/focused_basic_corrected'
+            cycle_number) + '\Tiles' + '/focused_basic_corrected_darkframe'
         a647_im_path = experiment_directory + '\A647\Stain\cy_' + str(
-            cycle_number) + '\Tiles' + '/focused_basic_corrected'
+            cycle_number) + '\Tiles' + '/focused_basic_corrected_darkframe'
 
         mcmicro_path = experiment_directory + r'\mcmicro'
 
@@ -4147,18 +4147,20 @@ class cycif:
 
         #flatten image
 
-        #self.illumination_flattening(experiment_directory, cycle_number, single_fov=0)
+        self.illumination_flattening(experiment_directory, cycle_number, single_fov=0)
         #self.bottom_int_correction(experiment_directory, cycle_number=cycle_number)
 
         end = time.time()
         print('flatten', end - start)
 
-        #self.stage_placement(experiment_directory, cycle_number, x_pixels=x_frame_size, down_sample_factor=4, single_fov=0)
+        self.stage_placement(experiment_directory, cycle_number, x_pixels=x_frame_size, down_sample_factor=4, single_fov=0)
 
 
         #compress to 16bit
-        #self.hdr_compression_2(experiment_directory, cycle_number)
+        self.hdr_compression_2(experiment_directory, cycle_number)
         #self.hdr_manual_compression(experiment_directory, cycle_number=cycle_number)
+
+        self.darkframe_sub(experiment_directory, cycle_number)
 
         end = time.time()
         print('compress', end - start)
@@ -4179,7 +4181,7 @@ class cycif:
 
 
 
-        self.stage_placement(experiment_directory, cycle_number, x_pixels = x_frame_size, down_sample_factor=4, single_fov=0)
+        #self.stage_placement(experiment_directory, cycle_number, x_pixels = x_frame_size, down_sample_factor=4, single_fov=0)
 
         #end = time.time()
         #print('stage placement', end - start)
@@ -4731,8 +4733,8 @@ class cycif:
                 if tissue_exist[y][x] == 1:
                     for channel in channels:
                         # stain_color_path = experiment_directory + channel + r'/Stain/cy_' + str(cycle) + '\Tiles/focused_basic_corrected'
-                        stain_color_path = experiment_directory + channel + r'/Stain/cy_' + str(cycle_number) + '\Tiles/focused'
-                        darkframe_color_path = experiment_directory + channel + r'/Stain/cy_' + str(cycle_number) + '\Tiles/focused_darkframe'
+                        stain_color_path = experiment_directory + channel + r'/Stain/cy_' + str(cycle_number) + '\Tiles/focused_basic_corrected'
+                        darkframe_color_path = experiment_directory + channel + r'/Stain/cy_' + str(cycle_number) + '\Tiles/focused_basic_corrected_darkframe'
 
                         os.chdir(stain_color_path)
                         filename = 'x' + str(x) + '_y_' + str(y) + '_c_' + channel + '.tif'
@@ -4906,9 +4908,7 @@ class cycif:
 
         im = array
 
-        blocked_array = np.lib.stride_tricks.as_strided(im, shape=(
-        x_num_blocks, y_num_blocks, block_x_pixels, block_y_pixels), strides=(
-        im.strides[0] * block_x_pixels, im.strides[1] * block_y_pixels, im.strides[0], im.strides[1]))
+        blocked_array = np.lib.stride_tricks.as_strided(im, shape=(x_num_blocks, y_num_blocks, block_x_pixels, block_y_pixels), strides=(im.strides[0] * block_x_pixels, im.strides[1] * block_y_pixels, im.strides[0], im.strides[1]))
         min = np.min(blocked_array, axis=2)
         min = np.min(min, axis=2)
 
