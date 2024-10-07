@@ -1,216 +1,137 @@
 import numpy as np
-import skimage.util
-from skimage import io, morphology, filters, measure
-from skimage.restoration import rolling_ball
-from matplotlib import pyplot as plt
-import tifffile as tf
 import os
-import cv2 as cv
-import time
-import scipy.optimize as opt
+from skimage import io, filters, morphology, transform
+from skimage.filters import rank
+from matplotlib import pyplot as plt
+import cv2
 import math
 
-tissue_folder = r'D:\Images\AutoCyPlex\6-1-24 multiplex\Tissue_Binary'
-numpy_folder = r'D:\Images\AutoCyPlex\6-1-24 multiplex\np_arrays'
-os.chdir(numpy_folder)
-file_name = 'fm_array.npy'
-fm_array = np.load(file_name, allow_pickle=False)
 
-# find tile counts
-x_tiles = np.shape(fm_array[0])[1]
-y_tiles = np.shape(fm_array[0])[0]
-
-def col_row_nonzero(image):
-
-    #determine row and column counts
-    row_count = np.shape(image)[0]
-    column_count = np.shape(image)[1]
-
-    # define row and column arrays
-    row_nonzero = np.zeros((row_count))
-    column_nonzero = np.zeros((column_count))
-
-    #find column indicies with non zero values
-    for x in range(0, column_count):
-        column = image[::, x]
-        sum = np.sum(column)
-        if sum > 0:
-            column_nonzero[x] = 1
-        else:
-            pass
-
-    # find row indicies with non zero values
-    for y in range(0, row_count):
-        row = image[y, ::]
-        sum = np.sum(row)
-        if sum > 0:
-            row_nonzero[y] = 1
-        else:
-            pass
-
-    return row_nonzero, column_nonzero
-
-def fm_grid_readjuster(experiment_directory, x_frame_size):
-    numpy_path = experiment_directory + r'\np_arrays'
-    tissue_path = experiment_directory + r'\Tissue_Binary'
-
-    os.chdir(numpy_path)
-    file_name = 'fm_array.npy'
-    fm_array = np.load(file_name, allow_pickle=False)
-
-    # find tile counts
-    x_tiles = np.shape(fm_array[0])[1]
-    y_tiles = np.shape(fm_array[0])[0]
-
-    #make row and column arrays that can contain all tissue images in row or col respectively
-    row_image = np.random.rand(2960, x_frame_size * x_tiles).astype('float16')
-    col_image = np.random.rand(2960 * y_tiles, x_frame_size ).astype('float16')
-
-    os.chdir(tissue_path)
-
-    found_upper_y = 0
-    found_lower_y = 0
-    found_right_x = 0
-    found_left_x = 0
+from skimage.morphology import disk
+#from stardist.models import StarDist2D
+#from csbdeep.utils import normalize
 
 
-    # find upper and lower tissue containing tiles and what rows within them where the tissue starts showing up
+def block_proc_min(array, block_y_pixels, block_x_pixels):
+    '''
+    breaks image up into blocks of size (block_y_pixels x block_x_pixels
+    and then returns array that is the minimum of each block and is
+    effectively down sampled by the block size
 
-    #upper row
-    for y in range(0, y_tiles):
-        if found_upper_y == 0:
-            for x in range(0, x_tiles):
-                # populate row image
-                filename = 'x' + str(x) + '_y_' + str(y) + '_tissue.tif'
-                individual_image = io.imread(filename)
-                start = x * x_frame_size
-                end = start + x_frame_size
-                row_image[::, start:end] = individual_image
-            row_array, col_array = col_row_nonzero(row_image)
-            try:
-                row_indicies = np.nonzero(row_array)[0]
-                upper_y_index = row_indicies[0]
-                upper_y_tile = y
-                found_upper_y = 1
-            except:
-                pass
+    :param array:
+    :param block_y_pixels:
+    :param block_x_pixles:
+    :return:
+    '''
 
-        else:
-            pass
+    y_pixels = np.shape(array)[0]
+    x_pixels = np.shape(array)[1]
 
-    #lower row
-    for y in range(y_tiles - 1, -1, -1):
-        if found_lower_y == 0:
-            for x in range(0, x_tiles):
-                # populate row image
-                filename = 'x' + str(x) + '_y_' + str(y) + '_tissue.tif'
-                individual_image = io.imread(filename)
-                start = x * x_frame_size
-                end = start + x_frame_size
-                row_image[::, start:end] = individual_image
+    y_num_blocks = int(y_pixels / block_y_pixels)
+    x_num_blocks = int(x_pixels / block_x_pixels)
 
-            row_image = np.flipud(row_image)
-            row_array, col_array = col_row_nonzero(row_image)
-            try:
-                row_indicies = np.nonzero(row_array)[0]
-                lower_y_index = 2960 - row_indicies[0]
-                lower_y_tile = y
-                found_lower_y = 1
-            except:
-                pass
+    im = array
 
-        else:
-            pass
+    blocked_array = np.lib.stride_tricks.as_strided(im,
+                                                    shape=(x_num_blocks, y_num_blocks, block_x_pixels, block_y_pixels),
+                                                    strides=(
+                                                    im.strides[0] * block_x_pixels, im.strides[1] * block_y_pixels,
+                                                    im.strides[0], im.strides[1]))
+    min = np.min(blocked_array, axis=2)
+    min = np.min(min, axis=2)
+
+    return min
 
 
-    #right column
-    for x in range(x_tiles - 1, -1, -1):
-        if found_right_x == 0:
-            for y in range(0, y_tiles):
-                # populate row image
-                filename = 'x' + str(x) + '_y_' + str(y) + '_tissue.tif'
-                individual_image = io.imread(filename)
-                start = y * x_frame_size
-                end = start + 2960
-                col_image[start:end, ::] = individual_image
+def block_proc_reshaper(array, block_y_pixels, block_x_pixels):
+    '''
+    takes in array and evenly clips off rows and columns to to their counts be integers
+    when divided by block size pixel counts. Does no padding, only shrinks.
+    :param array:
+    :param block_y_pixels:
+    :param block_x_pixels:
+    :return:
+    '''
 
-            col_image = np.fliplr(col_image)
-            row_array, col_array = col_row_nonzero(col_image)
-            try:
-                col_indicies = np.nonzero(col_array)[0]
-                right_x_index = x_frame_size - col_indicies[0]
-                right_x_tile = x
-                found_right_x = 1
-            except:
-                pass
+    y_pixels = np.shape(array)[0]
+    x_pixels = np.shape(array)[1]
 
-        else:
-            pass
+    y_num_blocks = math.floor(y_pixels / block_y_pixels)
+    x_num_blocks = math.floor(x_pixels / block_x_pixels)
 
-    #lower column
-    for x in range(0, x_tiles):
-        if found_left_x == 0:
-            for y in range(0, y_tiles):
-                # populate row image
-                filename = 'x' + str(x) + '_y_' + str(y) + '_tissue.tif'
-                individual_image = io.imread(filename)
-                start = y * x_frame_size
-                end = start + 2960
-                col_image[start:end, ::] = individual_image
+    adjusted_y_pixels = block_y_pixels * y_num_blocks
+    adjusted_x_pixels = block_x_pixels * x_num_blocks
 
-            row_array, col_array = col_row_nonzero(col_image)
-            try:
-                col_indicies = np.nonzero(col_array)[0]
-                left_x_index = col_indicies[0]
-                left_x_tile = x
-                found_left_x = 1
-            except:
-                pass
+    clipped_y_pixel_num = y_pixels - adjusted_y_pixels
+    clipped_x_pixel_num = x_pixels - adjusted_x_pixels
 
-        else:
-            pass
+    # deal with even and odd cases for y axis
+    if clipped_y_pixel_num % 2 == 0:
+        top_rows_2_clip = int(clipped_y_pixel_num / 2)
+        bottom_rows_2_clip = int(clipped_y_pixel_num / 2)
+        bottom_adjusted_row_num = y_pixels - bottom_rows_2_clip
+        array = array[top_rows_2_clip:bottom_adjusted_row_num, ::]
+    elif clipped_y_pixel_num % 2 != 0:
+        top_rows_2_clip = int(clipped_y_pixel_num / 2)
+        bottom_rows_2_clip = int((clipped_y_pixel_num / 2) + 1)
+        bottom_adjusted_row_num = y_pixels - bottom_rows_2_clip
+        array = array[top_rows_2_clip:bottom_adjusted_row_num, ::]
+
+    # deal with even and odd cases for x axis
+    if clipped_x_pixel_num % 2 == 0:
+        left_col_2_clip = int(clipped_x_pixel_num / 2)
+        right_col_2_clip = int(clipped_x_pixel_num / 2)
+        right_adjusted_col_num = int(x_pixels - right_col_2_clip)
+        array = array[::, left_col_2_clip:right_adjusted_col_num]
+    elif clipped_x_pixel_num % 2 != 0:
+        left_col_2_clip = int(clipped_x_pixel_num / 2)
+        right_col_2_clip = int((clipped_x_pixel_num / 2) + 1)
+        right_adjusted_col_num = int(x_pixels - right_col_2_clip)
+        array = array[::, left_col_2_clip:right_adjusted_col_num]
+
+    return array
 
 
-    # determine new X and Y grid size (physical displacement in microns)
+def dark_frame_generate(array, block_y_pixels, block_x_pixels):
+    '''
 
-    x_tile_range = fm_array[0][0][right_x_tile] - fm_array[0][0][left_x_tile] + (x_frame_size/2 - left_x_index) * 0.204 + (right_x_index - x_frame_size/2) * 0.204
-    y_tile_range = fm_array[1][lower_y_tile][0] - fm_array[1][upper_y_tile][0] + (2960 / 2 - upper_y_index) * 0.204 + (lower_y_index - 2960 / 2) * 0.204
+    :param array:
+    :param block_y_pixels:
+    :param block_x_pixels:
+    :return:
+    '''
 
-    # determine min number tiles to encompass tissue
+    original_y_pixels = np.shape(array)[0]
+    original_x_pixels = np.shape(array)[1]
 
-    x_new_tiles = math.ceil( ((x_tile_range/(x_frame_size * 0.204)) - 1)/0.9 + 1 )
-    y_new_tiles = math.ceil( ((y_tile_range/(2960 * 0.204)) - 1)/0.9 + 1 )
+    adjusted_array = block_proc_reshaper(array, block_y_pixels, block_x_pixels)
+    min_array = block_proc_min(adjusted_array, block_y_pixels, block_x_pixels)
+    resized_min_array = transform.resize(min_array, (original_y_pixels, original_x_pixels), preserve_range=True,anti_aliasing=True)
+    resized_min_array = filters.butterworth(resized_min_array, cutoff_frequency_ratio=0.001, high_pass=False, order=2,npad=1000)
 
-    # determine displacement vector for xy grid
-    margin_frame_x_2_tissue = (((x_new_tiles - 1) * 0.9 + 1) * x_frame_size * 0.204 - x_tile_range)/2
-    displacement_x = (margin_frame_x_2_tissue - left_x_index * 0.204)
-
-    margin_frame_y_2_tissue = (((y_new_tiles - 1) * 0.9 + 1) * 2960 * 0.204 - y_tile_range) / 2
-    displacement_y = (margin_frame_y_2_tissue - upper_y_index * 0.204)
-
-    #Alter fm_array tiles
-    fm_array_adjusted = fm_array[::][upper_y_tile:(upper_y_tile + y_new_tiles), left_x_tile:(left_x_tile + x_new_tiles)]
-
-    #add in display vector
-    fm_array_adjusted[1] = fm_array_adjusted[1] + displacement_x
-    fm_array_adjusted[0] = fm_array_adjusted[0] + displacement_y
-
-    #save fm_array
-
-    np.save(filename, fm_array_adjusted)
-
-    print(displacement_x, displacement_y)
-    print(fm_array_adjusted[0])
+    return resized_min_array
 
 
 
+os.chdir(r'C:\Users\mike\Desktop\dark')
 
 
+#filename = 'x6_y_13_c_A647.tif'
+filename = 'x6_y_13_c_A647_temp.tif'
+filename_mean = 'x6_y_13_c_A647_mean.tif'
+im = io.imread(filename)
 
+im_mean = im/np.max(im)
 
+footprint = disk(5)
+im_mean = rank.mean(im_mean, footprint=footprint)
+im_mean = im_mean.astype('int32')
+im_mean = im_mean * (np.max(im)/np.max(im_mean))
+io.imshow(im_mean)
+io.show()
+print(np.max(im_mean))
+#im_mean = io.imread(filename_mean)
 
-experiment_directory = r'D:\Images\AutoCyPlex\6-1-24 multiplex'
-
-fm_grid_readjuster(experiment_directory, 2960)
-
-
+dark_im = dark_frame_generate(im_mean, 50, 50)
+dark_subbed = im - dark_im
+dark_subbed[dark_subbed< 0] = 0
