@@ -4147,20 +4147,20 @@ class cycif:
 
         #flatten image
 
-        self.illumination_flattening(experiment_directory, cycle_number, single_fov=0)
+        #self.illumination_flattening(experiment_directory, cycle_number, single_fov=0)
         #self.bottom_int_correction(experiment_directory, cycle_number=cycle_number)
 
         end = time.time()
         print('flatten', end - start)
 
-        self.stage_placement(experiment_directory, cycle_number, x_pixels=x_frame_size, down_sample_factor=4, single_fov=0)
+        #self.stage_placement(experiment_directory, cycle_number, x_pixels=x_frame_size, down_sample_factor=4, single_fov=0)
 
 
         #compress to 16bit
-        self.hdr_compression_2(experiment_directory, cycle_number)
+        #self.hdr_compression_2(experiment_directory, cycle_number)
         #self.hdr_manual_compression(experiment_directory, cycle_number=cycle_number)
 
-        self.darkframe_sub(experiment_directory, cycle_number)
+        #self.darkframe_sub(experiment_directory, cycle_number)
 
         end = time.time()
         print('compress', end - start)
@@ -4170,7 +4170,7 @@ class cycif:
 
 
         #self.mcmicro_image_stack_generator(cycle_number, experiment_directory, x_fram
-        self.mcmicro_image_stack_generator_separate_clusters(cycle_number, experiment_directory, x_frame_size)
+        #self.mcmicro_image_stack_generator_separate_clusters(cycle_number, experiment_directory, x_frame_size)
 
         end = time.time()
         #print('mcmicro', end - start)
@@ -4181,7 +4181,7 @@ class cycif:
 
 
 
-        #self.stage_placement(experiment_directory, cycle_number, x_pixels = x_frame_size, down_sample_factor=4, single_fov=0)
+        self.stage_placement(experiment_directory, cycle_number, x_pixels = x_frame_size, down_sample_factor=4, single_fov=0)
 
         #end = time.time()
         #print('stage placement', end - start)
