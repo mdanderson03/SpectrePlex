@@ -113,25 +113,21 @@ def dark_frame_generate(array, block_y_pixels, block_x_pixels):
 
 
 
-os.chdir(r'C:\Users\mike\Desktop\dark')
+os.chdir(r'E:\20-8-24 gutage\A647\Stain\cy_1\Tiles\focused')
 
 
 #filename = 'x6_y_13_c_A647.tif'
-filename = 'x6_y_13_c_A647_temp.tif'
-filename_mean = 'x6_y_13_c_A647_mean.tif'
+filename = 'x6_y_13_c_A647.tif'
 im = io.imread(filename)
 
-im_mean = im/np.max(im)
+im_mean = cv2.blur(im, (5,5))
 
-footprint = disk(5)
-im_mean = rank.mean(im_mean, footprint=footprint)
-im_mean = im_mean.astype('int32')
-im_mean = im_mean * (np.max(im)/np.max(im_mean))
 io.imshow(im_mean)
 io.show()
-print(np.max(im_mean))
-#im_mean = io.imread(filename_mean)
 
-dark_im = dark_frame_generate(im_mean, 50, 50)
+
+dark_im = 2*dark_frame_generate(im_mean, 50, 50) - dark_frame_generate(im, 50, 50)
 dark_subbed = im - dark_im
 dark_subbed[dark_subbed< 0] = 0
+
+io.imsave('subbed.tif', dark_subbed)

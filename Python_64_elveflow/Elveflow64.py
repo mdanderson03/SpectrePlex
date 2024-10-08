@@ -3,7 +3,6 @@
 
 from ctypes import *
 ElveflowDLL=CDLL(r'C:\Users\CyCIF PC\Documents\GitHub\AutoCIF\Python_64_elveflow\DLL64\Elveflow64.dll')# change this path
-#ElveflowDLL=CDLL(r'C:\Users\CyCIF PC\Documents\GitHub\AutoCIF\Python_32_elveflow\Python_32\DLL32\Elveflow32.dll')# change this path
 
 
  # Elveflow Library

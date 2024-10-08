@@ -596,7 +596,7 @@ class cycif:
         for channel in channels:
 
             quicktile_path = experiment_directory + '\Quick_Tile/' + channel
-            flattened_path = experiment_directory + '//' + channel + '\Stain\cy_' + str(cycle_number) + r'\Tiles\focused_basic_corrected'
+            flattened_path = experiment_directory + '//' + channel + '\Stain\cy_' + str(cycle_number) + r'\Tiles\focused_basic_darkframe'
             high_col = (np.where(channels == channel)[0][0] + 1) * 2
 
             os.chdir(quicktile_path)
@@ -3346,13 +3346,13 @@ class cycif:
         tile_count = int(tissue_exist.sum())
 
         dapi_im_path = experiment_directory + '\DAPI\Stain\cy_' + str(
-            cycle_number) + '\Tiles' + '/focused_basic_corrected_darkframe'
+            cycle_number) + '\Tiles' + '/focused_basic_darkframe'
         a488_im_path = experiment_directory + '\A488\Stain\cy_' + str(
-            cycle_number) + '\Tiles' + '/focused_basic_corrected_darkframe'
+            cycle_number) + '\Tiles' + '/focused_basic_darkframe'
         a555_im_path = experiment_directory + '\A555\Stain\cy_' + str(
-            cycle_number) + '\Tiles' + '/focused_basic_corrected_darkframe'
+            cycle_number) + '\Tiles' + '/focused_basic_darkframe'
         a647_im_path = experiment_directory + '\A647\Stain\cy_' + str(
-            cycle_number) + '\Tiles' + '/focused_basic_corrected_darkframe'
+            cycle_number) + '\Tiles' + '/focused_basic_darkframe'
 
         mcmicro_path = experiment_directory + r'\mcmicro'
 
@@ -3719,10 +3719,10 @@ class cycif:
                 if type == 'Stain':
                     if channel == 'DAPI':
                         im_path = experiment_directory + '/' + channel + "/" + type + '\cy_' + str(
-                            cycle_number) + '\Tiles' + r'\focused_basic_corrected'
+                            cycle_number) + '\Tiles' + r'\focused_basic_darkframe'
                     else:
                         im_path = experiment_directory + '/' + channel + "/" + type + '\cy_' + str(
-                            cycle_number) + '\Tiles' + '/focused_basic_corrected'
+                            cycle_number) + '\Tiles' + '/focused_basic_darkframe'
 
                 elif type == 'Bleach':
                     if single_fov != 1:
@@ -3823,8 +3823,8 @@ class cycif:
 
             if channel == 0:
                 if single_fov != 1:
-                    stain_directory = directory_start + channel_name + '\Stain\cy_' + str(cycle_number) + r'\Tiles\focused_darkframe'
-                    training_directory = directory_start + channel_name + '\Stain\cy_' + str(cycle_number) + r'\Tiles\focused_darkframe'
+                    stain_directory = directory_start + channel_name + '\Stain\cy_' + str(cycle_number) + r'\Tiles\focused'
+                    training_directory = directory_start + channel_name + '\Stain\cy_' + str(cycle_number) + r'\Tiles\focused'
                     stain_output_directory = directory_start + channel_name + '\Stain\cy_' + str(cycle_number) + r'\Tiles\focused_basic_corrected'
                 if single_fov == 1:
                     stain_directory = directory_start + channel_name + '\Stain\cy_' + str(cycle_number) + r'\Tiles'
@@ -3833,8 +3833,8 @@ class cycif:
 
             else:
                 if single_fov != 1:
-                    stain_directory = directory_start + channel_name + '\Stain\cy_' + str(cycle_number) + r'\Tiles\focused_darkframe'
-                    training_directory = directory_start + channel_name + '\Stain\cy_' + str(cycle_number) + r'\Tiles\focused_darkframe'
+                    stain_directory = directory_start + channel_name + '\Stain\cy_' + str(cycle_number) + r'\Tiles\focused'
+                    training_directory = directory_start + channel_name + '\Stain\cy_' + str(cycle_number) + r'\Tiles\focused'
                     stain_output_directory = directory_start + channel_name + '\Stain\cy_' + str(cycle_number) + r'\Tiles\focused_basic_corrected'
 
                 if single_fov == 1:
@@ -4147,20 +4147,22 @@ class cycif:
 
         #flatten image
 
-        #self.illumination_flattening(experiment_directory, cycle_number, single_fov=0)
+        self.illumination_flattening(experiment_directory, cycle_number, single_fov=0)
         #self.bottom_int_correction(experiment_directory, cycle_number=cycle_number)
 
         end = time.time()
         print('flatten', end - start)
 
-        #self.stage_placement(experiment_directory, cycle_number, x_pixels=x_frame_size, down_sample_factor=4, single_fov=0)
+        self.darkframe_sub(experiment_directory, cycle_number)
+        self.stage_placement(experiment_directory, cycle_number, x_pixels=x_frame_size, down_sample_factor=4, single_fov=0)
+
 
 
         #compress to 16bit
-        #self.hdr_compression_2(experiment_directory, cycle_number)
+        self.hdr_compression_2(experiment_directory, cycle_number)
         #self.hdr_manual_compression(experiment_directory, cycle_number=cycle_number)
 
-        #self.darkframe_sub(experiment_directory, cycle_number)
+
 
         end = time.time()
         print('compress', end - start)
@@ -4170,7 +4172,7 @@ class cycif:
 
 
         #self.mcmicro_image_stack_generator(cycle_number, experiment_directory, x_fram
-        #self.mcmicro_image_stack_generator_separate_clusters(cycle_number, experiment_directory, x_frame_size)
+        self.mcmicro_image_stack_generator_separate_clusters(cycle_number, experiment_directory, x_frame_size)
 
         end = time.time()
         #print('mcmicro', end - start)
@@ -4732,9 +4734,9 @@ class cycif:
 
                 if tissue_exist[y][x] == 1:
                     for channel in channels:
-                        # stain_color_path = experiment_directory + channel + r'/Stain/cy_' + str(cycle) + '\Tiles/focused_basic_corrected'
                         stain_color_path = experiment_directory + channel + r'/Stain/cy_' + str(cycle_number) + '\Tiles/focused_basic_corrected'
-                        darkframe_color_path = experiment_directory + channel + r'/Stain/cy_' + str(cycle_number) + '\Tiles/focused_basic_corrected_darkframe'
+                        #stain_color_path = experiment_directory + channel + r'/Stain/cy_' + str(cycle_number) + '\Tiles/focused'
+                        darkframe_color_path = experiment_directory + channel + r'/Stain/cy_' + str(cycle_number) + '\Tiles/focused_basic_darkframe'
 
                         os.chdir(stain_color_path)
                         filename = 'x' + str(x) + '_y_' + str(y) + '_c_' + channel + '.tif'
@@ -4974,7 +4976,12 @@ class cycif:
         original_y_pixels = np.shape(array)[0]
         original_x_pixels = np.shape(array)[1]
 
-        adjusted_array = self.block_proc_reshaper(array, block_y_pixels, block_x_pixels)
+        mean_kernal_y = math.ceil(block_y_pixels/10)
+        mean_kernal_x = math.ceil(block_x_pixels / 10)
+
+        array_mean = cv2.blur(array, (mean_kernal_y, mean_kernal_x))
+
+        adjusted_array = self.block_proc_reshaper(array_mean, block_y_pixels, block_x_pixels)
         min_array = self.block_proc_min(adjusted_array, block_y_pixels, block_x_pixels)
         resized_min_array = transform.resize(min_array, (original_y_pixels, original_x_pixels), preserve_range=True,anti_aliasing=True)
         resized_min_array = filters.butterworth(resized_min_array, cutoff_frequency_ratio=0.005, high_pass=False, order=2, npad=1000)
