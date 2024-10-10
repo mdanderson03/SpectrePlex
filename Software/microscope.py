@@ -4126,25 +4126,13 @@ class cycif:
         print('binary create', end - start)
 
         #determine in focus parts first
-        #self.focus_excel_creation(experiment_directory, cycle_number)
-        #self.in_focus_excel_populate(experiment_directory, cycle_number, x_frame_size=x_frame_size)
-        #self.excel_2_focus(experiment_directory, cycle_number, x_frame_size=x_frame_size)
+        self.focus_excel_creation(experiment_directory, cycle_number)
+        self.in_focus_excel_populate(experiment_directory, cycle_number, x_frame_size=x_frame_size)
+        self.excel_2_focus(experiment_directory, cycle_number, x_frame_size=x_frame_size)
         #self.single_fov_file_rename(experiment_directory, cycle_number)
 
         end = time.time()
         print('focus', end - start)
-
-        
-
-        #subtract background
-        #self.background_sub(experiment_directory, cycle_number, rolling_ball=0)
-        #self.darkframe_sub(experiment_directory, cycle_number)
-
-        end = time.time()
-        print('dark frame subtraction', end - start)
-
-
-
 
         #flatten image
 
@@ -4154,35 +4142,26 @@ class cycif:
         end = time.time()
         print('flatten', end - start)
 
-        #self.darkframe_sub(experiment_directory, cycle_number)
-        self.stage_placement(experiment_directory, cycle_number, x_pixels=x_frame_size, down_sample_factor=4, single_fov=0)
-
+        self.darkframe_sub(experiment_directory, cycle_number)
+        end = time.time()
+        print('dark frame subtraction', end - start)
 
 
         #compress to 16bit
+        self.stage_placement(experiment_directory, cycle_number, x_pixels=x_frame_size, down_sample_factor=4,single_fov=0)
         self.hdr_compression_2(experiment_directory, cycle_number)
-        #self.hdr_manual_compression(experiment_directory, cycle_number=cycle_number)
-
 
 
         end = time.time()
         print('compress', end - start)
 
-        #make Mcmicro file
-
-
-
-        #self.mcmicro_image_stack_generator(cycle_number, experiment_directory, x_fram
         self.mcmicro_image_stack_generator_separate_clusters(cycle_number, experiment_directory, x_frame_size)
 
         end = time.time()
-        #print('mcmicro', end - start)
+        print('mcmicro', end - start)
 
 
         #generate stage placement
-
-
-
 
         self.stage_placement(experiment_directory, cycle_number, x_pixels = x_frame_size, down_sample_factor=4, single_fov=0)
 
