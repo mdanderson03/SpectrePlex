@@ -3347,13 +3347,13 @@ class cycif:
         tile_count = int(tissue_exist.sum())
 
         dapi_im_path = experiment_directory + '\DAPI\Stain\cy_' + str(
-            cycle_number) + '\Tiles' + '/focused_basic_corrected'
+            cycle_number) + '\Tiles' + '/focused_basic_darkframe'
         a488_im_path = experiment_directory + '\A488\Stain\cy_' + str(
-            cycle_number) + '\Tiles' + '/focused_basic_corrected'
+            cycle_number) + '\Tiles' + '/focused_basic_darkframe'
         a555_im_path = experiment_directory + '\A555\Stain\cy_' + str(
-            cycle_number) + '\Tiles' + '/focused_basic_corrected'
+            cycle_number) + '\Tiles' + '/focused_basic_darkframe'
         a647_im_path = experiment_directory + '\A647\Stain\cy_' + str(
-            cycle_number) + '\Tiles' + '/focused_basic_corrected'
+            cycle_number) + '\Tiles' + '/focused_basic_darkframe'
 
         mcmicro_path = experiment_directory + r'\mcmicro'
 
@@ -3720,10 +3720,10 @@ class cycif:
                 if type == 'Stain':
                     if channel == 'DAPI':
                         im_path = experiment_directory + '/' + channel + "/" + type + '\cy_' + str(
-                            cycle_number) + '\Tiles' + r'\focused_basic_corrected'
+                            cycle_number) + '\Tiles' + r'\focused_basic_darkframe'
                     else:
                         im_path = experiment_directory + '/' + channel + "/" + type + '\cy_' + str(
-                            cycle_number) + '\Tiles' + '/focused_basic_corrected'
+                            cycle_number) + '\Tiles' + '/focused_basic_darkframe'
 
                 elif type == 'Bleach':
                     if single_fov != 1:
