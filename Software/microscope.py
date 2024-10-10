@@ -30,8 +30,8 @@ import itertools
 
 
 
-#magellan = Magellan()
-#core = Core()
+magellan = Magellan()
+core = Core()
 
 
 class cycif:
@@ -124,7 +124,6 @@ class cycif:
             self.fm_channel_initial(experiment_directory, off_array, z_slices)
             self.establish_exp_arrays(experiment_directory)
             self.hdr_exp_generator(experiment_directory, threshold_level=10000, max_exp=700, min_exp=20)
-            self.fm_stage_tilt_compensation(experiment_directory, tilt=2.4)
             self.establish_exp_arrays(experiment_directory)
 
             if x_frame_size != 5056:
@@ -596,7 +595,7 @@ class cycif:
         for channel in channels:
 
             quicktile_path = experiment_directory + '\Quick_Tile/' + channel
-            flattened_path = experiment_directory + '//' + channel + '\Stain\cy_' + str(cycle_number) + r'\Tiles\focused_basic_darkframe'
+            flattened_path = experiment_directory + '//' + channel + '\Stain\cy_' + str(cycle_number) + r'\Tiles\focused_basic_corrected'
             high_col = (np.where(channels == channel)[0][0] + 1) * 2
 
             os.chdir(quicktile_path)
@@ -1327,7 +1326,7 @@ class cycif:
             diff = y2 - y1
 
         #um_per_pixel = diff / 4550  # 4550 = 0.9 * 5056
-        um_per_pixel = 0.204
+        um_per_pixel = 0.2005
 
         # Find number tiles in adjusted grid
         x_range_pixels = (x_tiles - 0.2) * 5056
@@ -1776,14 +1775,14 @@ class cycif:
             new_labelled_image -= np.min(new_labelled_image)
         else:
             new_labelled_image = self.cluster_neighborhood(new_labelled_image, sorted_cluster_areas)
-            new_labelled_image = new_labelled_image.astype('int16')
+            new_labelled_image = new_labelled_image.astype('int8')
             io.imsave('labelled_tissue_filtered.tif', new_labelled_image)
 
 
         #make new binary image
         new_image = copy.deepcopy(new_labelled_image)
         new_image[new_image > 0] = 1
-        new_image = new_image.astype('int16')
+        new_image = new_image.astype('int8')
 
         # fill small holes
         #new_image = skimage.morphology.remove_small_holes(new_image, area_threshold=5000)
@@ -2994,16 +2993,18 @@ class cycif:
 
     def wide_net_auto_focus(self, experiment_directory, x_frame_size, offset_array, z_slices, focus_position, number_clusters_retained = 6):
 
-        #z_wide_range = 11
+        z_wide_range = 5
 
         #self.image_cycle_acquire(0, experiment_directory,z_wide_range, 'Bleach', offset_array, x_frame_size=x_frame_size,establish_fm_array=1, auto_focus_run=0, auto_expose_run=0, channels=['DAPI'],focus_position=focus_position)
-        #self.recursive_stardist_autofocus(experiment_directory, cycle=0, remake_nuc_binary=1)
+
+        #self.generate_nuc_mask(experiment_directory, 0)
         #self.tissue_region_identifier(experiment_directory, x_frame_size = x_frame_size, clusters_retained=number_clusters_retained)
         #self.image_cycle_acquire(0, experiment_directory, z_wide_range, 'Bleach', offset_array, x_frame_size=x_frame_size,establish_fm_array=0, auto_focus_run=0, auto_expose_run=0, channels=['DAPI'],focus_position=focus_position)
         #self.recursive_stardist_autofocus(experiment_directory, cycle=0, remake_nuc_binary=1)
 
-        self.fm_map_z_shifter(experiment_directory, desired_z_slices_dapi=5, desired_z_slices_other=1)
-        #self.image_cycle_acquire(0, experiment_directory, z_slices, 'Bleach', offset_array, x_frame_size=x_frame_size,establish_fm_array=0, auto_focus_run=0, auto_expose_run=0, channels=['DAPI'],focus_position=focus_position)
+        self.recursive_stardist_autofocus(experiment_directory, cycle=0, remake_nuc_binary=0)
+        self.fm_map_z_shifter(experiment_directory, desired_z_slices_dapi=3, desired_z_slices_other=3)
+        self.image_cycle_acquire(0, experiment_directory, z_slices, 'Bleach', offset_array, x_frame_size=x_frame_size,establish_fm_array=0, auto_focus_run=0, auto_expose_run=0, channels=['DAPI'],focus_position=focus_position)
 
     def initialize(self, experiment_directory, offset_array, z_slices, x_frame_size=2960, focus_position = 'none', number_clusters = 6):
         '''initialization section. Takes DAPI images, cluster filters tissue, minimally frames sampling grid, acquires all channels.
@@ -3030,7 +3031,7 @@ class cycif:
         #self.image_cycle_acquire(0, experiment_directory, 3, 'Bleach', offset_array, x_frame_size=x_frame_size,establish_fm_array=0, auto_focus_run=0, auto_expose_run=0, channels=['DAPI'],focus_position=focus_position)
         #self.recursive_stardist_autofocus(experiment_directory, cycle=0)
 
-        self.image_cycle_acquire(0, experiment_directory, z_slices, 'Bleach', offset_array,x_frame_size=x_frame_size, fm_array_adjuster=0, establish_fm_array=0, auto_focus_run=0,auto_expose_run=0, focus_position=focus_position)
+        #self.image_cycle_acquire(0, experiment_directory, z_slices, 'Bleach', offset_array,x_frame_size=x_frame_size, fm_array_adjuster=0, establish_fm_array=0, auto_focus_run=0,auto_expose_run=0, focus_position=focus_position)
         #self.generate_nuc_mask(experiment_directory, cycle_number=0)
         #self.tissue_region_identifier(experiment_directory, clusters_retained=4)
 
@@ -3346,13 +3347,13 @@ class cycif:
         tile_count = int(tissue_exist.sum())
 
         dapi_im_path = experiment_directory + '\DAPI\Stain\cy_' + str(
-            cycle_number) + '\Tiles' + '/focused_basic_darkframe'
+            cycle_number) + '\Tiles' + '/focused_basic_corrected'
         a488_im_path = experiment_directory + '\A488\Stain\cy_' + str(
-            cycle_number) + '\Tiles' + '/focused_basic_darkframe'
+            cycle_number) + '\Tiles' + '/focused_basic_corrected'
         a555_im_path = experiment_directory + '\A555\Stain\cy_' + str(
-            cycle_number) + '\Tiles' + '/focused_basic_darkframe'
+            cycle_number) + '\Tiles' + '/focused_basic_corrected'
         a647_im_path = experiment_directory + '\A647\Stain\cy_' + str(
-            cycle_number) + '\Tiles' + '/focused_basic_darkframe'
+            cycle_number) + '\Tiles' + '/focused_basic_corrected'
 
         mcmicro_path = experiment_directory + r'\mcmicro'
 
@@ -3719,10 +3720,10 @@ class cycif:
                 if type == 'Stain':
                     if channel == 'DAPI':
                         im_path = experiment_directory + '/' + channel + "/" + type + '\cy_' + str(
-                            cycle_number) + '\Tiles' + r'\focused_basic_darkframe'
+                            cycle_number) + '\Tiles' + r'\focused_basic_corrected'
                     else:
                         im_path = experiment_directory + '/' + channel + "/" + type + '\cy_' + str(
-                            cycle_number) + '\Tiles' + '/focused_basic_darkframe'
+                            cycle_number) + '\Tiles' + '/focused_basic_corrected'
 
                 elif type == 'Bleach':
                     if single_fov != 1:
@@ -4153,7 +4154,7 @@ class cycif:
         end = time.time()
         print('flatten', end - start)
 
-        self.darkframe_sub(experiment_directory, cycle_number)
+        #self.darkframe_sub(experiment_directory, cycle_number)
         self.stage_placement(experiment_directory, cycle_number, x_pixels=x_frame_size, down_sample_factor=4, single_fov=0)
 
 
