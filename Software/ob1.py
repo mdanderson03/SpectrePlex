@@ -26,8 +26,7 @@ class fluidics:
         ob1_path = 'ASRL' + str(ob1_com_port) + '::INSTR'
         Instr_ID = c_int32()
         OB1_Initialization(ob1_path.encode('ascii'), 0, 0, 0, 0, byref(Instr_ID))
-        OB1_Add_Sens(Instr_ID, 1, 5, 1, 0, 7,
-                     0)  # 16bit working range between 0-1000uL/min, also what are CustomSens_Voltage_5_to_25 and can I really choose any digital range?
+        OB1_Add_Sens(Instr_ID, 1, 5, 1, 0, 7,0)  # 16bit working range between 0-1000uL/min, also what are CustomSens_Voltage_5_to_25 and can I really choose any digital range?
 
         Calib_path = r'C:\Users\CyCIF PC\Documents\GitHub\AutoCIF\Python_64_elveflow\calibration\1_12_24_cal.txt'
         Calib = (c_double * 1000)()
@@ -40,8 +39,8 @@ class fluidics:
             set_channel_regulator = c_int32(set_channel_regulator)  # convert to c_int32
             set_channel_sensor = int(1)
             set_channel_sensor = c_int32(set_channel_sensor)  # convert to c_int32
-            #PID_Add_Remote(Instr_ID.value, set_channel_regulator, Instr_ID.value, set_channel_sensor, 0.9/22.5, 0.004/.03846, 1)
-            PID_Add_Remote(Instr_ID.value, set_channel_regulator, Instr_ID.value, set_channel_sensor, 0.035, 0.00000000003, 1)
+            PID_Add_Remote(Instr_ID.value, set_channel_regulator, Instr_ID.value, set_channel_sensor, 0.9/22.5, 0.004/.03846, 1)
+            #PID_Add_Remote(Instr_ID.value, set_channel_regulator, Instr_ID.value, set_channel_sensor, 0.035, 0.00000000003, 1)
         else:
             pass
 
@@ -152,7 +151,7 @@ class fluidics:
         self.fluidics_logger(str(OB1_Get_Remote_Data), error, current_flow_rate)
 
         delta_flow_rate = current_flow_rate - starting_flow_rate
-        #print('start', starting_flow_rate, 'end', current_flow_rate, 'del', delta_flow_rate)
+        print('start', starting_flow_rate, 'end', current_flow_rate, 'del', delta_flow_rate)
 
         # error = OB1_Get_Remote_Data(self.pump_ID, set_channel, byref(data_reg), byref(data_sens))
         # current_flow_rate = data_sens.value
