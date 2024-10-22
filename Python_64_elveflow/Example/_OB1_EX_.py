@@ -26,7 +26,8 @@ print('error:%d' % error)
 print("OB1 ID: %d" % Instr_ID.value)
 
 #add one digital flow sensor with water calibration, all information to declare sensors are described in the User Guide
-error=OB1_Add_Sens(Instr_ID, 1, 4, 1, 0, 7, 0)
+error=OB1_Add_Sens(Instr_ID, 1, 5, 1, 0, 7,0)
+
 #(CustomSens_Voltage_5_to_25 only works with CustomSensors and OB1 from 2020 and after)
 print('error add digit flow sensor:%d' % error)
 
@@ -47,7 +48,7 @@ repeat=True
 while repeat==True:
     answer=input('select calibration type (default, load, new ) : ')
     #answer='default'#test purpose only
-    Calib_path='C:\\Users\\Public\\Desktop\\Calibration\\Calib.txt'
+    Calib_path=r'C:\\Users\\Public\\Desktop\\Calibration\\Calib.txt'
     if answer=='default':
         error=Elveflow_Calibration_Default (byref(Calib),1000)
         #for i in range (0,1000):
@@ -136,13 +137,12 @@ while repeat:
 
     if answer=='add_pid':
         set_channel_regulator=input("select channel regulator (1-4) : ")
-        set_channel_regulator=int(set_channel_regulator)#convert to intdefault
-
+        set_channel_regulator=int(set_channel_regulator)#convert to int
         set_channel_regulator=c_int32(set_channel_regulator)#convert to c_int32
         set_channel_sensor=input("select channel sensor (1-4) : ")
         set_channel_sensor=int(set_channel_sensor)#convert to int
         set_channel_sensor=c_int32(set_channel_sensor)#convert to c_int32
-        error=PID_Add_Remote(Instr_ID.value, set_channel_regulator, Instr_ID.value, set_channel_sensor,0.035, 0.00000000003,1)
+        error=PID_Add_Remote(Instr_ID.value, set_channel_regulator, Instr_ID.value, set_channel_sensor,10,0.1,1) 
 
     if answer=="start":
         error=OB1_Start_Remote_Measurement(Instr_ID.value, byref(Calib), 1000)
