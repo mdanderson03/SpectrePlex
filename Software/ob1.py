@@ -40,7 +40,8 @@ class fluidics:
             set_channel_regulator = c_int32(set_channel_regulator)  # convert to c_int32
             set_channel_sensor = int(1)
             set_channel_sensor = c_int32(set_channel_sensor)  # convert to c_int32
-            PID_Add_Remote(Instr_ID.value, set_channel_regulator, Instr_ID.value, set_channel_sensor, 0.9/22.5, 0.004/.03846, 1)
+            #PID_Add_Remote(Instr_ID.value, set_channel_regulator, Instr_ID.value, set_channel_sensor, 0.9/22.5, 0.004/.03846, 1)
+            PID_Add_Remote(Instr_ID.value, set_channel_regulator, Instr_ID.value, set_channel_sensor, 0.035, 0.00000000003, 1)
         else:
             pass
 
@@ -52,11 +53,11 @@ class fluidics:
         self.experiment_path = experiment_path
         self.flow_control = flow_control
 
-        self.pressure_on = 1000
+        self.pressure_on = 600
         self.pressure_off = 0
-        self.flow_on = 500
+        self.flow_on = 600
         self.flow_off = -3
-        self.low_flow_on = 150
+        self.low_flow_on = 120
         self.high_flow_on = 900
 
         return
@@ -147,6 +148,7 @@ class fluidics:
         else:
             current_flow_rate = data_reg.value
 
+
         self.fluidics_logger(str(OB1_Get_Remote_Data), error, current_flow_rate)
 
         delta_flow_rate = current_flow_rate - starting_flow_rate
@@ -159,10 +161,10 @@ class fluidics:
         if self.flow_control == 1:
 
             if set_target != self.flow_off  and delta_flow_rate < 0.5 * set_target:
-                print('flow failed')
+                #print('flow failed')
                 zero_target = c_double(self.flow_off)
 
-                OB1_Set_Remote_Target(self.pump_ID, set_channel, zero_target)
+                #OB1_Set_Remote_Target(self.pump_ID, set_channel, zero_target)
                 # self.flow_control = 0
 
                 # set_channel = int(1)
@@ -171,9 +173,10 @@ class fluidics:
                 # self.fluidics_logger(str(PID_Set_Running_Remote), error, 0)
 
                 # run = 1 # restart flow function
-                fluid_array[2] = 1
+                #fluid_array[2] = 1
 
             if set_target == self.flow_off and delta_flow_rate > -0.5*starting_flow_rate:
+                print('issue')
                 # self.flow_control = 0
 
                 # set_channel = int(1)
@@ -182,8 +185,8 @@ class fluidics:
                 # self.fluidics_logger(str(PID_Set_Running_Remote), error, 0)
 
                 # run = 1 # restart flow function
-                self.ob1_reboot()
-                fluid_array[2] = 1
+                #self.ob1_reboot()
+                #fluid_array[2] = 1
 
         else:
             pass

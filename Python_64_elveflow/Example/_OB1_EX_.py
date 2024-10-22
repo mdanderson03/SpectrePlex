@@ -4,8 +4,8 @@
 
 import sys
 from email.header import UTF8
-sys.path.append(r'C:\Users\CyCIF PC\Downloads\ESI_V3_09_01\ESI_V3_09_01\SDK_V3_09_01\DLL\DLL64')#add the path of the library here
-sys.path.append(r'C:\Users\CyCIF PC\Downloads\ESI_V3_09_01\ESI_V3_09_01\SDK_V3_09_01\DLL\Python\Python_64')#add the path of the LoadElveflow.py
+sys.path.append(r'C:\Users\CyCIF PC\Documents\GitHub\AutoCIF\Python_64_elveflow\DLL64')#add the path of the library here
+sys.path.append(r'C:\Users\CyCIF PC\Documents\GitHub\AutoCIF\Python_64_elveflow')#add the path of the LoadElveflow.py
 
 from ctypes import *
 
@@ -136,12 +136,13 @@ while repeat:
 
     if answer=='add_pid':
         set_channel_regulator=input("select channel regulator (1-4) : ")
-        set_channel_regulator=int(set_channel_regulator)#convert to int
+        set_channel_regulator=int(set_channel_regulator)#convert to intdefault
+
         set_channel_regulator=c_int32(set_channel_regulator)#convert to c_int32
         set_channel_sensor=input("select channel sensor (1-4) : ")
         set_channel_sensor=int(set_channel_sensor)#convert to int
         set_channel_sensor=c_int32(set_channel_sensor)#convert to c_int32
-        error=PID_Add_Remote(Instr_ID.value, set_channel_regulator, Instr_ID.value, set_channel_sensor,10,0.1,1) 
+        error=PID_Add_Remote(Instr_ID.value, set_channel_regulator, Instr_ID.value, set_channel_sensor,0.035, 0.00000000003,1)
 
     if answer=="start":
         error=OB1_Start_Remote_Measurement(Instr_ID.value, byref(Calib), 1000)

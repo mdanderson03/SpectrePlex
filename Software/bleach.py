@@ -6,7 +6,7 @@ import numpy as np
 
 # OB1 initialize
 experiment_path = sys.argv[1]
-ob1_com_port = 13
+ob1_com_port = 10
 flow_control = 1
 
 pump = ob1.fluidics(experiment_path, ob1_com_port, flow_control = 1)

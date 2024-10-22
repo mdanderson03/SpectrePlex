@@ -3,7 +3,7 @@ import numpy as np
 from autocyplex import *
 from optparse import OptionParser
 microscope = cycif() # initialize cycif object
-experiment_directory = r'E:\9-10-24 gutage'
+experiment_directory = r'Z:\Public\Thiagarajah Lab\Mike_A\SpectrePlex\17-10-24 gutage'
 pump = fluidics(experiment_directory, 6, 10, flow_control=1)
 #core = Core()
 
@@ -13,26 +13,31 @@ x_frame_size = 2960
 
 offset_array = [0, -7, -7, -6]
 #offset_array = [0, 0, 0, 0]
-focus_position = -381 #make sure this is upper left hand corner focus z position
+focus_position = -580 #make sure this is upper left hand corner focus z position
 
+#pump.liquid_action('low flow on')
+#microscope.image_cycle_acquire(1, experiment_directory, z_slices, 'Stain', offset_array,x_frame_size=x_frame_size, auto_focus_run=0, auto_expose_run=3)
+#pump.liquid_action('flow off')
+# pump.liquid_action('Wash')
+# microscope.image_cycle_acquire(2, experiment_directory, z_slices, 'Bleach', offset_array,x_frame_size=x_frame_size, auto_focus_run=0, auto_expose_run=0)
 #microscope.hdr_compression_2(experiment_directory, cycle_number=1)
 #microscope.stage_placement(experiment_directory, 1, x_pixels=x_frame_size, down_sample_factor=4)
 #microscope.fm_stage_tilt_compensation(experiment_directory, tilt=3.75)
-
+#microscope.tissue_cluster_filter(experiment_directory, x_frame_size, number_clusters_retained=8, area_threshold=0.25)
 
 #microscope.tilt_determination()
 
-for cycle in range(0, 1):
+#for cycle in range(1, 11):
     #microscope.inter_cycle_processing(experiment_directory, cycle_number=cycle, x_frame_size=x_frame_size)
-    microscope.full_cycle(experiment_directory, cycle, offset_array, cycle, pump, z_slices, x_frame_size =x_frame_size, focus_position=focus_position, number_clusters=10)
+#    microscope.full_cycle(experiment_directory, cycle, offset_array, cycle, pump, z_slices, x_frame_size =x_frame_size, focus_position=focus_position, number_clusters=6)
 #microscope.image_cycle_acquire(1, experiment_directory, z_slices, 'Stain', offset_array,x_frame_size=x_frame_size, auto_focus_run=0, auto_expose_run=3)
 #microscope.image_cycle_acquire(0, experiment_directory, z_slic
 # es, 'Bleach', offset_array,x_frame_size=x_frame_size, auto_focus_run=0, auto_expose_run=3)
 #microscope.post_acquisition_processor(experiment_directory, x_frame_size, rolling_ball=0)
 
-
-#for cycle in range(8, 11):
-#    microscope.inter_cycle_processing(experiment_directory, cycle_number=cycle, x_frame_size=x_frame_size)
+#microscope.generate_nuc_mask(experiment_directory, 1)
+for cycle in range(1, 11):
+     microscope.inter_cycle_processing(experiment_directory, cycle_number=cycle, x_frame_size=x_frame_size)
 
 
 

@@ -128,7 +128,7 @@ class cycif:
 
             if x_frame_size != 5056:
                 self.x_overlap_adjuster(x_frame_size, experiment_directory)
-                self.fm_stage_tilt_compensation(experiment_directory, tilt=3.75)
+                self.fm_stage_tilt_compensation(experiment_directory, tilt=3.75) #always positive number for tilt
                 self.establish_exp_arrays(experiment_directory)
             else:
                 pass
@@ -595,7 +595,7 @@ class cycif:
         for channel in channels:
 
             quicktile_path = experiment_directory + '\Quick_Tile/' + channel
-            flattened_path = experiment_directory + '//' + channel + '\Stain\cy_' + str(cycle_number) + r'\Tiles\focused_basic_corrected'
+            flattened_path = experiment_directory + '//' + channel + '\Stain\cy_' + str(cycle_number) + r'\Tiles\focused_basic_darkframe'
             high_col = (np.where(channels == channel)[0][0] + 1) * 2
 
             os.chdir(quicktile_path)
@@ -1639,7 +1639,7 @@ class cycif:
 
         return image_2
 
-    def tissue_cluster_filter(self, experiment_directory, x_frame_size, number_clusters_retained = 1, area_threshold = 0.1):
+    def tissue_cluster_filter(self, experiment_directory, x_frame_size, number_clusters_retained = 1, area_threshold = 0.25):
         '''
         Looks at tissue binary images, combines them and determines the largest x clusters in
         the joined image and removes the rest. In addition, this will fill in holes
@@ -1775,14 +1775,13 @@ class cycif:
             new_labelled_image -= np.min(new_labelled_image)
         else:
             new_labelled_image = self.cluster_neighborhood(new_labelled_image, sorted_cluster_areas)
-            new_labelled_image = new_labelled_image.astype('int8')
+            new_labelled_image =  new_labelled_image.astype('uint16')
             io.imsave('labelled_tissue_filtered.tif', new_labelled_image)
 
 
         #make new binary image
         new_image = copy.deepcopy(new_labelled_image)
         new_image[new_image > 0] = 1
-        new_image = new_image.astype('int8')
 
         # fill small holes
         #new_image = skimage.morphology.remove_small_holes(new_image, area_threshold=5000)
@@ -1843,6 +1842,7 @@ class cycif:
 
         foot_print = morphology.disk(100, decomposition='sequence')
 
+
         for x in range(0, x_tile_count):
             for y in range(0, y_tile_count):
 
@@ -1860,6 +1860,7 @@ class cycif:
                 os.chdir(tissue_path)
                 tissue_binary_name = 'x' + str(x) + '_y_' + str(y) + '_tissue.tif'
                 io.imsave(tissue_binary_name, filtered_image)
+
 
         self.tissue_cluster_filter(experiment_directory, x_frame_size, clusters_retained, area_threshold=area_threshold)
 
@@ -2995,16 +2996,22 @@ class cycif:
 
         z_wide_range = 5
 
-        #self.image_cycle_acquire(0, experiment_directory,z_wide_range, 'Bleach', offset_array, x_frame_size=x_frame_size,establish_fm_array=1, auto_focus_run=0, auto_expose_run=0, channels=['DAPI'],focus_position=focus_position)
+        # self.image_cycle_acquire(0, experiment_directory,z_wide_range, 'Bleach', offset_array, x_frame_size=x_frame_size,establish_fm_array=1, auto_focus_run=0, auto_expose_run=0, channels=['DAPI'],focus_position=focus_position)
+        # self.generate_nuc_mask(experiment_directory, 0)
+        # self.tissue_region_identifier(experiment_directory, x_frame_size = x_frame_size, clusters_retained=number_clusters_retained)
 
-        #self.generate_nuc_mask(experiment_directory, 0)
-        #self.tissue_region_identifier(experiment_directory, x_frame_size = x_frame_size, clusters_retained=number_clusters_retained)
+        #if issue with getting tiles in focus, good to auto focus and acquire more before doing tissue region identifier
+        #comment out tissue_region identifier above
+
+        #self.recursive_stardist_autofocus(experiment_directory, cycle=0, remake_nuc_binary=0)
         #self.image_cycle_acquire(0, experiment_directory, z_wide_range, 'Bleach', offset_array, x_frame_size=x_frame_size,establish_fm_array=0, auto_focus_run=0, auto_expose_run=0, channels=['DAPI'],focus_position=focus_position)
         #self.recursive_stardist_autofocus(experiment_directory, cycle=0, remake_nuc_binary=1)
+        #self.tissue_region_identifier(experiment_directory, x_frame_size=x_frame_size,clusters_retained=number_clusters_retained)
 
         self.recursive_stardist_autofocus(experiment_directory, cycle=0, remake_nuc_binary=0)
         self.fm_map_z_shifter(experiment_directory, desired_z_slices_dapi=3, desired_z_slices_other=3)
         self.image_cycle_acquire(0, experiment_directory, z_slices, 'Bleach', offset_array, x_frame_size=x_frame_size,establish_fm_array=0, auto_focus_run=0, auto_expose_run=0, channels=['DAPI'],focus_position=focus_position)
+        self.recursive_stardist_autofocus(experiment_directory, cycle=0, remake_nuc_binary=0)
 
     def initialize(self, experiment_directory, offset_array, z_slices, x_frame_size=2960, focus_position = 'none', number_clusters = 6):
         '''initialization section. Takes DAPI images, cluster filters tissue, minimally frames sampling grid, acquires all channels.
@@ -3031,7 +3038,7 @@ class cycif:
         #self.image_cycle_acquire(0, experiment_directory, 3, 'Bleach', offset_array, x_frame_size=x_frame_size,establish_fm_array=0, auto_focus_run=0, auto_expose_run=0, channels=['DAPI'],focus_position=focus_position)
         #self.recursive_stardist_autofocus(experiment_directory, cycle=0)
 
-        #self.image_cycle_acquire(0, experiment_directory, z_slices, 'Bleach', offset_array,x_frame_size=x_frame_size, fm_array_adjuster=0, establish_fm_array=0, auto_focus_run=0,auto_expose_run=0, focus_position=focus_position)
+        self.image_cycle_acquire(0, experiment_directory, z_slices, 'Bleach', offset_array,x_frame_size=x_frame_size, fm_array_adjuster=0, establish_fm_array=0, auto_focus_run=0,auto_expose_run=0, focus_position=focus_position)
         #self.generate_nuc_mask(experiment_directory, cycle_number=0)
         #self.tissue_region_identifier(experiment_directory, clusters_retained=4)
 
@@ -3364,7 +3371,7 @@ class cycif:
         most_tiles_in_cluster = np.max(tiles_in_cluster)
         most_tiles_in_cluster = int(most_tiles_in_cluster)
 
-        mcmicro_stack = np.zeros((number_clusters, (most_tiles_in_cluster) * 4, 2960, x_frame_size)).astype('uint32')
+        mcmicro_stack = np.zeros((number_clusters, (most_tiles_in_cluster) * 4, 2960, x_frame_size)).astype('uint16')
 
         # create sub folders in mcmicro folder
         os.chdir(mcmicro_path)
@@ -4704,8 +4711,8 @@ class cycif:
         y_tile_count = np.shape(fm_array[0])[0]
         x_tile_count = np.shape(fm_array[0])[1]
 
-        block_y_pixels = 50
-        block_x_pixels = 50
+        block_y_pixels = 75
+        block_x_pixels = 75
 
         channels = ['DAPI', 'A488', 'A555', 'A647']
 
