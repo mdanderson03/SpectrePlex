@@ -26,7 +26,7 @@ class fluidics:
         ob1_path = 'ASRL' + str(ob1_com_port) + '::INSTR'
         Instr_ID = c_int32()
         OB1_Initialization(ob1_path.encode('ascii'), 0, 0, 0, 0, byref(Instr_ID))
-        OB1_Add_Sens(Instr_ID, 1, 5, 1, 0, 7,0)  # 16bit working range between 0-1000uL/min, also what are CustomSens_Voltage_5_to_25 and can I really choose any digital range?
+        OB1_Add_Sens(Instr_ID, 1, 5, 1, 0, 7, 0)  # 16bit working range between 0-1000uL/min, also what are CustomSens_Voltage_5_to_25 and can I really choose any digital range?
 
         Calib_path = r'C:\Users\CyCIF PC\Documents\GitHub\AutoCIF\Python_64_elveflow\calibration\1_12_24_cal.txt'
         Calib = (c_double * 1000)()
@@ -46,6 +46,14 @@ class fluidics:
 
         OB1_Start_Remote_Measurement(Instr_ID.value, byref(Calib), 1000)
         self.calibration_array = byref(Calib)
+
+        set_channel = int(1)  # convert to int
+        set_channel = c_int32(set_channel)  # convert to c_int32
+        data_sens = c_double()
+        data_reg = c_double()
+        error = OB1_Get_Remote_Data(self.pump_ID, set_channel, byref(data_reg), byref(data_sens))
+        starting_flow_rate = data_sens.value
+        print('starting rate', starting_flow_rate)
 
         self.pump_ID = Instr_ID.value
         self.experiment_directory = experiment_path
