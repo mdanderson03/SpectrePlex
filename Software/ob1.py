@@ -47,25 +47,18 @@ class fluidics:
         OB1_Start_Remote_Measurement(Instr_ID.value, byref(Calib), 1000)
         self.calibration_array = byref(Calib)
 
-        set_channel = int(1)  # convert to int
-        set_channel = c_int32(set_channel)  # convert to c_int32
-        data_sens = c_double()
-        data_reg = c_double()
-        error = OB1_Get_Remote_Data(self.pump_ID, set_channel, byref(data_reg), byref(data_sens))
-        starting_flow_rate = data_sens.value
-        print('starting rate', starting_flow_rate)
 
         self.pump_ID = Instr_ID.value
         self.experiment_directory = experiment_path
         self.experiment_path = experiment_path
         self.flow_control = flow_control
 
-        self.pressure_on = 600
+        self.pressure_on = 500
         self.pressure_off = 0
-        self.flow_on = 600
+        self.flow_on = 500
         self.flow_off = -3
         self.low_flow_on = 120
-        self.high_flow_on = 900
+        self.high_flow_on = 500
 
         return
 
@@ -161,17 +154,17 @@ class fluidics:
         delta_flow_rate = current_flow_rate - starting_flow_rate
         print('start', starting_flow_rate, 'end', current_flow_rate, 'del', delta_flow_rate)
 
-        # error = OB1_Get_Remote_Data(self.pump_ID, set_channel, byref(data_reg), byref(data_sens))
+        error = OB1_Get_Remote_Data(self.pump_ID, set_channel, byref(data_reg), byref(data_sens))
         # current_flow_rate = data_sens.value
         # self.fluidics_logger(str(OB1_Get_Remote_Data), error, current_flow_rate)
 
         if self.flow_control == 1:
 
             if set_target != self.flow_off  and delta_flow_rate < 0.5 * set_target:
-                #print('flow failed')
+                print('flow failed')
                 zero_target = c_double(self.flow_off)
 
-                #OB1_Set_Remote_Target(self.pump_ID, set_channel, zero_target)
+                OB1_Set_Remote_Target(self.pump_ID, set_channel, zero_target)
                 # self.flow_control = 0
 
                 # set_channel = int(1)
@@ -180,7 +173,7 @@ class fluidics:
                 # self.fluidics_logger(str(PID_Set_Running_Remote), error, 0)
 
                 # run = 1 # restart flow function
-                #fluid_array[2] = 1
+                fluid_array[2] = 1
 
             if set_target == self.flow_off and delta_flow_rate > -0.5*starting_flow_rate:
                 print('issue')
@@ -192,8 +185,8 @@ class fluidics:
                 # self.fluidics_logger(str(PID_Set_Running_Remote), error, 0)
 
                 # run = 1 # restart flow function
-                #self.ob1_reboot()
-                #fluid_array[2] = 1
+                self.ob1_reboot()
+                fluid_array[2] = 1
 
         else:
             pass
@@ -241,5 +234,6 @@ class fluidics:
 
     def ob1_end(self):
 
+        error = OB1_Stop_Remote_Measurement(self.pump_ID)
         error = OB1_Destructor(self.pump_ID)
         self.fluidics_logger(str(OB1_Destructor), error, 0)

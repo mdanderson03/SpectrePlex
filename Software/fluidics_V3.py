@@ -125,8 +125,11 @@ class fluidics:
         while current_valve != desired_valve:
             MUX_DRI_Get_Valve(self.mux_ID, byref(valve))
             current_valve = int(valve.value)
+            print('current valve',current_valve )
             self.fluidics_logger(str(MUX_DRI_Get_Valve), error, current_valve)
             time.sleep(1)
+
+        error = MUX_DRI_Destructor(self.mux_ID)
 
     def flow(self, on_off_state):
 
