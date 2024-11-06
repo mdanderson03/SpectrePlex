@@ -3073,6 +3073,53 @@ class cycif:
 
         # self.post_acquisition_processor(experiment_directory, x_frame_size)
 
+    def tissue_integrity_cycles(self, experiment_directory, cycle_number, offset_array, stain_valve, fluidics_object, z_slices, incub_val=45, x_frame_size=2960, focus_position = 'none', number_clusters = 6):
+
+        pump = fluidics_object
+
+        if cycle_number == 0:
+            self.initialize(experiment_directory, offset_array, z_slices, x_frame_size=x_frame_size, focus_position = focus_position, number_clusters=number_clusters)
+        else:
+            if stain_valve == 12:
+
+                # print(status_str)
+                print('cycle', cycle_number)
+                pump.liquid_action('Stain', incub_val=incub_val, stain_valve=stain_valve,  microscope_object = self, experiment_directory=experiment_directory)  # nuc is valve=7, pbs valve=8, bleach valve=1 (action, stain_valve, heater state (off = 0, on = 1))
+                #self.reacquire_run_autofocus(experiment_directory, cycle_number, z_slices, offset_array, x_frame_size)
+                # print(status_str)
+                #start low flow to constantly flow fluid while imaging to reduce fluorescence of fluidic over time
+                pump.liquid_action('low flow on')
+                self.image_cycle_acquire(cycle_number, experiment_directory, z_slices, 'Stain', offset_array,x_frame_size=x_frame_size, establish_fm_array=0, auto_focus_run=0,auto_expose_run=3)
+                pump.liquid_action('flow off')
+                time.sleep(5)
+
+                # print(status_str)
+                pump.liquid_action('Bleach', stain_valve=stain_valve)  # nuc is valve=7, pbs valve=8, bleach valve=1 (action, stain_valve, heater state (off = 0, on = 1))
+                time.sleep(5)
+                # print(status_str)
+                self.image_cycle_acquire(cycle_number, experiment_directory, z_slices, 'Bleach', offset_array, x_frame_size=x_frame_size, establish_fm_array=0, auto_focus_run=0,auto_expose_run=0)
+                #self.inter_cycle_processing(experiment_directory, cycle_number=cycle_number, x_frame_size=x_frame_size)
+                time.sleep(3)
+
+            else:
+                # print(status_str)
+                print('cycle', cycle_number)
+                pump.liquid_action('Stain', incub_val=incub_val, stain_valve=stain_valve, microscope_object=self,experiment_directory=experiment_directory)  # nuc is valve=7, pbs valve=8, bleach valve=1 (action, stain_valve, heater state (off = 0, on = 1))
+                # self.reacquire_run_autofocus(experiment_directory, cycle_number, z_slices, offset_array, x_frame_size)
+                # print(status_str)
+                # start low flow to constantly flow fluid while imaging to reduce fluorescence of fluidic over time
+                pump.liquid_action('low flow on')
+                self.image_cycle_acquire(cycle_number, experiment_directory, z_slices, 'Stain', offset_array,x_frame_size=x_frame_size, establish_fm_array=0, auto_focus_run=0,auto_expose_run=0, channels=['DAPI'])
+                pump.liquid_action('flow off')
+                time.sleep(5)
+
+                # print(status_str)
+                pump.liquid_action('Bleach', stain_valve=stain_valve)  # nuc is valve=7, pbs valve=8, bleach valve=1 (action, stain_valve, heater state (off = 0, on = 1))
+                time.sleep(5)
+
+
+        # self.post_acquisition_processor(experiment_directory, x_frame_size)
+
 
     ######Folder System Generation########################################################
 
@@ -4308,7 +4355,7 @@ class cycif:
         print('cycle', cycle_number)
         channels = ['DAPI', 'A488', 'A555', 'A647']
 
-        bin_values = [10]
+        bin_values = [17]
 
         dapi_im_path = experiment_directory + '/' + 'DAPI' '\Stain\cy_' + str(cycle_number) + '\Tiles'
         tissue_path = experiment_directory + '/Tissue_Binary'
@@ -4408,6 +4455,7 @@ class cycif:
                                         for b in range(0, number_bins):
                                             bin_value = int(bin_values[b])
                                             score = self.focus_score(sub_image, bin_value, sub_tissue_bin)
+                                            print('x', x, 'y', y, 'z', z, 'score', score)
                                             # score = self.focus_score_post_processing(sub_image, bin_value)
                                             # score = 500
                                             brenner_sub_selector[z][b][y_sub][x_sub] = score
