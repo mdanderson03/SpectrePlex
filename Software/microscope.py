@@ -4353,7 +4353,7 @@ class cycif:
         print('cycle', cycle_number)
         channels = ['DAPI', 'A488', 'A555', 'A647']
 
-        bin_values = [10]
+        bin_values = [17]
 
         dapi_im_path = experiment_directory + '/' + 'DAPI' '\Stain\cy_' + str(cycle_number) + '\Tiles'
         tissue_path = experiment_directory + '/Tissue_Binary'
@@ -4453,6 +4453,7 @@ class cycif:
                                         for b in range(0, number_bins):
                                             bin_value = int(bin_values[b])
                                             score = self.focus_score(sub_image, bin_value, sub_tissue_bin)
+                                            print('x', x, 'y', y, 'z', z, 'score', score)
                                             # score = self.focus_score_post_processing(sub_image, bin_value)
                                             # score = 500
                                             brenner_sub_selector[z][b][y_sub][x_sub] = score
