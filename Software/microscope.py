@@ -4175,15 +4175,16 @@ class cycif:
 
         #make tissue exist array if needed
         if cycle_number == 1:
-            self.tissue_exist_array_generate(experiment_directory, x_frame_size=x_frame_size)
+            #self.tissue_exist_array_generate(experiment_directory, x_frame_size=x_frame_size)
         else:
             pass
         end = time.time()
         print('binary create', end - start)
 
         #determine in focus parts first
-        self.focus_excel_creation(experiment_directory, cycle_number)
+        #self.focus_excel_creation(experiment_directory, cycle_number)
         self.in_focus_excel_populate(experiment_directory, cycle_number, x_frame_size=x_frame_size)
+        '''
         self.excel_2_focus(experiment_directory, cycle_number, x_frame_size=x_frame_size)
         #self.single_fov_file_rename(experiment_directory, cycle_number)
 
@@ -4220,6 +4221,7 @@ class cycif:
         #generate stage placement
 
         self.stage_placement(experiment_directory, cycle_number, x_pixels = x_frame_size, down_sample_factor=4, single_fov=0)
+        '''
 
         #end = time.time()
         #print('stage placement', end - start)
