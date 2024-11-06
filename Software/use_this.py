@@ -18,7 +18,7 @@ focus_position = -580 #make sure this is upper left hand corner focus z position
 #pump.liquid_action('low flow on')
 #microscope.image_cycle_acquire(1, experiment_directory, z_slices, 'Stain', offset_array,x_frame_size=x_frame_size, auto_focus_run=0, auto_expose_run=3)
 #pump.liquid_action('flow off')
-pump.liquid_action('Wash')
+#pump.liquid_action('Wash')
 # microscope.image_cycle_acquire(2, experiment_directory, z_slices, 'Bleach', offset_array,x_frame_size=x_frame_size, auto_focus_run=0, auto_expose_run=0)
 #microscope.hdr_compression_2(experiment_directory, cycle_number=1)
 #microscope.stage_placement(experiment_directory, 1, x_pixels=x_frame_size, down_sample_factor=4)
@@ -26,6 +26,20 @@ pump.liquid_action('Wash')
 #microscope.tissue_cluster_filter(experiment_directory, x_frame_size, number_clusters_retained=8, area_threshold=0.25)
 
 #microscope.tilt_determination()
+
+'''
+microscope.tissue_integrity_cycles(experiment_directory, 1, offset_array, 1, pump, z_slices, x_frame_size=x_frame_size,focus_position=focus_position, number_clusters=6)
+
+for cycle in range(2, 40):
+    microscope.tissue_integrity_cycles(experiment_directory, cycle, offset_array, 12, pump, z_slices, x_frame_size =x_frame_size, focus_position=focus_position, number_clusters=6)
+
+microscope.tissue_integrity_cycles(experiment_directory, 40, offset_array, 1, pump, z_slices, x_frame_size=x_frame_size,focus_position=focus_position, number_clusters=6)
+
+for cycle in range(41, 80):
+    microscope.tissue_integrity_cycles(experiment_directory, cycle, offset_array, 12, pump, z_slices, x_frame_size =x_frame_size, focus_position=focus_position, number_clusters=6)
+'''
+
+
 
 #for cycle in range(1, 11):
     #microscope.inter_cycle_processing(experiment_directory, cycle_number=cycle, x_frame_size=x_frame_size)
