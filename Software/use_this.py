@@ -1,3 +1,5 @@
+import math
+
 import numpy as np
 
 from autocyplex import *
@@ -30,6 +32,24 @@ focus_position = -562 #make sure this is upper left hand corner focus z position
 
 #microscope.tilt_determination()
 
+
+microscope.full_cycle(experiment_directory, 0, offset_array, 12, pump, z_slices, x_frame_size =x_frame_size, focus_position=focus_position, number_clusters=1)
+
+'''
+#sma cycle
+microscope.full_cycle(experiment_directory, 1, offset_array, 10, pump, z_slices, x_frame_size =x_frame_size, focus_position=focus_position, number_clusters=1)
+
+#blank cycles
+for cycle in range(2,40):
+    stain_valve = 1 + math.floor((cycle-2)/4)
+    microscope.full_cycle(experiment_directory, cycle, offset_array, stain_valve, pump, z_slices, x_frame_size=x_frame_size,focus_position=focus_position, number_clusters=1)
+
+#sma cycle
+microscope.full_cycle(experiment_directory, 40, offset_array, 10, pump, z_slices, x_frame_size =x_frame_size, focus_position=focus_position, number_clusters=1)
+'''
+
+
+
 # for cycle in range(8, 11):
     #microscope.inter_cycle_processing(experiment_directory, cycle_number=cycle, x_frame_size=x_frame_size)
     # microscope.full_cycle(experiment_directory, cycle, offset_array, cycle, pump, z_slices, x_frame_size =x_frame_size, focus_position=focus_position, number_clusters=6)
@@ -39,8 +59,8 @@ focus_position = -562 #make sure this is upper left hand corner focus z position
 #microscope.post_acquisition_processor(experiment_directory, x_frame_size, rolling_ball=0)
 
 #microscope.generate_nuc_mask(experiment_directory, 1)
-for cycle in range(1, 2):
-     microscope.inter_cycle_processing(experiment_directory, cycle_number=cycle, x_frame_size=x_frame_size)
+#for cycle in range(1, 2):
+#     microscope.inter_cycle_processing(experiment_directory, cycle_number=cycle, x_frame_size=x_frame_size)
 
 
 
