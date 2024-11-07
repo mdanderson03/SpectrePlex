@@ -3,7 +3,7 @@ import numpy as np
 from autocyplex import *
 from optparse import OptionParser
 microscope = cycif() # initialize cycif object
-experiment_directory = r'Z:\Public\Thiagarajah Lab\Mike_A\SpectrePlex\29-10-24 gutage'
+experiment_directory = r'Z:\Public\Thiagarajah Lab\Mike_A\SpectrePlex\23-10-24 gutage'
 pump = fluidics(experiment_directory, 6, 10, flow_control=1)
 #core = Core()
 
@@ -39,8 +39,9 @@ focus_position = -562 #make sure this is upper left hand corner focus z position
 #microscope.post_acquisition_processor(experiment_directory, x_frame_size, rolling_ball=0)
 
 #microscope.generate_nuc_mask(experiment_directory, 1)
-for cycle in range(1, 2):
+for cycle in range(1, 11):
      microscope.inter_cycle_processing(experiment_directory, cycle_number=cycle, x_frame_size=x_frame_size)
+
 
 
 
