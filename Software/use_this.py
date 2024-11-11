@@ -5,7 +5,7 @@ import numpy as np
 from autocyplex import *
 from optparse import OptionParser
 microscope = cycif() # initialize cycif object
-experiment_directory = r'Z:\Public\Thiagarajah Lab\Mike_A\SpectrePlex\29-10-24 gutage'
+experiment_directory = r'E:\11-11-24_integrity_testing'
 pump = fluidics(experiment_directory, 6, 10, flow_control=1)
 #core = Core()
 
@@ -14,8 +14,7 @@ z_slices = 3
 x_frame_size = 2960
 
 offset_array = [0, -7, -7, -6]
-#offset_array = [0, 0, 0, 0]
-focus_position = -562 #make sure this is upper left hand corner focus z position
+focus_position = -480 #make sure this is upper left hand corner focus z position
 #pump.liquid_action('Wash')
 #pump.liquid_action('low flow on')
 #microscope.image_cycle_acquire(9, experiment_directory, z_slices, 'Stain', offset_array,x_frame_size=x_frame_size, auto_focus_run=0, auto_expose_run=3)
@@ -33,20 +32,21 @@ focus_position = -562 #make sure this is upper left hand corner focus z position
 #microscope.tilt_determination()
 
 
-microscope.full_cycle(experiment_directory, 0, offset_array, 12, pump, z_slices, x_frame_size =x_frame_size, focus_position=focus_position, number_clusters=1)
+#microscope.tissue_integrity_cycles(experiment_directory, 0, offset_array, 12, pump, z_slices, x_frame_size =x_frame_size, focus_position=focus_position, number_clusters=1)
+#pump.liquid_action('Wash')
 
-'''
 #sma cycle
-microscope.full_cycle(experiment_directory, 1, offset_array, 10, pump, z_slices, x_frame_size =x_frame_size, focus_position=focus_position, number_clusters=1)
+#microscope.tissue_integrity_cycles(experiment_directory, 1, offset_array, 10, pump, z_slices, x_frame_size =x_frame_size, focus_position=focus_position, number_clusters=1)
+
 
 #blank cycles
 for cycle in range(2,40):
     stain_valve = 1 + math.floor((cycle-2)/4)
-    microscope.full_cycle(experiment_directory, cycle, offset_array, stain_valve, pump, z_slices, x_frame_size=x_frame_size,focus_position=focus_position, number_clusters=1)
+    microscope.tissue_integrity_cycles(experiment_directory, cycle, offset_array, stain_valve, pump, z_slices, x_frame_size=x_frame_size,focus_position=focus_position, number_clusters=1)
 
 #sma cycle
-microscope.full_cycle(experiment_directory, 40, offset_array, 10, pump, z_slices, x_frame_size =x_frame_size, focus_position=focus_position, number_clusters=1)
-'''
+microscope.tissue_integrity_cycles(experiment_directory, 40, offset_array, 10, pump, z_slices, x_frame_size =x_frame_size, focus_position=focus_position, number_clusters=1)
+
 
 
 
