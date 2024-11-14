@@ -128,7 +128,7 @@ class cycif:
 
             if x_frame_size != 5056:
                 self.x_overlap_adjuster(x_frame_size, experiment_directory)
-                self.fm_stage_tilt_compensation(experiment_directory, tilt=3.75) #always positive number for tilt
+                #self.fm_stage_tilt_compensation(experiment_directory, tilt=3.75) #always positive number for tilt
                 self.establish_exp_arrays(experiment_directory)
             else:
                 pass
@@ -2996,9 +2996,9 @@ class cycif:
 
         z_wide_range = 5
 
-        self.image_cycle_acquire(0, experiment_directory,z_wide_range, 'Bleach', offset_array, x_frame_size=x_frame_size,establish_fm_array=1, auto_focus_run=0, auto_expose_run=0, channels=['DAPI'],focus_position=focus_position)
-        self.generate_nuc_mask(experiment_directory, 0)
-        self.tissue_region_identifier(experiment_directory, x_frame_size = x_frame_size, clusters_retained=number_clusters_retained)
+        #self.image_cycle_acquire(0, experiment_directory,z_wide_range, 'Bleach', offset_array, x_frame_size=x_frame_size,establish_fm_array=1, auto_focus_run=0, auto_expose_run=0, channels=['DAPI'],focus_position=focus_position)
+        #self.generate_nuc_mask(experiment_directory, 0)
+        #self.tissue_region_identifier(experiment_directory, x_frame_size = x_frame_size, clusters_retained=number_clusters_retained)
 
         #if issue with getting tiles in focus, good to auto focus and acquire more before doing tissue region identifier
         #comment out tissue_region identifier above
@@ -3012,6 +3012,7 @@ class cycif:
 
         #self.recursive_stardist_autofocus(experiment_directory, cycle=0, remake_nuc_binary=0)
         #self.fm_map_z_shifter(experiment_directory, desired_z_slices_dapi=3, desired_z_slices_other=3)
+        #self.image_cycle_acquire(0, experiment_directory, z_slices, 'Bleach', offset_array, x_frame_size=x_frame_size,establish_fm_array=0, auto_focus_run=0, auto_expose_run=0, channels=['DAPI'],focus_position=focus_position)
 
         #for repeat in range(0,3):
         #    self.recursive_stardist_autofocus(experiment_directory, cycle=0, remake_nuc_binary=0)
@@ -3037,13 +3038,13 @@ class cycif:
         except:
             pass
 
-        self.wide_net_auto_focus(experiment_directory, x_frame_size, offset_array,z_slices, focus_position, number_clusters_retained=number_clusters)
+        #self.wide_net_auto_focus(experiment_directory, x_frame_size, offset_array,z_slices, focus_position, number_clusters_retained=number_clusters)
         #self.image_cycle_acquire(0, experiment_directory, 3, 'Bleach', offset_array, x_frame_size=x_frame_size,establish_fm_array=0, auto_focus_run=0, auto_expose_run=0, channels=['DAPI'],focus_position=focus_position)
         #self.recursive_stardist_autofocus(experiment_directory, cycle=0)
         #self.image_cycle_acquire(0, experiment_directory, 3, 'Bleach', offset_array, x_frame_size=x_frame_size,establish_fm_array=0, auto_focus_run=0, auto_expose_run=0, channels=['DAPI'],focus_position=focus_position)
-        #self.recursive_stardist_autofocus(experiment_directory, cycle=0)
+        self.recursive_stardist_autofocus(experiment_directory, cycle=0)
 
-        #self.image_cycle_acquire(0, experiment_directory, z_slices, 'Bleach', offset_array,x_frame_size=x_frame_size, fm_array_adjuster=0, establish_fm_array=0, auto_focus_run=0,auto_expose_run=0, focus_position=focus_position)
+        self.image_cycle_acquire(0, experiment_directory, z_slices, 'Bleach', offset_array,x_frame_size=x_frame_size, fm_array_adjuster=0, establish_fm_array=0, auto_focus_run=0,auto_expose_run=0, focus_position=focus_position)
         #self.generate_nuc_mask(experiment_directory, cycle_number=0)
         #self.tissue_region_identifier(experiment_directory, clusters_retained=4)
 
@@ -3087,7 +3088,7 @@ class cycif:
 
                 # print(status_str)
                 print('cycle', cycle_number)
-                #pump.liquid_action('Stain', incub_val=incub_val, stain_valve=stain_valve,  microscope_object = self, experiment_directory=experiment_directory, cycle = cycle_number)  # nuc is valve=7, pbs valve=8, bleach valve=1 (action, stain_valve, heater state (off = 0, on = 1))
+                pump.liquid_action('Stain', incub_val=incub_val, stain_valve=stain_valve,  microscope_object = self, experiment_directory=experiment_directory, cycle = cycle_number)  # nuc is valve=7, pbs valve=8, bleach valve=1 (action, stain_valve, heater state (off = 0, on = 1))
                 #self.reacquire_run_autofocus(experiment_directory, cycle_number, z_slices, offset_array, x_frame_size)
                 # print(status_str)
                 #start low flow to constantly flow fluid while imaging to reduce fluorescence of fluidic over time

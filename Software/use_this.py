@@ -14,12 +14,12 @@ z_slices = 3
 x_frame_size = 2960
 
 offset_array = [0, -7, -7, -6]
-focus_position = -87 #make sure this is upper left hand corner focus z position
+focus_position = -93 #make sure this is upper left hand corner focus z position
 #pump.liquid_action('Wash')
 #pump.liquid_action('low flow on')
 #microscope.image_cycle_acquire(9, experiment_directory, z_slices, 'Stain', offset_array,x_frame_size=x_frame_size, auto_focus_run=0, auto_expose_run=3)
 #pump.liquid_action('flow off')
-#pump.liquid_action('Wash')
+pump.liquid_action('Wash')
 #pump.liquid_action('Bleach')
 #pump.liquid_action('Stain', stain_valve=1)
 
@@ -32,7 +32,7 @@ focus_position = -87 #make sure this is upper left hand corner focus z position
 #microscope.tilt_determination()
 
 
-microscope.tissue_integrity_cycles(experiment_directory, 0, offset_array, 12, pump, z_slices, x_frame_size =x_frame_size, focus_position=focus_position, number_clusters=1)
+#microscope.tissue_integrity_cycles(experiment_directory, 0, offset_array, 12, pump, z_slices, x_frame_size =x_frame_size, focus_position=focus_position, number_clusters=1)
 #pump.liquid_action('Wash')
 
 #sma cycle
