@@ -340,6 +340,7 @@ class fluidics:
 
 
             self.valve_select(bleach_valve)
+            time.sleep(2)
             self.flow_checker()
             self.file_run('bleach.py')
 
@@ -347,6 +348,7 @@ class fluidics:
                 time.sleep(60)
 
             self.valve_select(pbs_valve)
+            time.sleep(2)
             self.flow_checker()
             self.file_run('wash.py')
 
@@ -355,9 +357,11 @@ class fluidics:
             stain_start = 0
 
             self.valve_select(stain_valve)
+            time.sleep(2)
             self.flow_checker()
             self.file_run('stain.py')
             self.valve_select(pbs_valve)
+            time.sleep(2)
 
             if microscope_object != 0:
                 microscope = microscope_object
@@ -390,6 +394,7 @@ class fluidics:
         elif action_type == "Wash":
 
             self.valve_select(pbs_valve)
+            time.sleep(2)
             self.flow_checker()
             self.file_run('wash.py')
 

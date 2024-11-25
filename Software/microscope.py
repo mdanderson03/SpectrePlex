@@ -2996,9 +2996,9 @@ class cycif:
 
         z_wide_range = 5
 
-        #self.image_cycle_acquire(0, experiment_directory,z_wide_range, 'Bleach', offset_array, x_frame_size=x_frame_size,establish_fm_array=1, auto_focus_run=0, auto_expose_run=0, channels=['DAPI'],focus_position=focus_position)
-        #self.generate_nuc_mask(experiment_directory, 0)
-        #self.tissue_region_identifier(experiment_directory, x_frame_size = x_frame_size, clusters_retained=number_clusters_retained)
+        self.image_cycle_acquire(0, experiment_directory,z_wide_range, 'Bleach', offset_array, x_frame_size=x_frame_size,establish_fm_array=1, auto_focus_run=0, auto_expose_run=0, channels=['DAPI'],focus_position=focus_position)
+        self.generate_nuc_mask(experiment_directory, 0)
+        self.tissue_region_identifier(experiment_directory, x_frame_size = x_frame_size, clusters_retained=number_clusters_retained)
 
         #if issue with getting tiles in focus, good to auto focus and acquire more before doing tissue region identifier
         #comment out tissue_region identifier above
@@ -3010,13 +3010,13 @@ class cycif:
         #self.image_cycle_acquire(0, experiment_directory, z_wide_range, 'Bleach', offset_array,x_frame_size=x_frame_size, establish_fm_array=0, auto_focus_run=0, auto_expose_run=0,channels=['DAPI'], focus_position=focus_position)
         #self.tissue_region_identifier(experiment_directory, x_frame_size=x_frame_size,clusters_retained=number_clusters_retained)
 
-        #self.recursive_stardist_autofocus(experiment_directory, cycle=0, remake_nuc_binary=0)
-        #self.fm_map_z_shifter(experiment_directory, desired_z_slices_dapi=3, desired_z_slices_other=3)
-        #self.image_cycle_acquire(0, experiment_directory, z_slices, 'Bleach', offset_array, x_frame_size=x_frame_size,establish_fm_array=0, auto_focus_run=0, auto_expose_run=0, channels=['DAPI'],focus_position=focus_position)
+        self.recursive_stardist_autofocus(experiment_directory, cycle=0, remake_nuc_binary=0)
+        self.fm_map_z_shifter(experiment_directory, desired_z_slices_dapi=3, desired_z_slices_other=3)
+        self.image_cycle_acquire(0, experiment_directory, z_slices, 'Bleach', offset_array, x_frame_size=x_frame_size,establish_fm_array=0, auto_focus_run=0, auto_expose_run=0, channels=['DAPI'],focus_position=focus_position)
 
-        #for repeat in range(0,3):
-        #    self.recursive_stardist_autofocus(experiment_directory, cycle=0, remake_nuc_binary=0)
-        #    self.image_cycle_acquire(0, experiment_directory, z_slices, 'Bleach', offset_array, x_frame_size=x_frame_size,establish_fm_array=0, auto_focus_run=0, auto_expose_run=0, channels=['DAPI'],focus_position=focus_position)
+        for repeat in range(0,3):
+            self.recursive_stardist_autofocus(experiment_directory, cycle=0, remake_nuc_binary=0)
+            self.image_cycle_acquire(0, experiment_directory, z_slices, 'Bleach', offset_array, x_frame_size=x_frame_size,establish_fm_array=0, auto_focus_run=0, auto_expose_run=0, channels=['DAPI'],focus_position=focus_position)
 
 
     def initialize(self, experiment_directory, offset_array, z_slices, x_frame_size=2960, focus_position = 'none', number_clusters = 6):
@@ -3038,7 +3038,7 @@ class cycif:
         except:
             pass
 
-        #self.wide_net_auto_focus(experiment_directory, x_frame_size, offset_array,z_slices, focus_position, number_clusters_retained=number_clusters)
+        self.wide_net_auto_focus(experiment_directory, x_frame_size, offset_array,z_slices, focus_position, number_clusters_retained=number_clusters)
         #self.image_cycle_acquire(0, experiment_directory, 3, 'Bleach', offset_array, x_frame_size=x_frame_size,establish_fm_array=0, auto_focus_run=0, auto_expose_run=0, channels=['DAPI'],focus_position=focus_position)
         #self.recursive_stardist_autofocus(experiment_directory, cycle=0)
         #self.image_cycle_acquire(0, experiment_directory, 3, 'Bleach', offset_array, x_frame_size=x_frame_size,establish_fm_array=0, auto_focus_run=0, auto_expose_run=0, channels=['DAPI'],focus_position=focus_position)
@@ -3772,7 +3772,8 @@ class cycif:
         # load images into python
 
         channels = ['DAPI', 'A488', 'A555', 'A647']
-        types = ['Stain', 'Bleach']
+        #types = ['Stain', 'Bleach']
+        types = ['Stain']
 
         for type in types:
             for channel in channels:
@@ -4490,8 +4491,8 @@ class cycif:
         #y_sections = np.shape(reconstruct_array)[0]
         #x_sections = np.shape(reconstruct_array)[1]
 
-        cycle_types = ['Stain', 'Bleach']
-        #cycle_types = ['Stain']
+        #cycle_types = ['Stain', 'Bleach']
+        cycle_types = ['Stain']
 
         for type in cycle_types:
 

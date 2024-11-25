@@ -14,7 +14,7 @@ pump = ob1.fluidics(experiment_path, ob1_com_port, flow_control = 1)
 
 #run actions
 pump.flow('ON')
-time.sleep(75)
+time.sleep(60)
 pump.flow('OFF')
 
 #save array that confirms that file was run

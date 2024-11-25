@@ -174,9 +174,11 @@ class fluidics:
 
                 # run = 1 # restart flow function
                 fluid_array[2] = 1
+                self.ob1_reboot()
 
-            if set_target == self.flow_off and delta_flow_rate > -0.5*starting_flow_rate:
-                print('issue')
+            if set_target == self.flow_off:
+                time.sleep(2)
+                print('turning off ob1')
                 # self.flow_control = 0
 
                 # set_channel = int(1)
@@ -186,7 +188,7 @@ class fluidics:
 
                 # run = 1 # restart flow function
                 self.ob1_reboot()
-                fluid_array[2] = 1
+                #fluid_array[2] = 1
 
         else:
             pass
