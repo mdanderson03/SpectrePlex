@@ -3601,7 +3601,7 @@ class cycif:
         #    numpy_y[r][1] = numpy_y[r + 1][1] - y_gap - col_col_gap
 
         # sub in needed pixel size and pixel grid changes
-        ome.pixels.physical_size_x = 0.200
+        ome.pixels.physical_size_x = 0.2004
         ome.pixels.physical_size_y = 0.2004
         ome.pixels.size_x = x_frame_size
         ome.pixels.size_y = 2960
