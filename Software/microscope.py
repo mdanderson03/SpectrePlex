@@ -97,12 +97,15 @@ class cycif:
 
         a = image[derivative_jump:, :]
         a = a.astype('float64')
-        a = np.nan_to_num(a, posinf=65000)
+        posinf_nan = np.median(a)
+        a = np.nan_to_num(a, posinf=posinf_nan, nan=posinf_nan)
         b = image[:-derivative_jump, :]
         b = b.astype('float64')
-        b = np.nan_to_num(b, posinf=65000)
-        c = (a - b)
-        c = c / 1000 * c / 1000
+        b = np.nan_to_num(b, posinf=posinf_nan, nan=posinf_nan)
+        a = np.log(a)
+        b = np.log(b)
+        c = a - b
+        c = c ** 2
         f_score_shadow = c.sum(dtype=np.float64) + 0.00001
 
         return f_score_shadow
@@ -2237,9 +2240,9 @@ class cycif:
         if hdr ==0:
 
             # load in focus map and exp array
-            numpy_path = experiment_directory + '/' + 'np_arrays'
-            os.chdir(numpy_path)
-            fm_array = np.load('fm_array.npy', allow_pickle=False)
+            #numpy_path = experiment_directory + '/' + 'np_arrays'
+            #os.chdir(numpy_path)
+            #fm_array = np.load('fm_array.npy', allow_pickle=False)
 
             # determine proper frame count to average
 
@@ -4187,10 +4190,10 @@ class cycif:
         print('binary create', end - start)
 
         #determine in focus parts first
-        self.focus_excel_creation(experiment_directory, cycle_number)
-        self.in_focus_excel_populate(experiment_directory, cycle_number, x_frame_size=x_frame_size)
+        #self.focus_excel_creation(experiment_directory, cycle_number)
+        #self.in_focus_excel_populate(experiment_directory, cycle_number, x_frame_size=x_frame_size)
 
-        self.excel_2_focus(experiment_directory, cycle_number, x_frame_size=x_frame_size)
+        #self.excel_2_focus(experiment_directory, cycle_number, x_frame_size=x_frame_size)
         #self.single_fov_file_rename(experiment_directory, cycle_number)
 
         end = time.time()
@@ -4198,20 +4201,20 @@ class cycif:
 
         #flatten image
 
-        self.illumination_flattening(experiment_directory, cycle_number, single_fov=0)
+        #self.illumination_flattening(experiment_directory, cycle_number, single_fov=0)
         #self.bottom_int_correction(experiment_directory, cycle_number=cycle_number)
 
         end = time.time()
         print('flatten', end - start)
 
-        self.darkframe_sub(experiment_directory, cycle_number)
+        #self.darkframe_sub(experiment_directory, cycle_number)
         end = time.time()
         print('dark frame subtraction', end - start)
 
 
         #compress to 16bit
-        self.stage_placement(experiment_directory, cycle_number, x_pixels=x_frame_size, down_sample_factor=4,single_fov=0)
-        self.hdr_compression_2(experiment_directory, cycle_number)
+        #self.stage_placement(experiment_directory, cycle_number, x_pixels=x_frame_size, down_sample_factor=4,single_fov=0)
+        #self.hdr_compression_2(experiment_directory, cycle_number)
 
 
         end = time.time()
@@ -4225,7 +4228,7 @@ class cycif:
 
         #generate stage placement
 
-        self.stage_placement(experiment_directory, cycle_number, x_pixels = x_frame_size, down_sample_factor=4, single_fov=0)
+        #self.stage_placement(experiment_directory, cycle_number, x_pixels = x_frame_size, down_sample_factor=4, single_fov=0)
 
 
         #end = time.time()
@@ -5354,12 +5357,24 @@ class cycif:
         :return:
         '''
 
-        exp_array = [50, 200, 75, 75]
-        A488_to_channels_offset = [8, 0, 0, 3]
+        exp_array = [50, 50, 50, 50]
+        A488_to_channels_offset = [8, 0, 0, -1]
+
 
         # create folders
 
+        # make parent folder for experiment if it isnt made
+        os.chdir(r'E:')
+        try:
+            os.mkdir(experiment_directory)
+        except:
+            pass
+
         os.chdir(experiment_directory)
+        try:
+            os.mkdir('exposure_times')
+        except:
+            pass
         try:
             os.mkdir('DAPI')
         except:
@@ -5377,6 +5392,22 @@ class cycif:
         except:
             pass
         try:
+            os.mkdir('DAPI_hdr')
+        except:
+            pass
+        try:
+            os.mkdir('A488_hdr')
+        except:
+            pass
+        try:
+            os.mkdir('A555_hdr')
+        except:
+            pass
+        try:
+            os.mkdir('A647_hdr')
+        except:
+            pass
+        try:
             os.mkdir('auto_fluorescence')
         except:
             pass
@@ -5389,6 +5420,13 @@ class cycif:
         a488_path = experiment_directory + r'\A488'
         a555_path = experiment_directory + r'\A555'
         a647_path = experiment_directory + r'\A647'
+
+        DAPI_path = experiment_directory + r'\DAPI_hdr'
+        A488_path = experiment_directory + r'\A488_hdr'
+        A555_path = experiment_directory + r'\A555_hdr'
+        A647_path = experiment_directory + r'\A647_hdr'
+
+        self.hdr_exp_generator(experiment_directory, threshold_level=10000, max_exp=700, min_exp=20)
 
         # dimensional parameters
         y_pixel_count = 2960
@@ -5403,12 +5441,16 @@ class cycif:
         print('focus position acquired')
         focus_position = int(focus_position)
 
+
+
         # create data structure for staining images
         data_points_stain = np.full((time_point_stain_count, channel_count, y_pixel_count, x_pixel_count), 0)
-        fluidic_object.valve_select(stain_valve)
-        print('valve selected')
+        #fluidic_object.valve_select(stain_valve)
+        #print('valve selected')
 
         #capture pre stain images (so autofluorescence)
+
+
 
         os.chdir(experiment_directory + r'\auto_fluorescence')
         for channel in channels:
@@ -5437,15 +5479,18 @@ class cycif:
             pixels = np.reshape(tagged_image.pix,newshape=[tagged_image.tags["Height"], tagged_image.tags["Width"]])
             io.imsave(channel + '.tif', pixels)
 
+            hdr_im = self.core_capture(experiment_directory, x_pixel_count, channel)
+            io.imsave(channel + '_HDR.tif', hdr_im)
+
         os.chdir(experiment_directory)
 
         #start flow
-        fluidic_object.flow(500)
-        print('flowing stain')
-        time.sleep(45)
-        fluidic_object.flow(-3)
-        print('flow stain ended')
-        fluidic_object.valve_select(12)
+        fluidic_object.liquid_action('Stain_flow_on', stain_valve=stain_valve)
+        print('flowed stain')
+        #time.sleep(45)
+        #fluidic_object.flow(-3)
+        #print('flow stain ended')
+        #fluidic_object.valve_select(12)
 
         # acquire kinetic time points
         print('total time points', time_point_stain_count)
@@ -5461,12 +5506,16 @@ class cycif:
 
                 if channel == 'DAPI':
                     channel_index = 0
+                    hdr_path = DAPI_path
                 if channel == 'A488':
                     channel_index = 1
+                    hdr_path = A488_path
                 if channel == 'A555':
                     channel_index = 2
+                    hdr_path = A555_path
                 if channel == 'A647':
                     channel_index = 3
+                    hdr_path = A647_path
 
                 exp_time = exp_array[channel_index]
 
@@ -5479,9 +5528,12 @@ class cycif:
 
                 core.snap_image()
                 tagged_image = core.get_tagged_image()
-                pixels = np.reshape(tagged_image.pix,
-                                    newshape=[tagged_image.tags["Height"], tagged_image.tags["Width"]])
+                pixels = np.reshape(tagged_image.pix,newshape=[tagged_image.tags["Height"], tagged_image.tags["Width"]])
                 data_points_stain[time_point][channel_index] = pixels
+
+                #hdr_im = self.core_capture(experiment_directory, x_pixel_count, channel)
+                os.chdir(hdr_path)
+                io.imsave(channel + '_t_' + str(time_point) + '.tif', pixels)
 
             #adjust for time to acquire to make time between frames = time_gap_staining
             end_time = time.time()
@@ -5502,13 +5554,15 @@ class cycif:
 
         # start flow of PBS
         print('starting wash')
-        fluidic_object.valve_select(12)
-        fluidic_object.flow(500)
-        time.sleep(45)
-        fluidic_object.flow(-3)
+        fluidic_object.liquid_action('Wash')
+        #fluidic_object.valve_select(12)
+        #fluidic_object.flow(500)
+        #time.sleep(45)
+        #fluidic_object.flow(-3)
         print('wash completed')
 
         # acquire post wash images
+
 
         os.chdir(experiment_directory + r'/post_wash')
         for channel in channels:
@@ -5533,5 +5587,8 @@ class cycif:
             core.snap_image()
             tagged_image = core.get_tagged_image()
             pixels = np.reshape(tagged_image.pix,newshape=[tagged_image.tags["Height"], tagged_image.tags["Width"]])
+
+            #hdr_im = self.core_capture(experiment_directory, x_pixel_count, channel)
             io.imsave(channel + '.tif', pixels)
+            #io.imsave(channel + '_hdr.tif', hdr_im)
 

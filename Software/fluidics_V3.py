@@ -389,6 +389,14 @@ class fluidics:
             # else:
             #    pass
 
+        elif action_type == 'Stain_flow_on':
+
+            self.valve_select(stain_valve)
+            time.sleep(2)
+            self.flow_checker()
+            self.file_run('stain.py')
+            self.valve_select(pbs_valve)
+            time.sleep(2)
 
 
         elif action_type == "Wash":

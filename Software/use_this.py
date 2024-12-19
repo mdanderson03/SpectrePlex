@@ -1,11 +1,13 @@
 import math
+import os
+import io
 
 import numpy as np
 
 from autocyplex import *
 from optparse import OptionParser
 microscope = cycif() # initialize cycif object
-experiment_directory = r'E:\14-11-24_integrity_testing'
+experiment_directory = r'E:\18-12-24_kinetics_20C_cycle5'
 pump = fluidics(experiment_directory, 6, 10, flow_control=1)
 #core = Core()
 
@@ -18,6 +20,23 @@ focus_position = -100 #make sure this is upper left hand corner focus z position
 
 
 
+
+
+
+microscope.antibody_kinetics(experiment_directory, 0.5, 90,1, pump)
+'''
+pump.liquid_action('Bleach')
+
+experiment_directory = r'E://12-12-24_kinetics_20C_cycle2'
+pump = fluidics(experiment_directory, 6, 10, flow_control=1)
+microscope.antibody_kinetics(experiment_directory, 1, 120,2, pump)
+pump.liquid_action('Bleach')
+
+
+experiment_directory = r'E://12-12-24_kinetics_20C_cycle3'
+pump = fluidics(experiment_directory, 6, 10, flow_control=1)
+microscope.antibody_kinetics(experiment_directory, 1, 120,3, pump)
+'''
 
 #microscope.image_cycle_acquire(9, experiment_directory, z_slices, 'Bleach', offset_array,x_frame_size=x_frame_size, auto_focus_run=0, auto_expose_run=0)
 #microscope.hdr_compression_2(experiment_directory, cycle_number=1)
@@ -66,8 +85,8 @@ focus_position = -100 #make sure this is upper left hand corner focus z position
 #microscope.post_acquisition_processor(experiment_directory, x_frame_size, rolling_ball=0)
 
 #microscope.generate_nuc_mask(experiment_directory, 1)
-for cycle in range(41, 42):
-     microscope.inter_cycle_processing(experiment_directory, cycle_number=cycle, x_frame_size=x_frame_size)
+#for cycle in range(1, 42):
+#     microscope.inter_cycle_processing(experiment_directory, cycle_number=cycle, x_frame_size=x_frame_size)
 
 
 
