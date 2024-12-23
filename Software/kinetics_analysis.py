@@ -1,6 +1,5 @@
 import copy
 from skimage import io, filters, morphology, restoration, util, transform
-from pykuwahara import kuwahara
 import numpy as np
 import matplotlib.pyplot as plt
 from skimage.filters import threshold_otsu, butterworth, median
@@ -127,18 +126,22 @@ def kinetics_df_data(experiment_directory, channel):
     slide_mask_save_name = 'slide_mask.tif'
     io.imsave(slide_mask_save_name, slide_mask)
 
+    #trimming are to not be considered
+    trim_window = np.ones((2960, 2960))
+    trim_window[0:1000, ::] = 0
+
 
     #import files
 
     stack_folder_path = experiment_directory + r'\\' + channel
 
     os.chdir(stack_folder_path)
-    f_channel = io.imread(channel + '_stain_stack.tif')[::,::, 1048:4008]
+    f_channel = io.imread(channel + '_stain_stack.tif')[::,::, 1048:4008] * trim_window
     os.chdir(experiment_directory)
-    tissue_mask = io.imread('tissue_mask.tif')
-    nonantigen_mask = io.imread(channel + '_nonantigen_tissue_mask.tif')
-    nontissue_mask = io.imread('slide_mask.tif')
-    stain_mask = io.imread(channel + '_stain_mask.tif')[::, 1048:4008]
+    tissue_mask = io.imread('tissue_mask.tif')[::, 1048:4008] *trim_window
+    nonantigen_mask = io.imread(channel + '_nonantigen_tissue_mask.tif') *trim_window
+    nontissue_mask = io.imread('slide_mask.tif') * trim_window
+    stain_mask = io.imread(channel + '_stain_mask.tif')[::, 1048:4008] * trim_window
 
     os.chdir(experiment_directory)
 
@@ -180,6 +183,9 @@ def kinetics_df_data(experiment_directory, channel):
     non_specific_pixels = nonantigen_mask.sum(dtype=np.int64)
     tissue_pixels = tissue_mask.sum(dtype=np.int64)
 
+    #save subbed stack
+    df_subbed_stack = np.zeros((45, 2960,2960))
+
     for x in range(0, 45):
 
         ws.cell(row=2 + x, column=1).value = x*2
@@ -187,7 +193,12 @@ def kinetics_df_data(experiment_directory, channel):
         df = dark_frame_generate(slide_signal, 75, 75)
         slide_signal = slide_signal - df
         slide_signal[slide_signal < 0] = 0
+
+        df_subbed_stack[x] = df
+
         slide_signal = slide_signal * stain_used_mask
+
+
 
         #slide_y_axis[x] = slide_signal[x].sum(dtype=np.float64) / slide_signal[0].sum(dtype=np.float64) * tissue_signal.sum(dtype=np.float64)/pixels_in_mask
         slide_y_axis[x] = tissue_signal.sum(dtype=np.float64) / pixels_in_mask
@@ -215,6 +226,8 @@ def kinetics_df_data(experiment_directory, channel):
 
     filename = channel + '.xlsx'
     wb.save(filename)
+    os.chdir(stack_folder_path)
+    io.imsave('df_subbed_stack.tif', df_subbed_stack)
     return y_axis, x_axis
 def kinetics_data(experiment_directory, channel):
 
@@ -261,7 +274,7 @@ def kinetics_data(experiment_directory, channel):
     #non_antigen_image = non_antigen_image * tissue_mask
     non_antigen_mask = non_antigen_mask * tissue_mask
     non_antigen_save_name = channel + '_nonantigen_tissue_mask.tif'
-    #io.imsave(non_antigen_save_name, non_antigen_mask)
+    io.imsave(non_antigen_save_name, non_antigen_mask)
 
 
     #non tissue mask
@@ -270,7 +283,7 @@ def kinetics_data(experiment_directory, channel):
     slide_mask = slide_mask < 2
     slide_mask = slide_mask/1
     slide_mask_save_name = 'slide_mask.tif'
-    #io.imsave(slide_mask_save_name, slide_mask)
+    io.imsave(slide_mask_save_name, slide_mask)
 
 
     #import files
@@ -303,7 +316,7 @@ def kinetics_data(experiment_directory, channel):
 
     #trimming are to not be considered
     trim_window = np.ones((2960, 5056))
-    trim_window[0:1200, ::] = 0
+    trim_window[0:1000, ::] = 0
 
     #make some type of stack
 
@@ -463,7 +476,7 @@ def dark_frame_generate(array, block_y_pixels, block_x_pixels):
 
 
 
-experiment_directory = r'C:\Users\mike\Desktop\kinetics\37C_cycle5'
+experiment_directory = r'E:\18-12-24_kinetics_20C_cycle5'
 '''
 os.chdir(experiment_directory +'\A555')
 im = io.imread('a555_stain_stack.tif')
@@ -479,10 +492,12 @@ io.imsave('subbed.tif', im)
 '''
 
 
-y_axis_5, x_axis = kinetics_data(experiment_directory, 'A488')
+#y_axis_5, x_axis = kinetics_data(experiment_directory, 'A488')
 #y_axis_5, x_axis = kinetics_data(experiment_directory, 'A555')
 #y_axis_5, x_axis = kinetics_data(experiment_directory, 'A647')
 #y_axis_7, x_axis = kinetics_data(experiment_directory, 7, 'A488')
+
+y_axis_5, x_axis = kinetics_df_data(experiment_directory, 'A488')
 
 #display_start = 2
 
