@@ -6,7 +6,7 @@ import numpy as np
 
 from autocyplex import *
 from optparse import OptionParser
-microscope = cycif() # initialize cycif object
+#microscope = cycif() # initialize cycif object
 experiment_directory = r'E:\18-12-24_kinetics_20C_cycle5'
 pump = fluidics(experiment_directory, 6, 10, flow_control=1)
 #core = Core()
@@ -22,8 +22,8 @@ focus_position = -100 #make sure this is upper left hand corner focus z position
 
 
 
-
-microscope.antibody_kinetics(experiment_directory, 0.5, 90,1, pump)
+pump.valve_select(12)
+#microscope.antibody_kinetics(experiment_directory, 0.5, 90,1, pump)
 '''
 pump.liquid_action('Bleach')
 

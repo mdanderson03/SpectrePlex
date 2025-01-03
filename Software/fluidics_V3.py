@@ -106,10 +106,24 @@ class fluidics:
 
     def valve_select(self, valve_number):
         '''
-        Selects valve in mux unit with associated mux_id to the valve_number declared.
+        Selects adjacent valve and moves back to desired valve
         :param c_int32 mux_id: mux_id given from mux_initialization method
         :param int valve_number: number of desired valve to be selected
         :return: Nothing
+        '''
+
+        desired_valve = valve_number
+        adjacent_valve = desired_valve - 1
+
+        self.valve_move(adjacent_valve)
+        self.valve_move(desired_valve)
+
+
+    def valve_move(self, valve_number):
+        '''
+        Moves MUX to desired valve
+        :param valve_number:
+        :return:
         '''
 
         desired_valve = valve_number
@@ -379,6 +393,7 @@ class fluidics:
 
             #do double wash as unspecifically bound antibodies come off over time in single wash
 
+            self.valve_select(pbs_valve)
             self.flow_checker()
             self.file_run('wash.py')
 
