@@ -27,7 +27,7 @@ from scipy.ndimage import gaussian_filter
 from joblib import Parallel, delayed
 import multiprocessing
 import itertools
-
+import shutil
 
 
 magellan = Magellan()
@@ -4865,6 +4865,30 @@ class cycif:
 
                         else:
                             pass
+
+    def delete_intermediate_folders(self, experiment_directory, cycle_number):
+        '''
+        Goes through each channel (DAPI, a488, 555, and 647) and deletes every folder used to store
+        processed file. Only retains raw images.
+        :param experiment_directory:
+        :param cycle_number:
+        :return:
+        '''
+
+        channels = ['DAPI', 'A488', 'A555', 'A647']
+        folder_names = ['/focused_basic_corrected', '/focused_basic_darkframe' ]
+
+        for channel in channels:
+            for folder_name in folder_names:
+                folder_path = experiment_directory + channel + r'/Stain/cy_' + str(cycle_number) + '\Tiles' + folder_name
+
+                try:
+                    shutil.rmtree(folder_path)
+                    print(f"Folder '{folder_path}' deleted successfully.")
+                except FileNotFoundError:
+                    print(f"Folder '{folder_path}' not found.")
+                except Exception as e:
+                    print(f"An error occurred: {e}")
 
     def block_proc_min(self, array, block_y_pixels, block_x_pixels):
         '''
