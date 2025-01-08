@@ -1779,7 +1779,8 @@ class cycif:
         else:
             new_labelled_image = self.cluster_neighborhood(new_labelled_image, sorted_cluster_areas)
             new_labelled_image =  new_labelled_image.astype('uint16')
-            io.imsave('labelled_tissue_filtered.tif', new_labelled_image)
+            tifffile.imwrite(r'labelled_tissue_filtered.tif', new_labelled_image, compression='zlib', compressionargs={'level': 10})
+
 
 
         #make new binary image
