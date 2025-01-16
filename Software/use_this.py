@@ -6,8 +6,8 @@ import numpy as np
 
 from autocyplex import *
 from optparse import OptionParser
-#microscope = cycif() # initialize cycif object
-experiment_directory = r'E:\18-12-24_kinetics_20C_cycle5'
+microscope = cycif() # initialize cycif object
+experiment_directory = r'E:\test_new_acquire'
 pump = fluidics(experiment_directory, 6, 10, flow_control=1)
 #core = Core()
 
@@ -16,29 +16,14 @@ z_slices = 3
 x_frame_size = 2960
 
 offset_array = [0, -7, -7, -6]
-focus_position = -100 #make sure this is upper left hand corner focus z position
+focus_position = -114 #make sure this is upper left hand corner focus z position
+
+
+#microscope.full_cycle(experiment_directory, 0, offset_array, 0, pump, z_slices, x_frame_size =x_frame_size, focus_position=focus_position, number_clusters=1)
 
 
 
 
-
-pump.valve_select(12)
-#microscope.antibody_kinetics(experiment_directory, 0.5, 90,1, pump)
-'''
-pump.liquid_action('Bleach')
-
-experiment_directory = r'E://12-12-24_kinetics_20C_cycle2'
-pump = fluidics(experiment_directory, 6, 10, flow_control=1)
-microscope.antibody_kinetics(experiment_directory, 1, 120,2, pump)
-pump.liquid_action('Bleach')
-
-
-experiment_directory = r'E://12-12-24_kinetics_20C_cycle3'
-pump = fluidics(experiment_directory, 6, 10, flow_control=1)
-microscope.antibody_kinetics(experiment_directory, 1, 120,3, pump)
-'''
-
-#microscope.image_cycle_acquire(9, experiment_directory, z_slices, 'Bleach', offset_array,x_frame_size=x_frame_size, auto_focus_run=0, auto_expose_run=0)
 #microscope.hdr_compression_2(experiment_directory, cycle_number=1)
 #microscope.stage_placement(experiment_directory, 1, x_pixels=x_frame_size, down_sample_factor=4)
 #microscope.fm_stage_tilt_compensation(experiment_directory, tilt=3.75)
