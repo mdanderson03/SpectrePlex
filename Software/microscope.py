@@ -1779,7 +1779,7 @@ class cycif:
         else:
             new_labelled_image = self.cluster_neighborhood(new_labelled_image, sorted_cluster_areas)
             new_labelled_image =  new_labelled_image.astype('uint16')
-            tifffile.imwrite(r'labelled_tissue_filtered.tif', new_labelled_image, compression='zlib', compressionargs={'level': 10})
+            tf.imwrite(r'labelled_tissue_filtered.tif', new_labelled_image, compression='zlib', compressionargs={'level': 10})
 
 
 
@@ -2557,6 +2557,7 @@ class cycif:
                                 zc_index = 3
 
                             z_slices = int(full_array[channel_index + 1][0][0])
+                            print(channel, z_slices)
 
                             if channel == 'DAPI':
 
@@ -2779,7 +2780,7 @@ class cycif:
                                 auto_expose=auto_expose_run, focus_position = focus_position)
 
 
-        self.image_capture(experiment_directory, 'DAPI', 50, 0, 0, 0)  # wake up lumencor light engine
+        #self.image_capture(experiment_directory, 'DAPI', 50, 0, 0, 0)  # wake up lumencor light engine
 
 
         '''
@@ -2789,7 +2790,7 @@ class cycif:
         else: 
             time.sleep(10)
         '''
-        time.sleep(3)  # wait for it to wake up
+        #time.sleep(3)  # wait for it to wake up
         ''''
         exp_time = exp_time_array
         np.save('exp_array.npy', exp_time)
@@ -2799,6 +2800,7 @@ class cycif:
             self.save_files(z_tile_stack, channel, cycle_number, experiment_directory, stain_bleach)
 
         '''
+        self.fm_map_z_shifter(experiment_directory, 3, 3)
         self.exp_logbook(experiment_directory, cycle_number)
         start = time.time()
         #self.multi_channel_z_stack_capture_dapi_focus(experiment_directory, cycle_number, stain_bleach,x_pixels=x_frame_size, slice_gap=2, channels=channels)
@@ -3044,11 +3046,11 @@ class cycif:
 
         self.wide_net_auto_focus(experiment_directory, x_frame_size, offset_array,z_slices, focus_position, number_clusters_retained=number_clusters)
         #self.image_cycle_acquire(0, experiment_directory, 3, 'Bleach', offset_array, x_frame_size=x_frame_size,establish_fm_array=0, auto_focus_run=0, auto_expose_run=0, channels=['DAPI'],focus_position=focus_position)
-        #self.recursive_stardist_autofocus(experiment_directory, cycle=0)
-        #self.image_cycle_acquire(0, experiment_directory, 3, 'Bleach', offset_array, x_frame_size=x_frame_size,establish_fm_array=0, auto_focus_run=0, auto_expose_run=0, channels=['DAPI'],focus_position=focus_position)
         self.recursive_stardist_autofocus(experiment_directory, cycle=0)
+        self.image_cycle_acquire(0, experiment_directory, 3, 'Bleach', offset_array, x_frame_size=x_frame_size,establish_fm_array=0, auto_focus_run=0, auto_expose_run=0, channels=['DAPI'],focus_position=focus_position)
+        #self.recursive_stardist_autofocus(experiment_directory, cycle=0)
 
-        self.image_cycle_acquire(0, experiment_directory, z_slices, 'Bleach', offset_array,x_frame_size=x_frame_size, fm_array_adjuster=0, establish_fm_array=0, auto_focus_run=0,auto_expose_run=0, focus_position=focus_position)
+        #self.image_cycle_acquire(0, experiment_directory, z_slices, 'Bleach', offset_array,x_frame_size=x_frame_size, fm_array_adjuster=0, establish_fm_array=0, auto_focus_run=0,auto_expose_run=0, focus_position=focus_position)
         #self.generate_nuc_mask(experiment_directory, cycle_number=0)
         #self.tissue_region_identifier(experiment_directory, clusters_retained=4)
 
