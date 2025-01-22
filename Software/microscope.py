@@ -2599,7 +2599,7 @@ class cycif:
                                 for z in range(0, z_slices):
 
                                     image_slice = zc_dapi_tif_stack[z]
-                                    score = self.focus_score(image_slice, 23, tissue_im)
+                                    score = self.focus_score(image_slice, 17, tissue_im)
                                     scores.append(score)
 
                                 focus_index = self.highest_index(scores)
@@ -2612,6 +2612,7 @@ class cycif:
                                 full_array[4][y][x] += new_fm_z_position
                                 full_array[6][y][x] += new_fm_z_position
                                 full_array[8][y][x] += new_fm_z_position
+                                print('x', x, 'y', y, 'z', z)
 
                                 zc_tif_stack[zc_index][0] = zc_dapi_tif_stack[focus_index]
 
@@ -2629,12 +2630,13 @@ class cycif:
 
                                 z_end = int(numpy_z[y][x]) + slice_gap
                                 z_start = int(z_end - (z_slices) * slice_gap)
-                                print(z_start, z_end, slice_gap)
+
 
 
                                 z_counter = 0
 
                                 for z in range(z_start, z_end, slice_gap):
+                                    print(z)
                                     core.set_position(z)
                                     time.sleep(0.05)
                                     pixels = self.core_capture(experiment_directory,x_pixels, channel, hdr=hdr_value)
@@ -2720,7 +2722,7 @@ class cycif:
                                 scores = []
                                 for z in range(0, z_slices):
                                     image_slice = zc_dapi_tif_stack[z]
-                                    score = self.focus_score(image_slice, 23, tissue_im)
+                                    score = self.focus_score(image_slice, 17, tissue_im)
                                     scores.append(score)
 
                                 focus_index = self.highest_index(scores)
@@ -2733,6 +2735,8 @@ class cycif:
                                 full_array[4][y][x] += new_fm_z_position
                                 full_array[6][y][x] += new_fm_z_position
                                 full_array[8][y][x] += new_fm_z_position
+
+                                print('x', x, 'y', y, 'z', z)
 
                                 zc_tif_stack[zc_index][0] = zc_dapi_tif_stack[focus_index]
 
@@ -2750,11 +2754,12 @@ class cycif:
 
                                 z_end = int(numpy_z[y][x]) + slice_gap
                                 z_start = int(z_end - (z_slices) * slice_gap)
-                                print(z_start, z_end, slice_gap)
+
 
                                 z_counter = 0
 
                                 for z in range(z_start, z_end, slice_gap):
+                                    print(z)
                                     core.set_position(z)
                                     time.sleep(0.05)
                                     pixels = self.core_capture(experiment_directory, x_pixels, channel, hdr=hdr_value)
@@ -2998,34 +3003,27 @@ class cycif:
             highest_index = np.where(scores[region] == highest_value)[0][0]
             print('region', region, 'index', highest_index + 1)
 
-    def wide_net_auto_focus(self, experiment_directory, x_frame_size, offset_array, z_slices, focus_position, number_clusters_retained = 6):
+    def wide_net_auto_focus(self, experiment_directory, x_frame_size, offset_array, z_slice_search_range, focus_position, number_clusters_retained = 6, manual_cluster_update = 0):
 
-        z_wide_range = 5
+        #make parent folder for experiment if it isnt made
+        os.chdir(r'E:')
+        try:
+            os.mkdir(experiment_directory)
+        except:
+            pass
 
-        self.image_cycle_acquire(0, experiment_directory,z_wide_range, 'Bleach', offset_array, x_frame_size=x_frame_size,establish_fm_array=1, auto_focus_run=0, auto_expose_run=0, channels=['DAPI'],focus_position=focus_position)
-        self.generate_nuc_mask(experiment_directory, 0)
-        self.tissue_region_identifier(experiment_directory, x_frame_size = x_frame_size, clusters_retained=number_clusters_retained)
+        if manual_cluster_update == 0:
+            z_wide_range = z_slice_search_range
 
-        #if issue with getting tiles in focus, good to auto focus and acquire more before doing tissue region identifier
-        #comment out tissue_region identifier above
+            self.image_cycle_acquire(0, experiment_directory,z_wide_range, 'Bleach', offset_array, x_frame_size=x_frame_size,establish_fm_array=1, auto_focus_run=0, auto_expose_run=0, channels=['DAPI'],focus_position=focus_position)
+            self.generate_nuc_mask(experiment_directory, 0)
+            self.tissue_region_identifier(experiment_directory, x_frame_size = x_frame_size, clusters_retained=number_clusters_retained)
 
-        #self.recursive_stardist_autofocus(experiment_directory, cycle=0, remake_nuc_binary=0)
-        #self.fm_map_z_shifter(experiment_directory, desired_z_slices_dapi=3, desired_z_slices_other=3)
-        #self.image_cycle_acquire(0, experiment_directory, z_wide_range, 'Bleach', offset_array, x_frame_size=x_frame_size,establish_fm_array=0, auto_focus_run=0, auto_expose_run=0, channels=['DAPI'],focus_position=focus_position)
-        #self.recursive_stardist_autofocus(experiment_directory, cycle=0, remake_nuc_binary=0)
-        #self.image_cycle_acquire(0, experiment_directory, z_wide_range, 'Bleach', offset_array,x_frame_size=x_frame_size, establish_fm_array=0, auto_focus_run=0, auto_expose_run=0,channels=['DAPI'], focus_position=focus_position)
-        #self.tissue_region_identifier(experiment_directory, x_frame_size=x_frame_size,clusters_retained=number_clusters_retained)
-
-        self.recursive_stardist_autofocus(experiment_directory, cycle=0, remake_nuc_binary=0)
-        self.fm_map_z_shifter(experiment_directory, desired_z_slices_dapi=3, desired_z_slices_other=3)
-        self.image_cycle_acquire(0, experiment_directory, z_slices, 'Bleach', offset_array, x_frame_size=x_frame_size,establish_fm_array=0, auto_focus_run=0, auto_expose_run=0, channels=['DAPI'],focus_position=focus_position)
-
-        for repeat in range(0,3):
-            self.recursive_stardist_autofocus(experiment_directory, cycle=0, remake_nuc_binary=0)
-            self.image_cycle_acquire(0, experiment_directory, z_slices, 'Bleach', offset_array, x_frame_size=x_frame_size,establish_fm_array=0, auto_focus_run=0, auto_expose_run=0, channels=['DAPI'],focus_position=focus_position)
+        if manual_cluster_update == 1:
+            self.tissue_region_identifier(experiment_directory, x_frame_size=x_frame_size, clusters_retained=number_clusters_retained)
 
 
-    def initialize(self, experiment_directory, offset_array, z_slices, x_frame_size=2960, focus_position = 'none', number_clusters = 6):
+    def initialize(self, experiment_directory, offset_array, z_slices, x_frame_size=2960, focus_position = 'none'):
         '''initialization section. Takes DAPI images, cluster filters tissue, minimally frames sampling grid, acquires all channels.
 
         :param experiment_directory:
@@ -3044,22 +3042,24 @@ class cycif:
         except:
             pass
 
-        self.wide_net_auto_focus(experiment_directory, x_frame_size, offset_array,z_slices, focus_position, number_clusters_retained=number_clusters)
-        #self.image_cycle_acquire(0, experiment_directory, 3, 'Bleach', offset_array, x_frame_size=x_frame_size,establish_fm_array=0, auto_focus_run=0, auto_expose_run=0, channels=['DAPI'],focus_position=focus_position)
+        self.recursive_stardist_autofocus(experiment_directory, cycle=0, remake_nuc_binary=0)
+        self.fm_map_z_shifter(experiment_directory, desired_z_slices_dapi=3, desired_z_slices_other=3)
+        self.image_cycle_acquire(0, experiment_directory, z_slices, 'Bleach', offset_array, x_frame_size=x_frame_size,establish_fm_array=0, auto_focus_run=0, auto_expose_run=0, channels=['DAPI'],focus_position=focus_position)
+
+        for repeat in range(0,3):
+            self.recursive_stardist_autofocus(experiment_directory, cycle=0, remake_nuc_binary=0)
+            self.image_cycle_acquire(0, experiment_directory, z_slices, 'Bleach', offset_array, x_frame_size=x_frame_size,establish_fm_array=0, auto_focus_run=0, auto_expose_run=0, channels=['DAPI'],focus_position=focus_position)
+
         self.recursive_stardist_autofocus(experiment_directory, cycle=0)
         self.image_cycle_acquire(0, experiment_directory, 3, 'Bleach', offset_array, x_frame_size=x_frame_size,establish_fm_array=0, auto_focus_run=0, auto_expose_run=0, channels=['DAPI'],focus_position=focus_position)
-        #self.recursive_stardist_autofocus(experiment_directory, cycle=0)
+        self.image_cycle_acquire(0, experiment_directory, 3, 'Stain', offset_array, x_frame_size=x_frame_size,establish_fm_array=0, auto_focus_run=0, auto_expose_run=3)
 
-        #self.image_cycle_acquire(0, experiment_directory, z_slices, 'Bleach', offset_array,x_frame_size=x_frame_size, fm_array_adjuster=0, establish_fm_array=0, auto_focus_run=0,auto_expose_run=0, focus_position=focus_position)
-        #self.generate_nuc_mask(experiment_directory, cycle_number=0)
-        #self.tissue_region_identifier(experiment_directory, clusters_retained=4)
-
-    def full_cycle(self, experiment_directory, cycle_number, offset_array, stain_valve, fluidics_object, z_slices, incub_val=45, x_frame_size=2960, focus_position = 'none', number_clusters = 6):
+    def full_cycle(self, experiment_directory, cycle_number, offset_array, stain_valve, fluidics_object, z_slices, incub_val=45, x_frame_size=2960, focus_position = 'none'):
 
         pump = fluidics_object
 
         if cycle_number == 0:
-            self.initialize(experiment_directory, offset_array, z_slices, x_frame_size=x_frame_size, focus_position = focus_position, number_clusters=number_clusters)
+            self.initialize(experiment_directory, offset_array, z_slices, x_frame_size=x_frame_size, focus_position = focus_position)
         else:
 
             # print(status_str)
@@ -4193,10 +4193,10 @@ class cycif:
         print('binary create', end - start)
 
         #determine in focus parts first
-        #self.focus_excel_creation(experiment_directory, cycle_number)
-        #self.in_focus_excel_populate(experiment_directory, cycle_number, x_frame_size=x_frame_size)
+        self.focus_excel_creation(experiment_directory, cycle_number)
+        self.in_focus_excel_populate(experiment_directory, cycle_number, x_frame_size=x_frame_size)
 
-        #self.excel_2_focus(experiment_directory, cycle_number, x_frame_size=x_frame_size)
+        self.excel_2_focus(experiment_directory, cycle_number, x_frame_size=x_frame_size)
         #self.single_fov_file_rename(experiment_directory, cycle_number)
 
         end = time.time()
@@ -4204,20 +4204,20 @@ class cycif:
 
         #flatten image
 
-        #self.illumination_flattening(experiment_directory, cycle_number, single_fov=0)
+        self.illumination_flattening(experiment_directory, cycle_number, single_fov=0)
         #self.bottom_int_correction(experiment_directory, cycle_number=cycle_number)
 
         end = time.time()
         print('flatten', end - start)
 
-        #self.darkframe_sub(experiment_directory, cycle_number)
+        self.darkframe_sub(experiment_directory, cycle_number)
         end = time.time()
         print('dark frame subtraction', end - start)
 
 
         #compress to 16bit
-        #self.stage_placement(experiment_directory, cycle_number, x_pixels=x_frame_size, down_sample_factor=4,single_fov=0)
-        #self.hdr_compression_2(experiment_directory, cycle_number)
+        self.stage_placement(experiment_directory, cycle_number, x_pixels=x_frame_size, down_sample_factor=4,single_fov=0)
+        self.hdr_compression_2(experiment_directory, cycle_number)
 
 
         end = time.time()
@@ -4234,8 +4234,8 @@ class cycif:
         self.stage_placement(experiment_directory, cycle_number, x_pixels = x_frame_size, down_sample_factor=4, single_fov=0)
 
         #if did DAPI focus then acquire one plane, please do the following
-        self.delete_intermediate_folders(experiment_directory, cycle_number)
-        self.zlib_compress_raw(experiment_directory, cycle_number)
+        #self.delete_intermediate_folders(experiment_directory, cycle_number)
+        #self.zlib_compress_raw(experiment_directory, cycle_number)
 
         #end = time.time()
         #print('stage placement', end - start)
