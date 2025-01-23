@@ -2557,6 +2557,7 @@ class cycif:
                                 zc_index = 3
 
                             z_slices = int(full_array[channel_index + 1][0][0])
+                            z_registration = np.ones(z_slices)
                             print(channel, z_slices)
 
                             if channel == 'DAPI':
@@ -2587,6 +2588,7 @@ class cycif:
 
                                 for z in range(z_start, z_end, slice_gap):
                                     core.set_position(z)
+                                    z_registration[z_counter] = z
                                     time.sleep(0.05)
                                     pixels = self.core_capture(experiment_directory, x_pixels, channel, hdr=hdr_value)
                                     zc_dapi_tif_stack[z_counter] = pixels
@@ -2603,15 +2605,13 @@ class cycif:
                                     scores.append(score)
 
                                 focus_index = self.highest_index(scores)
+                                color_z_position = z_registration[focus_index]
                                 z_middle = (z_slices-1)/2 #must be odd
 
                                 center_focus_index_difference = int(focus_index - z_middle)
                                 new_fm_z_position = center_focus_index_difference * slice_gap
                                 # update focus map for all channels
                                 full_array[2][y][x] += new_fm_z_position
-                                full_array[4][y][x] += new_fm_z_position
-                                full_array[6][y][x] += new_fm_z_position
-                                full_array[8][y][x] += new_fm_z_position
                                 print('x', x, 'y', y, 'z', z)
 
                                 zc_tif_stack[zc_index][0] = zc_dapi_tif_stack[focus_index]
@@ -2628,22 +2628,14 @@ class cycif:
                                 core.snap_image()
                                 core.get_tagged_image()
 
-                                z_end = int(numpy_z[y][x]) + slice_gap
-                                z_start = int(z_end - (z_slices) * slice_gap)
 
+                                print(z)
+                                core.set_position(color_z_position)
+                                time.sleep(0.05)
+                                pixels = self.core_capture(experiment_directory,x_pixels, channel, hdr=hdr_value)
+                                zc_tif_stack[zc_index][z_counter] = pixels
 
-
-                                z_counter = 0
-
-                                for z in range(z_start, z_end, slice_gap):
-                                    print(z)
-                                    core.set_position(z)
-                                    time.sleep(0.05)
-                                    pixels = self.core_capture(experiment_directory,x_pixels, channel, hdr=hdr_value)
-                                    zc_tif_stack[zc_index][z_counter] = pixels
-
-                                    image_number_counter += 1
-                                    z_counter += 1
+                                image_number_counter += 1
 
                         # save zc stack
                         self.zc_save(zc_tif_stack, channels, x, y, cycle_number, x_pixels, experiment_directory,
@@ -2682,6 +2674,8 @@ class cycif:
                                 zc_index = 3
 
                             z_slices = int(full_array[channel_index + 1][0][0])
+                            z_registration = np.ones(z_slices)
+                            print(channel, z_slices)
 
                             if channel == 'DAPI':
 
@@ -2711,6 +2705,7 @@ class cycif:
 
                                 for z in range(z_start, z_end, slice_gap):
                                     core.set_position(z)
+                                    z_registration[z_counter] = z
                                     time.sleep(0.05)
                                     pixels = self.core_capture(experiment_directory, x_pixels, channel, hdr=hdr_value)
                                     zc_dapi_tif_stack[z_counter] = pixels
@@ -2726,16 +2721,13 @@ class cycif:
                                     scores.append(score)
 
                                 focus_index = self.highest_index(scores)
+                                color_z_position = z_registration[focus_index]
                                 z_middle = (z_slices - 1) / 2  # must be odd
 
                                 center_focus_index_difference = int(focus_index - z_middle)
                                 new_fm_z_position = center_focus_index_difference * slice_gap
                                 # update focus map for all channels
                                 full_array[2][y][x] += new_fm_z_position
-                                full_array[4][y][x] += new_fm_z_position
-                                full_array[6][y][x] += new_fm_z_position
-                                full_array[8][y][x] += new_fm_z_position
-
                                 print('x', x, 'y', y, 'z', z)
 
                                 zc_tif_stack[zc_index][0] = zc_dapi_tif_stack[focus_index]
@@ -2752,21 +2744,13 @@ class cycif:
                                 core.snap_image()
                                 core.get_tagged_image()
 
-                                z_end = int(numpy_z[y][x]) + slice_gap
-                                z_start = int(z_end - (z_slices) * slice_gap)
+                                print(z)
+                                core.set_position(color_z_position)
+                                time.sleep(0.05)
+                                pixels = self.core_capture(experiment_directory, x_pixels, channel, hdr=hdr_value)
+                                zc_tif_stack[zc_index][z_counter] = pixels
 
-
-                                z_counter = 0
-
-                                for z in range(z_start, z_end, slice_gap):
-                                    print(z)
-                                    core.set_position(z)
-                                    time.sleep(0.05)
-                                    pixels = self.core_capture(experiment_directory, x_pixels, channel, hdr=hdr_value)
-                                    zc_tif_stack[zc_index][z_counter] = pixels
-
-                                    image_number_counter += 1
-                                    z_counter += 1
+                                image_number_counter += 1
 
                         # save zc stack
                         self.zc_save(zc_tif_stack, channels, x, y, cycle_number, x_pixels, experiment_directory,
@@ -2805,11 +2789,11 @@ class cycif:
             self.save_files(z_tile_stack, channel, cycle_number, experiment_directory, stain_bleach)
 
         '''
-        self.fm_map_z_shifter(experiment_directory, 3, 3)
+        #self.fm_map_z_shifter(experiment_directory, 3, 3)
         self.exp_logbook(experiment_directory, cycle_number)
         start = time.time()
-        #self.multi_channel_z_stack_capture_dapi_focus(experiment_directory, cycle_number, stain_bleach,x_pixels=x_frame_size, slice_gap=2, channels=channels)
-        self.multi_channel_z_stack_capture(experiment_directory, cycle_number, stain_bleach,x_pixels=x_frame_size, slice_gap=2, channels=channels)
+        self.multi_channel_z_stack_capture_dapi_focus(experiment_directory, cycle_number, stain_bleach,x_pixels=x_frame_size, slice_gap=2, channels=channels)
+        #self.multi_channel_z_stack_capture(experiment_directory, cycle_number, stain_bleach,x_pixels=x_frame_size, slice_gap=2, channels=channels)
         end = time.time()
         print('acquistion time', end - start)
         # self.marker_excel_file_generation(experiment_directory, cycle_number)
