@@ -30,8 +30,8 @@ import itertools
 import shutil
 
 
-magellan = Magellan()
-core = Core()
+#magellan = Magellan()
+#core = Core()
 
 
 class cycif:

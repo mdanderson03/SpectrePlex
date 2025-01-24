@@ -35,4 +35,7 @@ focus_position = -120 #make sure this is upper left hand corner focus z position
 
 #for cycle in range(0, 1):
 #    microscope.inter_cycle_processing(experiment_directory, cycle_number=cycle, x_frame_size=x_frame_size)
-microscope.image_cycle_acquire(9, experiment_directory, z_slices, 'Stain', offset_array=offset_array, x_frame_size=x_frame_size, fm_array_adjuster=0, establish_fm_array=0, auto_focus_run=0, auto_expose_run=3)
+#microscope.image_cycle_acquire(9, experiment_directory, z_slices, 'Stain', offset_array=offset_array, x_frame_size=x_frame_size, fm_array_adjuster=0, establish_fm_array=0, auto_focus_run=0, auto_expose_run=3)
+
+for cycle in range(1,2):
+    microscope.delete_intermediate_folders(experiment_directory, cycle)
