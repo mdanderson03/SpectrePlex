@@ -4906,7 +4906,7 @@ class cycif:
 
         channels = ['DAPI', 'A488', 'A555', 'A647']
         #types_images = ['Stain', 'Bleach']
-        types_images = ['Stain']
+        types_images = ['Bleach']
 
         for y in range(0, y_tile_count):
             for x in range(0, x_tile_count):
