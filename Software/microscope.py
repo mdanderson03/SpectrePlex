@@ -4922,7 +4922,7 @@ class cycif:
                             raw_im = io.imread(filename)
 
                             #zlib compress and resave image
-                            tifffile.imwrite(filename, raw_im, compression='zlib',compressionargs={'level': 10}, predictor=True)
+                            tf.imwrite(filename, raw_im, compression='zlib',compressionargs={'level': 10}, predictor=True)
 
     def block_proc_min(self, array, block_y_pixels, block_x_pixels):
         '''
