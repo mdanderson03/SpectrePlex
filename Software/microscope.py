@@ -4918,7 +4918,7 @@ class cycif:
 
                             # load in raw image
                             os.chdir(raw_path)
-                            filename = 'x' + str(x) + '_y_' + str(y) + '_c_' + channel + '.tif'
+                            filename = 'z_0_'+'x' + str(x) + '_y_' + str(y) + '_c_' + channel + '.tif'
                             raw_im = io.imread(filename)
 
                             #zlib compress and resave image
