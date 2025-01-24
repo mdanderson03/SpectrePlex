@@ -4905,8 +4905,8 @@ class cycif:
 
 
         channels = ['DAPI', 'A488', 'A555', 'A647']
-        #types_images = ['Stain', 'Bleach']
-        types_images = ['Bleach']
+        types_images = ['Stain', 'Bleach']
+
 
         for y in range(0, y_tile_count):
             for x in range(0, x_tile_count):
@@ -4918,11 +4918,60 @@ class cycif:
 
                             # load in raw image
                             os.chdir(raw_path)
-                            filename = 'z_0_'+'x' + str(x) + '_y_' + str(y) + '_c_' + channel + '.tif'
+                            filename = 'x' + str(x) + '_y_' + str(y) + '_c_' + channel + '.tif'
                             raw_im = io.imread(filename)
 
                             #zlib compress and resave image
                             tf.imwrite(filename, raw_im, compression='zlib',compressionargs={'level': 10}, predictor=True)
+
+    def archive(self, experiment_directory):
+        '''
+        Deletes quick tile folder and zips range of folders that contain data structures, excel sheets and
+        binary/labelled images
+        :param experiment_directory:
+        :return:
+        '''
+
+        #create new archive folder
+
+        os.chdir(experiment_directory)
+        try:
+            os.mkdir('archive')
+        except:
+            pass
+
+        archive_path = experiment_directory + '/archive'
+
+        #move folders into new archive folder
+
+        folder_move_list = ['np_arrays', 'compression', 'exposure_times', 'fluidics data logger', 'Labelled_Nuc', 'Tissue_Binary']
+
+        for folder in folder_move_list:
+            moving_folder_path = experiment_directory + '/'+ folder
+            shutil.move(moving_folder_path, archive_path)
+
+        #zip compress archive
+        os.chdir(experiment_directory)
+        shutil.make_archive('archive', 'zip', '.', 'archive')
+
+        #delete folders
+        folder_to_delete = ['/Quick_Tile', '/archive']
+
+        for folder_name in folder_to_delete:
+            folder_path = experiment_directory + folder_name
+
+            try:
+                shutil.rmtree(folder_path)
+                print(f"Folder '{folder_path}' deleted successfully.")
+            except FileNotFoundError:
+                print(f"Folder '{folder_path}' not found.")
+            except Exception as e:
+                print(f"An error occurred: {e}")
+
+
+
+
+
 
     def block_proc_min(self, array, block_y_pixels, block_x_pixels):
         '''
