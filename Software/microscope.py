@@ -4914,7 +4914,7 @@ class cycif:
                 if tissue_exist[y][x] == 1:
                     for channel in channels:
                         for type in types_images:
-                            raw_path = experiment_directory + channel + r'/' + type + '/cy_' + str(cycle_number) + '\Tiles/focused'
+                            raw_path = experiment_directory + channel + r'/' + type + '/cy_' + str(cycle_number) + '\Tiles'
 
                             # load in raw image
                             os.chdir(raw_path)
