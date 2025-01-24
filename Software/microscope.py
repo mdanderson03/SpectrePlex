@@ -30,8 +30,8 @@ import itertools
 import shutil
 
 
-#magellan = Magellan()
-#core = Core()
+magellan = Magellan()
+core = Core()
 
 
 class cycif:
@@ -2010,7 +2010,8 @@ class cycif:
         numpy_x = full_array[0]
         numpy_y = full_array[1]
 
-        z_center_index = math.floor(full_array[3][0][0]/2)
+        #z_center_index = math.floor(full_array[3][0][0]/2)
+        z_center_index = 0
 
         y_tile_count = numpy_x.shape[0]
         x_tile_count = numpy_y.shape[1]
@@ -2478,7 +2479,7 @@ class cycif:
         return
 
     def multi_channel_z_stack_capture_dapi_focus(self, experiment_directory, cycle_number, Stain_or_Bleach,
-                                      x_pixels=5056, slice_gap=2, channels=['DAPI', 'A488', 'A555', 'A647']):
+                                      offset_array, x_pixels=5056, slice_gap=2, channels=['DAPI', 'A488', 'A555', 'A647']):
         '''
         Captures and saves all images in XY and Z dimensions. Order of operation is ZC XY(snake). Entire z stack with all
         channels is made into a numpy data structure and saved before going to next tile and being reused. This is done
@@ -2629,11 +2630,11 @@ class cycif:
                                 core.get_tagged_image()
 
 
-                                print(z)
-                                core.set_position(color_z_position)
+
+                                core.set_position(color_z_position + offset_array[zc_index])
                                 time.sleep(0.05)
                                 pixels = self.core_capture(experiment_directory,x_pixels, channel, hdr=hdr_value)
-                                zc_tif_stack[zc_index][z_counter] = pixels
+                                zc_tif_stack[zc_index][0] = pixels
 
                                 image_number_counter += 1
 
@@ -2745,10 +2746,10 @@ class cycif:
                                 core.get_tagged_image()
 
                                 print(z)
-                                core.set_position(color_z_position)
+                                core.set_position(color_z_position + offset_array[zc_index])
                                 time.sleep(0.05)
                                 pixels = self.core_capture(experiment_directory, x_pixels, channel, hdr=hdr_value)
-                                zc_tif_stack[zc_index][z_counter] = pixels
+                                zc_tif_stack[zc_index][0] = pixels
 
                                 image_number_counter += 1
 
@@ -2758,6 +2759,11 @@ class cycif:
 
                     if tissue_fm[y][x] == 1:
                         pass
+
+
+        os.chdir(numpy_path)
+        np.save('fm_array.npy', full_array)
+
 
         return
 
@@ -2789,10 +2795,10 @@ class cycif:
             self.save_files(z_tile_stack, channel, cycle_number, experiment_directory, stain_bleach)
 
         '''
-        #self.fm_map_z_shifter(experiment_directory, 3, 3)
+        self.fm_map_z_shifter(experiment_directory, 5, 1)
         self.exp_logbook(experiment_directory, cycle_number)
         start = time.time()
-        self.multi_channel_z_stack_capture_dapi_focus(experiment_directory, cycle_number, stain_bleach,x_pixels=x_frame_size, slice_gap=2, channels=channels)
+        self.multi_channel_z_stack_capture_dapi_focus(experiment_directory, cycle_number, stain_bleach,offset_array= offset_array, x_pixels=x_frame_size, slice_gap=2, channels=channels)
         #self.multi_channel_z_stack_capture(experiment_directory, cycle_number, stain_bleach,x_pixels=x_frame_size, slice_gap=2, channels=channels)
         end = time.time()
         print('acquistion time', end - start)
