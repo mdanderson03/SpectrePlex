@@ -2795,7 +2795,7 @@ class cycif:
             self.save_files(z_tile_stack, channel, cycle_number, experiment_directory, stain_bleach)
 
         '''
-        self.fm_map_z_shifter(experiment_directory, 5, 1)
+        self.fm_map_z_shifter(experiment_directory, z_slices, 1)
         self.exp_logbook(experiment_directory, cycle_number)
         start = time.time()
         self.multi_channel_z_stack_capture_dapi_focus(experiment_directory, cycle_number, stain_bleach,offset_array= offset_array, x_pixels=x_frame_size, slice_gap=2, channels=channels)
@@ -3032,15 +3032,15 @@ class cycif:
         except:
             pass
 
-        self.recursive_stardist_autofocus(experiment_directory, cycle=0, remake_nuc_binary=0)
-        self.fm_map_z_shifter(experiment_directory, desired_z_slices_dapi=3, desired_z_slices_other=3)
+        #self.recursive_stardist_autofocus(experiment_directory, cycle=0, remake_nuc_binary=0)
+        #self.fm_map_z_shifter(experiment_directory, desired_z_slices_dapi=3, desired_z_slices_other=3)
         self.image_cycle_acquire(0, experiment_directory, z_slices, 'Bleach', offset_array, x_frame_size=x_frame_size,establish_fm_array=0, auto_focus_run=0, auto_expose_run=0, channels=['DAPI'],focus_position=focus_position)
 
         for repeat in range(0,3):
-            self.recursive_stardist_autofocus(experiment_directory, cycle=0, remake_nuc_binary=0)
+            #self.recursive_stardist_autofocus(experiment_directory, cycle=0, remake_nuc_binary=0)
             self.image_cycle_acquire(0, experiment_directory, z_slices, 'Bleach', offset_array, x_frame_size=x_frame_size,establish_fm_array=0, auto_focus_run=0, auto_expose_run=0, channels=['DAPI'],focus_position=focus_position)
 
-        self.recursive_stardist_autofocus(experiment_directory, cycle=0)
+        #self.recursive_stardist_autofocus(experiment_directory, cycle=0)
         self.image_cycle_acquire(0, experiment_directory, 3, 'Bleach', offset_array, x_frame_size=x_frame_size,establish_fm_array=0, auto_focus_run=0, auto_expose_run=0, channels=['DAPI'],focus_position=focus_position)
         self.image_cycle_acquire(0, experiment_directory, 3, 'Stain', offset_array, x_frame_size=x_frame_size,establish_fm_array=0, auto_focus_run=0, auto_expose_run=3)
 
@@ -3054,7 +3054,7 @@ class cycif:
 
             # print(status_str)
             print('cycle', cycle_number)
-            pump.liquid_action('Stain', incub_val=incub_val, stain_valve=stain_valve,  microscope_object = self, experiment_directory=experiment_directory)  # nuc is valve=7, pbs valve=8, bleach valve=1 (action, stain_valve, heater state (off = 0, on = 1))
+            pump.liquid_action('Stain', incub_val=incub_val, stain_valve=stain_valve, experiment_directory=experiment_directory)  # nuc is valve=7, pbs valve=8, bleach valve=1 (action, stain_valve, heater state (off = 0, on = 1))
             #self.reacquire_run_autofocus(experiment_directory, cycle_number, z_slices, offset_array, x_frame_size)
             # print(status_str)
             #start low flow to constantly flow fluid while imaging to reduce fluorescence of fluidic over time
@@ -3068,10 +3068,8 @@ class cycif:
             time.sleep(5)
             # print(status_str)
             self.image_cycle_acquire(cycle_number, experiment_directory, z_slices, 'Bleach', offset_array, x_frame_size=x_frame_size, establish_fm_array=0, auto_focus_run=0,auto_expose_run=0)
-            #self.inter_cycle_processing(experiment_directory, cycle_number=cycle_number, x_frame_size=x_frame_size)
             time.sleep(3)
 
-        # self.post_acquisition_processor(experiment_directory, x_frame_size)
 
     def tissue_integrity_cycles(self, experiment_directory, cycle_number, offset_array, stain_valve, fluidics_object, z_slices, incub_val=45, x_frame_size=2960, focus_position = 'none', number_clusters = 6):
 
@@ -4183,18 +4181,18 @@ class cycif:
         print('binary create', end - start)
 
         #determine in focus parts first
-        self.focus_excel_creation(experiment_directory, cycle_number)
-        self.in_focus_excel_populate(experiment_directory, cycle_number, x_frame_size=x_frame_size)
+        #self.focus_excel_creation(experiment_directory, cycle_number)
+        #self.in_focus_excel_populate(experiment_directory, cycle_number, x_frame_size=x_frame_size)
 
-        self.excel_2_focus(experiment_directory, cycle_number, x_frame_size=x_frame_size)
-        #self.single_fov_file_rename(experiment_directory, cycle_number)
+        #self.excel_2_focus(experiment_directory, cycle_number, x_frame_size=x_frame_size)
+        self.single_fov_file_rename(experiment_directory, cycle_number)
 
         end = time.time()
         print('focus', end - start)
 
         #flatten image
 
-        self.illumination_flattening(experiment_directory, cycle_number, single_fov=0)
+        self.illumination_flattening(experiment_directory, cycle_number, single_fov=1)
         #self.bottom_int_correction(experiment_directory, cycle_number=cycle_number)
 
         end = time.time()
@@ -4206,7 +4204,7 @@ class cycif:
 
 
         #compress to 16bit
-        self.stage_placement(experiment_directory, cycle_number, x_pixels=x_frame_size, down_sample_factor=4,single_fov=0)
+        self.stage_placement(experiment_directory, cycle_number, x_pixels=x_frame_size, down_sample_factor=4,single_fov=1)
         self.hdr_compression_2(experiment_directory, cycle_number)
 
 
@@ -4221,11 +4219,11 @@ class cycif:
 
         #generate stage placement
 
-        self.stage_placement(experiment_directory, cycle_number, x_pixels = x_frame_size, down_sample_factor=4, single_fov=0)
+        self.stage_placement(experiment_directory, cycle_number, x_pixels = x_frame_size, down_sample_factor=4, single_fov=1)
 
         #if did DAPI focus then acquire one plane, please do the following
-        #self.delete_intermediate_folders(experiment_directory, cycle_number)
-        #self.zlib_compress_raw(experiment_directory, cycle_number)
+        self.delete_intermediate_folders(experiment_directory, cycle_number)
+        self.zlib_compress_raw(experiment_directory, cycle_number)
 
         #end = time.time()
         #print('stage placement', end - start)
@@ -4876,7 +4874,7 @@ class cycif:
 
         for channel in channels:
             for folder_name in folder_names:
-                folder_path = experiment_directory + channel + r'/Stain/cy_' + str(cycle_number) + '\Tiles' + folder_name
+                folder_path = experiment_directory + '/' + channel + r'/Stain/cy_' + str(cycle_number) + '\Tiles' + folder_name
 
                 try:
                     shutil.rmtree(folder_path)
