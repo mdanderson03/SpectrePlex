@@ -4955,7 +4955,7 @@ class cycif:
         shutil.make_archive('archive', 'zip', '.', 'archive')
 
         #delete folders
-        folder_to_delete = ['/Quick_Tile', '/archive']
+        folder_to_delete = ['/Quick_Tile', '/archive', '/focus_grid_excel']
 
         for folder_name in folder_to_delete:
             folder_path = experiment_directory + folder_name
@@ -4967,11 +4967,6 @@ class cycif:
                 print(f"Folder '{folder_path}' not found.")
             except Exception as e:
                 print(f"An error occurred: {e}")
-
-
-
-
-
 
     def block_proc_min(self, array, block_y_pixels, block_x_pixels):
         '''
