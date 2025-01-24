@@ -4905,7 +4905,8 @@ class cycif:
 
 
         channels = ['DAPI', 'A488', 'A555', 'A647']
-        types_images = ['Stain', 'Bleach']
+        #types_images = ['Stain', 'Bleach']
+        types_images = ['Stain']
 
         for y in range(0, y_tile_count):
             for x in range(0, x_tile_count):
@@ -4913,7 +4914,7 @@ class cycif:
                 if tissue_exist[y][x] == 1:
                     for channel in channels:
                         for type in types_images:
-                            raw_path = experiment_directory + channel + r'/' + type + '/cy_' + str(cycle_number) + '\Tiles'
+                            raw_path = experiment_directory + channel + r'/' + type + '/cy_' + str(cycle_number) + '\Tiles/focused'
 
                             # load in raw image
                             os.chdir(raw_path)
@@ -4921,7 +4922,7 @@ class cycif:
                             raw_im = io.imread(filename)
 
                             #zlib compress and resave image
-                            tifffile.imwrite('compressed_image.tif', image, compression='zlib',compressionargs={'level': 10}, predictor=True)
+                            tifffile.imwrite(filename, raw_im, compression='zlib',compressionargs={'level': 10}, predictor=True)
 
     def block_proc_min(self, array, block_y_pixels, block_x_pixels):
         '''
