@@ -30,8 +30,8 @@ import itertools
 import shutil
 
 
-#magellan = Magellan()
-#core = Core()
+magellan = Magellan()
+core = Core()
 
 
 class cycif:
@@ -2563,12 +2563,13 @@ class cycif:
 
                             if channel == 'DAPI':
 
-                                os.chdir(dapi_bin_path)
-                                tissue_name = 'x' + str(x) + '_y_' + str(y) + '_c_DAPI.tif'
+
                                 try:
+                                    os.chdir(dapi_bin_path)
+                                    tissue_name = 'x' + str(x) + '_y_' + str(y) + '_c_DAPI.tif'
                                     tissue_im = io.imread(tissue_name)
                                 except:
-                                    tissue_im = np.ones(2960, x_pixels)
+                                    tissue_im = np.ones((2960, x_pixels))
 
                                 numpy_z = full_array[channel_index]
                                 exp_time = int(exp_time_array[tif_stack_c_index])
@@ -2680,12 +2681,13 @@ class cycif:
 
                             if channel == 'DAPI':
 
-                                os.chdir(dapi_bin_path)
-                                tissue_name = 'x' + str(x) + '_y_' + str(y) + '_c_DAPI.tif'
+
                                 try:
+                                    os.chdir(dapi_bin_path)
+                                    tissue_name = 'x' + str(x) + '_y_' + str(y) + '_c_DAPI.tif'
                                     tissue_im = io.imread(tissue_name)
                                 except:
-                                    tissue_im = np.ones(2960, x_pixels)
+                                    tissue_im = np.ones((2960, x_pixels))
 
                                 numpy_z = full_array[channel_index]
                                 exp_time = int(exp_time_array[tif_stack_c_index])
@@ -3034,11 +3036,7 @@ class cycif:
 
         #self.recursive_stardist_autofocus(experiment_directory, cycle=0, remake_nuc_binary=0)
         #self.fm_map_z_shifter(experiment_directory, desired_z_slices_dapi=3, desired_z_slices_other=3)
-        self.image_cycle_acquire(0, experiment_directory, z_slices, 'Bleach', offset_array, x_frame_size=x_frame_size,establish_fm_array=0, auto_focus_run=0, auto_expose_run=0, channels=['DAPI'],focus_position=focus_position)
-
-        for repeat in range(0,3):
-            #self.recursive_stardist_autofocus(experiment_directory, cycle=0, remake_nuc_binary=0)
-            self.image_cycle_acquire(0, experiment_directory, z_slices, 'Bleach', offset_array, x_frame_size=x_frame_size,establish_fm_array=0, auto_focus_run=0, auto_expose_run=0, channels=['DAPI'],focus_position=focus_position)
+        #self.image_cycle_acquire(0, experiment_directory, z_slices, 'Bleach', offset_array, x_frame_size=x_frame_size,establish_fm_array=0, auto_focus_run=0, auto_expose_run=0, channels=['DAPI'],focus_position=focus_position)
 
         #self.recursive_stardist_autofocus(experiment_directory, cycle=0)
         self.image_cycle_acquire(0, experiment_directory, 3, 'Bleach', offset_array, x_frame_size=x_frame_size,establish_fm_array=0, auto_focus_run=0, auto_expose_run=0, channels=['DAPI'],focus_position=focus_position)
@@ -4146,12 +4144,14 @@ class cycif:
                         im = io.imread(file_name)
                         io.imsave(new_file_name, im)
 
+                        '''
                         stain_directory = directory_start + channel + '\Bleach\cy_' + str(cycle_number) + r'\Tiles'
                         os.chdir(stain_directory)
                         file_name = 'z_0_x' + str(x) + '_y_' + str(y) + '_c_' + channel + '.tif'
                         new_file_name = 'x' + str(x) + '_y_' + str(y) + '_c_' + channel + '.tif'
                         im = io.imread(file_name)
                         io.imsave(new_file_name, im)
+                        '''
                 else:
                     pass
 
@@ -4170,6 +4170,7 @@ class cycif:
 
 
         start = time.time()
+
 
 
         #make tissue exist array if needed
@@ -4221,9 +4222,10 @@ class cycif:
 
         self.stage_placement(experiment_directory, cycle_number, x_pixels = x_frame_size, down_sample_factor=4, single_fov=1)
 
+
         #if did DAPI focus then acquire one plane, please do the following
         self.delete_intermediate_folders(experiment_directory, cycle_number)
-        self.zlib_compress_raw(experiment_directory, cycle_number)
+        #self.zlib_compress_raw(experiment_directory, cycle_number)
 
         #end = time.time()
         #print('stage placement', end - start)
@@ -4905,7 +4907,7 @@ class cycif:
 
 
         channels = ['DAPI', 'A488', 'A555', 'A647']
-        types_images = ['Stain', 'Bleach']
+        types_images = ['Stain']
 
 
         for y in range(0, y_tile_count):

@@ -177,8 +177,8 @@ class fluidics:
                 self.ob1_reboot()
 
             if set_target == self.flow_off:
-                time.sleep(2)
-                print('turning off ob1')
+                time.sleep(0.4)
+                #print('turning off ob1')
                 # self.flow_control = 0
 
                 # set_channel = int(1)
@@ -187,7 +187,7 @@ class fluidics:
                 # self.fluidics_logger(str(PID_Set_Running_Remote), error, 0)
 
                 # run = 1 # restart flow function
-                self.ob1_reboot()
+                #self.ob1_reboot()
                 #fluid_array[2] = 1
 
         else:

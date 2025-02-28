@@ -113,7 +113,11 @@ class fluidics:
         '''
 
         desired_valve = valve_number
-        adjacent_valve = desired_valve - 1
+
+        if valve_number == 1:
+            adjacent_valve = desired_valve + 1
+        else:
+            adjacent_valve = desired_valve - 1
 
         self.valve_move(adjacent_valve)
         self.valve_move(desired_valve)
@@ -244,8 +248,7 @@ class fluidics:
         Instr_ID = c_int32()
         error = OB1_Initialization(ob1_path.encode('ascii'), 0, 0, 0, 0, byref(Instr_ID))
         self.fluidics_logger(str(OB1_Initialization), error, 0)
-        error = OB1_Add_Sens(Instr_ID, 1, 5, 1, 0, 7,
-                     0)  # 16bit working range between 0-1000uL/min, also what are CustomSens_Voltage_5_to_25 and can I really choose any digital range?
+        error = OB1_Add_Sens(Instr_ID, 1, 5, 1, 0, 7,0)  # 16bit working range between 0-1000uL/min, also what are CustomSens_Voltage_5_to_25 and can I really choose any digital range?
         self.fluidics_logger(str(OB1_Add_Sens), error, 0)
 
         Calib_path = r'C:\Users\CyCIF PC\Documents\GitHub\AutoCIF\Python_64_elveflow\calibration\1_12_24_cal.txt'

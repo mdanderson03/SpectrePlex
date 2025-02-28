@@ -15,7 +15,7 @@ from Elveflow64 import *
 
 
 #
-# Initialization of OB1 ( ! ! ! REMEMBER TO USE .encode('ascii') ! ! ! )
+# Initialization of OB1 ( ! ! ! REMEMBER TO USE .encode('ascii') ! ! ! )new
 #
 Instr_ID=c_int32()
 print("Instrument name and regulator types are hardcoded in the Python script")
@@ -48,7 +48,7 @@ repeat=True
 while repeat==True:
     answer=input('select calibration type (default, load, new ) : ')
     #answer='default'#test purpose only
-    Calib_path=r'C:\\Users\\Public\\Desktop\\Calibration\\Calib.txt'
+    Calib_path=r'C:\Users\CyCIF PC\Documents\GitHub\AutoCIF\Python_64_elveflow\\Calib.txt'
     if answer=='default':
         error=Elveflow_Calibration_Default (byref(Calib),1000)
         #for i in range (0,1000):
