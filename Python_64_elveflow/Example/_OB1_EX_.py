@@ -20,7 +20,7 @@ from Elveflow64 import *
 Instr_ID=c_int32()
 print("Instrument name and regulator types are hardcoded in the Python script")
 #see User Guide to determine regulator types and NIMAX to determine the instrument name 
-error=OB1_Initialization('COM10'.encode('ascii'),0,0,0,0,byref(Instr_ID))
+error=OB1_Initialization('COM7'.encode('ascii'),0,0,0,0,byref(Instr_ID))
 #all functions will return error codes to help you to debug your code, for further information refer to User Guide
 print('error:%d' % error)
 print("OB1 ID: %d" % Instr_ID.value)

@@ -1810,11 +1810,11 @@ class cycif:
                 io.imsave(filename, tile_image)
                 io.imsave(label_filename, tile_label_image)
 
-        super_image = skimage.util.img_as_uint(super_image)
-        new_image = skimage.util.img_as_uint(new_image)
+        #super_image = skimage.util.img_as_uint(super_image)
+        #new_image = skimage.util.img_as_uint(new_image)
 
-        io.imsave('whole_tissue.tif', super_image)
-        io.imsave('whole_tissue_filtered.tif', new_image)
+        #io.imsave('whole_tissue.tif', super_image)
+        #io.imsave('whole_tissue_filtered.tif', new_image)
 
     def tissue_binary_generate(self, experiment_directory, x_frame_size = 2960, clusters_retained = 1, area_threshold = 0.25):
         '''
@@ -2583,6 +2583,7 @@ class cycif:
 
                                 z_end = int(numpy_z[y][x]) + slice_gap
                                 z_start = int(z_end - (z_slices) * slice_gap)
+                                print(z_start, z_end)
 
                                 z_counter = 0
 

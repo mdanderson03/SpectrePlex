@@ -39,7 +39,7 @@ class fluidics:
             set_channel_regulator = c_int32(set_channel_regulator)  # convert to c_int32
             set_channel_sensor = int(1)
             set_channel_sensor = c_int32(set_channel_sensor)  # convert to c_int32
-            PID_Add_Remote(Instr_ID.value, set_channel_regulator, Instr_ID.value, set_channel_sensor, 0.9/22.5, 0.004/.03846, 1)
+            PID_Add_Remote(Instr_ID.value, set_channel_regulator, Instr_ID.value, set_channel_sensor, 0.9/22.5, 0.0015/.03846, 1)
             #PID_Add_Remote(Instr_ID.value, set_channel_regulator, Instr_ID.value, set_channel_sensor, 0.035, 0.00000000003, 1)
         else:
             pass
@@ -139,7 +139,7 @@ class fluidics:
         error = OB1_Set_Remote_Target(self.pump_ID, set_channel, set_target_c_types)
         self.fluidics_logger(str(OB1_Set_Remote_Target), error, set_target)
 
-        time.sleep(3)  # wait 3 seconds to stabilize
+        time.sleep(4)  # wait 3 seconds to stabilize
         error = OB1_Get_Remote_Data(self.pump_ID, set_channel, byref(data_reg), byref(data_sens))
 
         if self.flow_control == 1:
@@ -177,8 +177,8 @@ class fluidics:
                 self.ob1_reboot()
 
             if set_target == self.flow_off:
-                time.sleep(0.4)
-                #print('turning off ob1')
+                #time.sleep(0.4)
+                print('turning off ob1')
                 # self.flow_control = 0
 
                 # set_channel = int(1)
@@ -187,7 +187,7 @@ class fluidics:
                 # self.fluidics_logger(str(PID_Set_Running_Remote), error, 0)
 
                 # run = 1 # restart flow function
-                #self.ob1_reboot()
+                self.ob1_reboot()
                 #fluid_array[2] = 1
 
         else:
@@ -230,9 +230,9 @@ class fluidics:
         power_strip = SmartPowerStrip('10.3.141.157')
         time.sleep(1)
         power_strip.toggle_plug('off', plug_num=4)
-        time.sleep(7)
+        time.sleep(3)
         power_strip.toggle_plug('on', plug_num=4)  # turns off socket named 'Socket1'
-        time.sleep(8)
+        time.sleep(3)
 
     def ob1_end(self):
 
