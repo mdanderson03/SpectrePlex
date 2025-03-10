@@ -28,6 +28,7 @@ from joblib import Parallel, delayed
 import multiprocessing
 import itertools
 import shutil
+import tracemalloc
 
 
 magellan = Magellan()
@@ -38,6 +39,7 @@ class cycif:
 
     def __init__(self):
 
+        tracemalloc.start()
         self.hdr_exp_times = np.array([])
         self.hdr = 0
         return
@@ -45,6 +47,13 @@ class cycif:
     ####################################################################
     ############ focus scoring
     ####################################################################
+
+    def numpy_size(self):
+        snapshot = tracemalloc.take_snapshot()
+        top_stats = snapshot.statistics('lineno')
+        print("[ Top ]")
+        for stat in top_stats[:1]:
+            print(stat)
 
     def focus_score(self, image, derivative_jump, labels):
         '''
@@ -2641,8 +2650,8 @@ class cycif:
                                 image_number_counter += 1
 
                         # save zc stack
-                        self.zc_save(zc_tif_stack, channels, x, y, cycle_number, x_pixels, experiment_directory,
-                                         Stain_or_Bleach)
+                        self.zc_save(zc_tif_stack, channels, x, y, cycle_number, x_pixels, experiment_directory,Stain_or_Bleach)
+
 
                     if tissue_fm[y][x] == 1:
                         pass
@@ -2766,6 +2775,10 @@ class cycif:
 
         os.chdir(numpy_path)
         np.save('fm_array.npy', full_array)
+
+        self.numpy_size()
+        #del zc_tif_stack
+        #del zc_dapi_tif_stack
 
 
         return
