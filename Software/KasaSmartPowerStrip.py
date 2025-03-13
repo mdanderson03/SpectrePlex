@@ -5,7 +5,7 @@ from builtins import bytes
 
 class SmartPowerStrip(object):
 
-    def __init__(self, ip, device_id=None, timeout=40.0, protocol='tcp'):
+    def __init__(self, ip, device_id=None, timeout=4.0, protocol='tcp'):
         self.ip = ip
         self.port = 9999
         self.protocol = protocol

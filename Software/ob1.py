@@ -225,14 +225,47 @@ class fluidics:
         else:
             pass
 
+    '''
     def ob1_reboot(self):
 
         power_strip = SmartPowerStrip('10.3.141.157')
         time.sleep(1)
-        power_strip.toggle_plug('off', plug_num=4)
+        try:
+            power_strip.toggle_plug('off', plug_num=4)
+        except:
+            power_strip.toggle_plug('off', plug_num=4)
         time.sleep(3)
-        power_strip.toggle_plug('on', plug_num=4)  # turns off socket named 'Socket1'
+        try:
+            power_strip.toggle_plug('on', plug_num=4)  # turns off socket named 'Socket1'
+        except:
+            power_strip.toggle_plug('on', plug_num=4)  # turns off socket named 'Socket1'
         time.sleep(3)
+    '''
+
+    def ob1_reboot(self):
+
+        self.ob1_off(nretry=0)
+        self.ob1_on(nretry=0)
+
+    def ob1_on(self, retry_limit=10, nretry=0):
+
+        if nretry <= retry_limit:
+            try:
+                power_strip = SmartPowerStrip('10.3.141.157')
+                time.sleep(1)
+                power_strip.toggle_plug('on', plug_num=4)
+            except:
+                return self.ob1_on(nretry=nretry + 1)
+
+    def ob1_off(self, retry_limit=10, nretry=0):
+
+        if nretry <= retry_limit:
+            try:
+                power_strip = SmartPowerStrip('10.3.141.157')
+                #time.sleep(0.5)
+                power_strip.toggle_plug('off', plug_num=4)
+            except:
+                return self.ob1_off(nretry=nretry + 1)
 
     def ob1_end(self):
 

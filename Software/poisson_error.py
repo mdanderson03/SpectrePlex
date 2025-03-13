@@ -13,9 +13,9 @@ from pylab import xticks
 
 
 
-folder = r'D:\Images\poisson_noise\dapi_25_same_frame_200ms_1'
+folder = r'E:\poisson_noise_images'
 os.chdir(folder)
-images_name = 'dapi_25_same_frame_200ms_1_MMStack_Pos0.ome.tif'
+images_name = 'DAPI_25_exposure_200.tif'
 images = io.imread(images_name)
 
 min_exp = images[0]
@@ -165,7 +165,7 @@ gap = 500
 
 #plt.hist(percent_differences, bins=100, color='skyblue', edgecolor='black')
 #plt.show()
-std_dev, intensities = poisson_error_vs_intensity_curve(images, 8, 1000, 35000, 9, 10)
+std_dev, intensities = poisson_error_vs_intensity_curve(images, 0, 1000, 35000, 1, 2)
 
 plt.scatter( intensities, std_dev)
 plt.show()

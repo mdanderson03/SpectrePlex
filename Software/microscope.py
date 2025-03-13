@@ -34,12 +34,13 @@ import tracemalloc
 magellan = Magellan()
 core = Core()
 
+tracemalloc.start()
+
 
 class cycif:
 
     def __init__(self):
 
-        tracemalloc.start()
         self.hdr_exp_times = np.array([])
         self.hdr = 0
         return
@@ -49,11 +50,14 @@ class cycif:
     ####################################################################
 
     def numpy_size(self):
+        pass
+        '''
         snapshot = tracemalloc.take_snapshot()
         top_stats = snapshot.statistics('lineno')
         print("[ Top ]")
-        for stat in top_stats[:1]:
+        for stat in top_stats[:10]:
             print(stat)
+        '''
 
     def focus_score(self, image, derivative_jump, labels):
         '''
@@ -2568,7 +2572,7 @@ class cycif:
 
                             z_slices = int(full_array[channel_index + 1][0][0])
                             z_registration = np.ones(z_slices)
-                            print(channel, z_slices)
+                            #print(channel, z_slices)
 
                             if channel == 'DAPI':
 
@@ -2687,7 +2691,7 @@ class cycif:
 
                             z_slices = int(full_array[channel_index + 1][0][0])
                             z_registration = np.ones(z_slices)
-                            print(channel, z_slices)
+                            #print(channel, z_slices)
 
                             if channel == 'DAPI':
 
@@ -2766,6 +2770,7 @@ class cycif:
                                 image_number_counter += 1
 
                         # save zc stack
+                        self.numpy_size()
                         self.zc_save(zc_tif_stack, channels, x, y, cycle_number, x_pixels, experiment_directory,
                                      Stain_or_Bleach)
 
@@ -2776,7 +2781,7 @@ class cycif:
         os.chdir(numpy_path)
         np.save('fm_array.npy', full_array)
 
-        self.numpy_size()
+
         #del zc_tif_stack
         #del zc_dapi_tif_stack
 
@@ -3129,6 +3134,29 @@ class cycif:
 
 
         # self.post_acquisition_processor(experiment_directory, x_frame_size)
+
+    def repeated_image_acquistion(self, saving_directory, number_images, channel, exposure_time):
+
+        filename = channel + '_' + str(number_images) + '_' + 'exposure_' + str(exposure_time) + '.tif'
+
+        try:
+            os.mkdir(saving_directory)
+            os.chdir(saving_directory)
+        except:
+            os.chdir(saving_directory)
+
+        image_stack = np.zeros((number_images, 2960, 2960))
+
+        core.set_config("Color", channel)
+        core.set_exposure(exposure_time)
+
+        for x in range(0, number_images):
+            im = self.core_capture(saving_directory, 2960, channel, hdr=0)
+            image_stack[x] = im
+            time.sleep(0.3)
+
+        os.chdir(saving_directory)
+        io.imsave(filename, image_stack)
 
 
     ######Folder System Generation########################################################
