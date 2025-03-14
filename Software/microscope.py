@@ -4213,8 +4213,8 @@ class cycif:
 
 
         start = time.time()
-        '''
 
+        '''
 
 
 
@@ -4236,6 +4236,7 @@ class cycif:
 
         end = time.time()
         print('focus', end - start)
+        '''
 
         #flatten image
 
@@ -4244,9 +4245,9 @@ class cycif:
 
         end = time.time()
         print('flatten', end - start)
-        '''
+        
 
-        self.darkframe_sub(experiment_directory, cycle_number)
+        self.darkframe_AF_sub(experiment_directory, cycle_number)
         end = time.time()
         print('dark frame subtraction', end - start)
 
@@ -4762,6 +4763,74 @@ class cycif:
                         filename = 'x' + str(x) + '_y_' + str(y) + '_c_' + channel + '.tif'
                         color_im = io.imread(filename)
 
+
+                        darkframe_im = self.dark_frame_generate(color_im, block_y_pixels, block_x_pixels)
+                        darkframe_subbed_im = color_im - darkframe_im
+                        darkframe_subbed_im[darkframe_subbed_im < 0] = 0
+
+                        try:
+                            os.mkdir(darkframe_color_path)
+                            os.chdir(darkframe_color_path)
+                        except:
+                            os.chdir(darkframe_color_path)
+
+                        io.imsave(filename, darkframe_subbed_im)
+
+                else:
+                    pass
+
+    def darkframe_AF_sub(self, experiment_directory, cycle_number):
+        '''
+
+
+        :param experimental_directory:
+        :param cycle_number:
+        :return:
+        '''
+
+        experiment_directory = experiment_directory + '/'
+
+
+        numpy_path = experiment_directory + '/' + 'np_arrays'
+        os.chdir(numpy_path)
+        file_name = 'fm_array.npy'
+        fm_array = np.load(file_name, allow_pickle=False)
+        tissue_exist = np.load('tissue_exist.npy', allow_pickle=False)
+
+
+        y_tile_count = np.shape(fm_array[0])[0]
+        x_tile_count = np.shape(fm_array[0])[1]
+
+        block_y_pixels = 75
+        block_x_pixels = 75
+
+        channels = ['DAPI', 'A488', 'A555', 'A647']
+
+        for y in range(0, y_tile_count):
+            for x in range(0, x_tile_count):
+
+                if tissue_exist[y][x] == 1:
+                    for channel in channels:
+                        stain_color_path = experiment_directory + channel + r'/Stain/cy_' + str(cycle_number) + '\Tiles/focused_basic_corrected'
+                        #stain_color_path = experiment_directory + channel + r'/Stain/cy_' + str(cycle_number) + '\Tiles/focused'
+                        darkframe_color_path = experiment_directory + channel + r'/Stain/cy_' + str(cycle_number) + '\Tiles/focused_basic_darkframe'
+
+                        os.chdir(stain_color_path)
+                        filename = 'x' + str(x) + '_y_' + str(y) + '_c_' + channel + '.tif'
+                        color_im = io.imread(filename)
+
+                        if channel != 'DAPI':
+                            ff_image = io.imread('flatfield.tif')
+                            bleached_path = experiment_directory + channel + r'/Bleach/cy_' + str(cycle_number - 1) + '\Tiles'
+                            os.chdir(bleached_path)
+                            #load in iamge and remove offset
+                            bleach_im = io.imread(filename) - 300
+                            #scale intensity from 77.4ms exp to 727.4ms
+                            scaled_bleach_im = bleach_im * 9.44
+                            #apply FF correct to bleach image
+                            flattened_scaled_bleach_im = scaled_bleach_im/ff_image
+                            #subtracted modified bleach image
+                            color_im = color_im - flattened_scaled_bleach_im
 
                         darkframe_im = self.dark_frame_generate(color_im, block_y_pixels, block_x_pixels)
                         darkframe_subbed_im = color_im - darkframe_im
