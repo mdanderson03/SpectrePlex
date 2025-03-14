@@ -264,6 +264,7 @@ class fluidics:
                 power_strip = SmartPowerStrip('10.3.141.157')
                 #time.sleep(0.5)
                 power_strip.toggle_plug('off', plug_num=4)
+                time.sleep(1)
             except:
                 return self.ob1_off(nretry=nretry + 1)
 

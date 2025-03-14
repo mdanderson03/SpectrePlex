@@ -230,6 +230,7 @@ class fluidics:
 
     def flow_checker(self):
 
+        self.file_run('raspberry_wifi_connect.py')
         self.file_run('flow_check.py')
 
     def ob1_end(self):
@@ -278,38 +279,19 @@ class fluidics:
 
     def file_run(self, file_name):
 
-
-        # load in data structures
-        numpy_path = self.experiment_directory + '/' + 'np_arrays'
-        os.chdir(numpy_path)
-        np_file_name = 'fluid_info_array.npy'
-        fluid_array = np.load(np_file_name, allow_pickle=False)
-
-
-        #set initial value to 0 which indicates that no failure has happened
-        fluid_array[2] = 0
-        np.save(np_file_name, fluid_array)
-
-        # set value to 0 indicating that the file has not been run yet
-        fluid_array[1] = 0
-        np.save(np_file_name, fluid_array)
-
-        #run fluidics function
-        os.chdir(r'C:\Users\CyCIF PC\Documents\GitHub\AutoCIF\Software')
-        call(["python", file_name, self.experiment_directory])
-
-        time.sleep(10)
-
-        # load in data structures
-        os.chdir(numpy_path)
-        fluid_array = np.load(np_file_name, allow_pickle=False)
-        rerun = fluid_array[2]
-        file_run = fluid_array[1]
-
-        while rerun == 1 or file_run == 0:
-
-            # set initial value to 0 which indicates that no failure has happened
+        if file_name == 'raspberry_wifi_connect.py':
+            # run wifi connect file
+            os.chdir(r'C:\Users\CyCIF PC\Documents\GitHub\AutoCIF\Software')
+            call(["python", file_name])
+        else:
+            # load in data structures
+            numpy_path = self.experiment_directory + '/' + 'np_arrays'
             os.chdir(numpy_path)
+            np_file_name = 'fluid_info_array.npy'
+            fluid_array = np.load(np_file_name, allow_pickle=False)
+
+
+            #set initial value to 0 which indicates that no failure has happened
             fluid_array[2] = 0
             np.save(np_file_name, fluid_array)
 
@@ -317,15 +299,38 @@ class fluidics:
             fluid_array[1] = 0
             np.save(np_file_name, fluid_array)
 
+            #run fluidics function
             os.chdir(r'C:\Users\CyCIF PC\Documents\GitHub\AutoCIF\Software')
             call(["python", file_name, self.experiment_directory])
+
+            time.sleep(10)
 
             # load in data structures
             os.chdir(numpy_path)
             fluid_array = np.load(np_file_name, allow_pickle=False)
             rerun = fluid_array[2]
             file_run = fluid_array[1]
-            print('rerun', rerun)
+
+            while rerun == 1 or file_run == 0:
+
+                # set initial value to 0 which indicates that no failure has happened
+                os.chdir(numpy_path)
+                fluid_array[2] = 0
+                np.save(np_file_name, fluid_array)
+
+                # set value to 0 indicating that the file has not been run yet
+                fluid_array[1] = 0
+                np.save(np_file_name, fluid_array)
+
+                os.chdir(r'C:\Users\CyCIF PC\Documents\GitHub\AutoCIF\Software')
+                call(["python", file_name, self.experiment_directory])
+
+                # load in data structures
+                os.chdir(numpy_path)
+                fluid_array = np.load(np_file_name, allow_pickle=False)
+                rerun = fluid_array[2]
+                file_run = fluid_array[1]
+                print('rerun', rerun)
 
     def liquid_action(self, action_type, stain_valve=0, incub_val=45, heater_state=0, microscope_object = 0, experiment_directory = 0, cycle = 0):
 
@@ -340,6 +345,8 @@ class fluidics:
         nuc_valve = 4
         nuc_flow_time = 45  # seconds
         nuc_inc_time = 3  # minutes
+
+        self.file_run('raspberry_wifi_connect.py')
 
         flow_rate = "ON"
         flow_rate_stop = 'OFF'
@@ -365,6 +372,9 @@ class fluidics:
                 time.sleep(60)
 
             self.valve_select(pbs_valve)
+
+            self.file_run('raspberry_wifi_connect.py')
+
             time.sleep(2)
             self.flow_checker()
             self.file_run('wash.py')
@@ -397,6 +407,9 @@ class fluidics:
             #do double wash as unspecifically bound antibodies come off over time in single wash
 
             self.valve_select(pbs_valve)
+
+            self.file_run('raspberry_wifi_connect.py')
+
             self.flow_checker()
             self.file_run('wash.py')
 

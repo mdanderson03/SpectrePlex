@@ -31,8 +31,8 @@ import shutil
 import tracemalloc
 
 
-magellan = Magellan()
-core = Core()
+#magellan = Magellan()
+#core = Core()
 
 tracemalloc.start()
 
@@ -58,6 +58,7 @@ class cycif:
         for stat in top_stats[:10]:
             print(stat)
         '''
+
 
     def focus_score(self, image, derivative_jump, labels):
         '''
@@ -3075,9 +3076,9 @@ class cycif:
             #self.reacquire_run_autofocus(experiment_directory, cycle_number, z_slices, offset_array, x_frame_size)
             # print(status_str)
             #start low flow to constantly flow fluid while imaging to reduce fluorescence of fluidic over time
-            pump.liquid_action('low flow on')
+            #pump.liquid_action('low flow on')
             self.image_cycle_acquire(cycle_number, experiment_directory, z_slices, 'Stain', offset_array,x_frame_size=x_frame_size, establish_fm_array=0, auto_focus_run=0,auto_expose_run=3)
-            pump.liquid_action('flow off')
+            #pump.liquid_action('flow off')
             time.sleep(5)
 
             # print(status_str)
@@ -4212,11 +4213,14 @@ class cycif:
 
 
         start = time.time()
+        '''
+
 
 
 
         #make tissue exist array if needed
         if cycle_number == 1:
+            self.numpy_size()
             self.tissue_exist_array_generate(experiment_directory, x_frame_size=x_frame_size)
         else:
             pass
@@ -4240,10 +4244,12 @@ class cycif:
 
         end = time.time()
         print('flatten', end - start)
+        '''
 
         self.darkframe_sub(experiment_directory, cycle_number)
         end = time.time()
         print('dark frame subtraction', end - start)
+
 
 
         #compress to 16bit
