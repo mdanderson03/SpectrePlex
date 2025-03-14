@@ -4245,7 +4245,7 @@ class cycif:
 
         end = time.time()
         print('flatten', end - start)
-        
+
 
         self.darkframe_AF_sub(experiment_directory, cycle_number)
         end = time.time()
@@ -4824,6 +4824,7 @@ class cycif:
                             bleached_path = experiment_directory + channel + r'/Bleach/cy_' + str(cycle_number - 1) + '\Tiles'
                             os.chdir(bleached_path)
                             #load in iamge and remove offset
+                            bleach_filename = 'z_0_' + 'x' + str(x) + '_y_' + str(y) + '_c_' + channel + '.tif'
                             bleach_im = io.imread(filename) - 300
                             #scale intensity from 77.4ms exp to 727.4ms
                             scaled_bleach_im = bleach_im * 9.44
