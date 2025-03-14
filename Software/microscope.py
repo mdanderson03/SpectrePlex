@@ -4236,7 +4236,7 @@ class cycif:
 
         end = time.time()
         print('focus', end - start)
-        '''
+        
 
         #flatten image
 
@@ -4245,6 +4245,7 @@ class cycif:
 
         end = time.time()
         print('flatten', end - start)
+        '''
 
 
         self.darkframe_AF_sub(experiment_directory, cycle_number)
