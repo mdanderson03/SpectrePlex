@@ -4826,7 +4826,7 @@ class cycif:
                             os.chdir(bleached_path)
                             #load in iamge and remove offset
                             bleach_filename = 'z_0_' + 'x' + str(x) + '_y_' + str(y) + '_c_' + channel + '.tif'
-                            bleach_im = io.imread(filename) - 300
+                            bleach_im = io.imread(bleach_filename) - 300
                             #scale intensity from 77.4ms exp to 727.4ms
                             scaled_bleach_im = bleach_im * 9.44
                             #apply FF correct to bleach image
