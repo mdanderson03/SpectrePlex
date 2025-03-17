@@ -4236,6 +4236,7 @@ class cycif:
 
         end = time.time()
         print('focus', end - start)
+        '''
         
 
         #flatten image
@@ -4245,7 +4246,7 @@ class cycif:
 
         end = time.time()
         print('flatten', end - start)
-        '''
+
 
 
         self.darkframe_AF_sub(experiment_directory, cycle_number)
@@ -4828,15 +4829,32 @@ class cycif:
                             bleach_filename = 'z_0_' + 'x' + str(x) + '_y_' + str(y) + '_c_' + channel + '.tif'
                             bleach_im = io.imread(bleach_filename) - 300
                             #scale intensity from 77.4ms exp to 727.4ms
-                            scaled_bleach_im = bleach_im * 9.44
+                            scaled_bleach_im = bleach_im * 8.5
                             #apply FF correct to bleach image
                             flattened_scaled_bleach_im = scaled_bleach_im/ff_image
                             #subtracted modified bleach image
-                            color_im = color_im - flattened_scaled_bleach_im
+                            #color_im = color_im - flattened_scaled_bleach_im
 
-                        darkframe_im = self.dark_frame_generate(color_im, block_y_pixels, block_x_pixels)
-                        darkframe_subbed_im = color_im - darkframe_im
-                        darkframe_subbed_im[darkframe_subbed_im < 0] = 0
+                            bleach_df_im = self.dark_frame_generate(flattened_scaled_bleach_im, block_y_pixels,block_x_pixels)
+                            darkframe_subbed_bleach_im = flattened_scaled_bleach_im - bleach_df_im
+                            # darkframe_subbed_im = color_im
+                            darkframe_subbed_bleach_im[darkframe_subbed_bleach_im < 0] = 0
+
+                            darkframe_im = self.dark_frame_generate(color_im, block_y_pixels, block_x_pixels)
+                            darkframe_subbed_im = color_im - darkframe_im
+                            # darkframe_subbed_im = color_im
+                            darkframe_subbed_im[darkframe_subbed_im < 0] = 0
+
+                            final_im = darkframe_subbed_im - darkframe_subbed_bleach_im
+                            final_im[final_im < 0] = 0
+
+                        else:
+                            darkframe_im = self.dark_frame_generate(color_im, block_y_pixels, block_x_pixels)
+                            darkframe_subbed_im = color_im - darkframe_im
+                            #darkframe_subbed_im = color_im
+                            darkframe_subbed_im[darkframe_subbed_im < 0] = 0
+                            final_im = darkframe_subbed_im
+
 
                         try:
                             os.mkdir(darkframe_color_path)
@@ -4844,7 +4862,7 @@ class cycif:
                         except:
                             os.chdir(darkframe_color_path)
 
-                        io.imsave(filename, darkframe_subbed_im)
+                        io.imsave(filename, final_im)
 
                 else:
                     pass
