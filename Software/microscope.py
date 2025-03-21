@@ -31,8 +31,8 @@ import shutil
 import tracemalloc
 
 
-#magellan = Magellan()
-#core = Core()
+magellan = Magellan()
+core = Core()
 
 tracemalloc.start()
 
@@ -3059,7 +3059,7 @@ class cycif:
         #self.image_cycle_acquire(0, experiment_directory, z_slices, 'Bleach', offset_array, x_frame_size=x_frame_size,establish_fm_array=0, auto_focus_run=0, auto_expose_run=0, channels=['DAPI'],focus_position=focus_position)
 
         #self.recursive_stardist_autofocus(experiment_directory, cycle=0)
-        self.image_cycle_acquire(0, experiment_directory, 3, 'Bleach', offset_array, x_frame_size=x_frame_size,establish_fm_array=0, auto_focus_run=0, auto_expose_run=0, channels=['DAPI'],focus_position=focus_position)
+        #self.image_cycle_acquire(0, experiment_directory, 3, 'Bleach', offset_array, x_frame_size=x_frame_size,establish_fm_array=0, auto_focus_run=0, auto_expose_run=0, channels=['DAPI'],focus_position=focus_position)
         self.image_cycle_acquire(0, experiment_directory, 3, 'Stain', offset_array, x_frame_size=x_frame_size,establish_fm_array=0, auto_focus_run=0, auto_expose_run=3)
 
     def full_cycle(self, experiment_directory, cycle_number, offset_array, stain_valve, fluidics_object, z_slices, incub_val=45, x_frame_size=2960, focus_position = 'none'):
@@ -3068,6 +3068,10 @@ class cycif:
 
         if cycle_number == 0:
             self.initialize(experiment_directory, offset_array, z_slices, x_frame_size=x_frame_size, focus_position = focus_position)
+            pump.liquid_action('Bleach', stain_valve=stain_valve)  # nuc is valve=7, pbs valve=8, bleach valve=1 (action, stain_valve, heater state (off = 0, on = 1))
+            time.sleep(5)
+            # print(status_str)
+            self.image_cycle_acquire(cycle_number, experiment_directory, z_slices, 'Bleach', offset_array, x_frame_size=x_frame_size, establish_fm_array=0, auto_focus_run=0,auto_expose_run=0)
         else:
 
             # print(status_str)
@@ -3076,9 +3080,9 @@ class cycif:
             #self.reacquire_run_autofocus(experiment_directory, cycle_number, z_slices, offset_array, x_frame_size)
             # print(status_str)
             #start low flow to constantly flow fluid while imaging to reduce fluorescence of fluidic over time
-            #pump.liquid_action('low flow on')
+            pump.liquid_action('low flow on')
             self.image_cycle_acquire(cycle_number, experiment_directory, z_slices, 'Stain', offset_array,x_frame_size=x_frame_size, establish_fm_array=0, auto_focus_run=0,auto_expose_run=3)
-            #pump.liquid_action('flow off')
+            pump.liquid_action('flow off')
             time.sleep(5)
 
             # print(status_str)
@@ -4198,7 +4202,6 @@ class cycif:
                 else:
                     pass
 
-
     def inter_cycle_processing(self, experiment_directory, cycle_number, x_frame_size):
 
         '''
@@ -4214,7 +4217,7 @@ class cycif:
 
         start = time.time()
 
-        '''
+
 
 
 
@@ -4240,12 +4243,15 @@ class cycif:
         
 
         #flatten image
+        '''
+
 
         self.illumination_flattening(experiment_directory, cycle_number, single_fov=1)
         #self.bottom_int_correction(experiment_directory, cycle_number=cycle_number)
 
         end = time.time()
         print('flatten', end - start)
+
 
 
 
@@ -4274,8 +4280,10 @@ class cycif:
         self.stage_placement(experiment_directory, cycle_number, x_pixels = x_frame_size, down_sample_factor=4, single_fov=1)
 
 
+
         #if did DAPI focus then acquire one plane, please do the following
         self.delete_intermediate_folders(experiment_directory, cycle_number)
+
         #self.zlib_compress_raw(experiment_directory, cycle_number)
 
         #end = time.time()
@@ -4822,31 +4830,7 @@ class cycif:
                         color_im = io.imread(filename)
 
                         if channel != 'DAPI':
-                            ff_image = io.imread('flatfield.tif')
-                            bleached_path = experiment_directory + channel + r'/Bleach/cy_' + str(cycle_number - 1) + '\Tiles'
-                            os.chdir(bleached_path)
-                            #load in iamge and remove offset
-                            bleach_filename = 'z_0_' + 'x' + str(x) + '_y_' + str(y) + '_c_' + channel + '.tif'
-                            bleach_im = io.imread(bleach_filename) - 300
-                            #scale intensity from 77.4ms exp to 727.4ms
-                            scaled_bleach_im = bleach_im * 8.5
-                            #apply FF correct to bleach image
-                            flattened_scaled_bleach_im = scaled_bleach_im/ff_image
-                            #subtracted modified bleach image
-                            #color_im = color_im - flattened_scaled_bleach_im
-
-                            bleach_df_im = self.dark_frame_generate(flattened_scaled_bleach_im, block_y_pixels,block_x_pixels)
-                            darkframe_subbed_bleach_im = flattened_scaled_bleach_im - bleach_df_im
-                            # darkframe_subbed_im = color_im
-                            darkframe_subbed_bleach_im[darkframe_subbed_bleach_im < 0] = 0
-
-                            darkframe_im = self.dark_frame_generate(color_im, block_y_pixels, block_x_pixels)
-                            darkframe_subbed_im = color_im - darkframe_im
-                            # darkframe_subbed_im = color_im
-                            darkframe_subbed_im[darkframe_subbed_im < 0] = 0
-
-                            final_im = darkframe_subbed_im - darkframe_subbed_bleach_im
-                            final_im[final_im < 0] = 0
+                            final_im = self.AF_multiplier_image_generate(experiment_directory, channel, x, y, cycle_number, block_y_pixels, block_x_pixels)
 
                         else:
                             darkframe_im = self.dark_frame_generate(color_im, block_y_pixels, block_x_pixels)
@@ -5133,6 +5117,41 @@ class cycif:
 
         return min
 
+    def block_proc_3D_sum(self, array, block_y_pixels, block_x_pixels):
+        '''
+        breaks image up into blocks of size (block_y_pixels x block_x_pixels
+        and then returns array that is the minimum of each block and is
+        effectively down sampled by the block size
+
+        :param array:
+        :param block_y_pixels:
+        :param block_x_pixles:
+        :return:
+        '''
+
+        y_pixels = np.shape(array)[0]
+        x_pixels = np.shape(array)[1]
+        num_images = np.shape(array)[2]
+
+        y_num_blocks = int(y_pixels / block_y_pixels)
+        x_num_blocks = int(x_pixels / block_x_pixels)
+
+
+        im = array
+
+        blocked_array = np.lib.stride_tricks.as_strided(im, shape=(x_num_blocks, y_num_blocks, block_x_pixels, block_y_pixels, num_images), strides=(im.strides[0] * block_x_pixels, im.strides[1] * block_y_pixels, im.strides[0], im.strides[1], im.strides[2]))
+        sum = np.sum(blocked_array, axis=2)
+        sum = np.sum(sum, axis=2)
+
+        return sum
+
+    def block_proc_3D_min_index(self, array):
+
+        min_index_array = np.argmin(array, axis = 2)
+
+        return min_index_array
+
+
     def block_proc_reshaper(self, array, block_y_pixels, block_x_pixels):
         '''
         takes in array and evenly clips off rows and columns to to their counts be integers
@@ -5181,6 +5200,148 @@ class cycif:
 
         return array
 
+    def block_proc_3D_reshaper(self, array, block_y_pixels, block_x_pixels):
+        '''
+        takes in array and evenly clips off rows and columns to to their counts be integers
+        when divided by block size pixel counts. Does no padding, only shrinks.
+        :param array:
+        :param block_y_pixels:
+        :param block_x_pixels:
+        :return:
+        '''
+
+        y_pixels = np.shape(array)[0]
+        x_pixels = np.shape(array)[1]
+
+        y_num_blocks = math.floor(y_pixels / block_y_pixels)
+        x_num_blocks = math.floor(x_pixels / block_x_pixels)
+
+        adjusted_y_pixels = block_y_pixels * y_num_blocks
+        adjusted_x_pixels = block_x_pixels * x_num_blocks
+
+        clipped_y_pixel_num = y_pixels - adjusted_y_pixels
+        clipped_x_pixel_num = x_pixels - adjusted_x_pixels
+
+        # deal with even and odd cases for y axis
+        if clipped_y_pixel_num % 2 == 0:
+            top_rows_2_clip = int(clipped_y_pixel_num / 2)
+            bottom_rows_2_clip = int(clipped_y_pixel_num / 2)
+            bottom_adjusted_row_num = y_pixels - bottom_rows_2_clip
+            array = array[top_rows_2_clip:bottom_adjusted_row_num, ::, ::]
+        elif clipped_y_pixel_num % 2 != 0:
+            top_rows_2_clip = int(clipped_y_pixel_num / 2)
+            bottom_rows_2_clip = int((clipped_y_pixel_num / 2) + 1)
+            bottom_adjusted_row_num = y_pixels - bottom_rows_2_clip
+            array = array[ top_rows_2_clip:bottom_adjusted_row_num, ::, ::]
+
+        # deal with even and odd cases for x axis
+        if clipped_x_pixel_num % 2 == 0:
+            left_col_2_clip = int(clipped_x_pixel_num / 2)
+            right_col_2_clip = int(clipped_x_pixel_num / 2)
+            right_adjusted_col_num = int(x_pixels - right_col_2_clip)
+            array = array[ ::, left_col_2_clip:right_adjusted_col_num, ::]
+        elif clipped_x_pixel_num % 2 != 0:
+            left_col_2_clip = int(clipped_x_pixel_num / 2)
+            right_col_2_clip = int((clipped_x_pixel_num / 2) + 1)
+            right_adjusted_col_num = int(x_pixels - right_col_2_clip)
+            array = array[::, left_col_2_clip:right_adjusted_col_num, ::]
+
+        return array
+
+    def AF_multiplier_image_generate(self, experiment_directory, channel,  x_tile, y_tile, cycle_number, block_y_pixels, block_x_pixels):
+        '''
+
+        :param array:
+        :param block_y_pixels:
+        :param block_x_pixels:
+        :return:
+        '''
+
+        experiment_directory = experiment_directory + '/'
+
+        bleach_path = experiment_directory + channel + '//Bleach' + '//cy_' + str(cycle_number - 1) + '\Tiles'
+        stain_path = experiment_directory + channel + '//Stain' + '//cy_' + str(cycle_number) + r'\Tiles\focused_basic_corrected'
+        dapi_stain_path = experiment_directory + 'DAPI' + '//Stain' + '//cy_' + str(cycle_number) + r'\Tiles'
+        dapi_bleach_path = experiment_directory + 'DAPI' + '//Bleach' + '//cy_' + str(cycle_number - 1) + r'\Tiles'
+
+        bleach_filename = 'z_0_x' + str(x_tile) + '_y_' + str(y_tile) + '_c_' + channel + '.tif'
+        stain_filename = 'x' + str(x_tile) + '_y_' + str(y_tile) + '_c_' + channel + '.tif'
+        bleach_dapi_filename = 'z_0_x' + str(x_tile) + '_y_' + str(y_tile) + '_c_' + 'DAPI' + '.tif'
+        stain_dapi_filename = 'x' + str(x_tile) + '_y_' + str(y_tile) + '_c_' + 'DAPI' + '.tif'
+        ff_filename  = 'flatfield.tif'
+
+        os.chdir(bleach_path)
+        bleach_im = io.imread(bleach_filename)
+        scaled_bleach_im = 9.44 * (bleach_im - 300)
+
+        os.chdir(dapi_bleach_path)
+        bleach_dapi_im = io.imread(bleach_dapi_filename)
+
+        os.chdir(dapi_stain_path)
+        stain_dapi_im = io.imread(stain_dapi_filename)
+
+        os.chdir(stain_path)
+        stain_im = io.imread(stain_filename)
+        ff_im = io.imread(ff_filename)
+
+        scaled_bleach_im = scaled_bleach_im/ff_im
+
+        sr = StackReg(StackReg.TRANSLATION)
+        tmats = sr.register_transform(stain_dapi_im, bleach_dapi_im)
+        left = np.min(np.where(tmats[1500, ::] != 0)[0])
+        top = np.min(np.where(tmats[::, 1500] != 0)[0])
+        right = np.min(np.where(tmats[1500, ::-1] != 0)[0])
+        bottom = np.min(np.where(tmats[::-1, 1500] != 0)[0])
+
+        if top or bottom or left or right > 12:
+            pass
+        else:
+            scaled_bleach_im = sr.transform(scaled_bleach_im)
+
+        stain_df_subbed = stain_im - self.dark_frame_generate(stain_im, block_y_pixels, block_x_pixels)
+        bleach_df_subbed = scaled_bleach_im - self.dark_frame_generate(scaled_bleach_im, block_y_pixels, block_x_pixels)
+
+
+
+        start_multi = 0.75
+        end_multi = 1.25
+        multi_spacing = 0.05
+        multi_count = int((end_multi - start_multi)/multi_spacing)
+        multipliers = np.linspace(start_multi, end_multi, multi_count)
+
+        three_D_array = np.zeros((2950, 2960, len(multipliers)))
+
+        index_counter = 0
+        for multiplier in multipliers:
+            a = stain_df_subbed[10:, :]
+            b = bleach_df_subbed[:-10, :]
+            c = a - multiplier * b
+            c = c ** 2
+            three_D_array[::,::,index_counter] = c
+            index_counter += 1
+
+
+        original_y_pixels = 2960
+        original_x_pixels = 2960
+
+        adjusted_array = self.block_proc_3D_reshaper(three_D_array, block_y_pixels, block_x_pixels)
+        sum_array = self.block_proc_3D_sum(adjusted_array, block_y_pixels, block_x_pixels)
+        min_index_array = self.block_proc_3D_min_index(sum_array)
+
+        def equation(x):
+            return start_multi + x * multi_spacing
+
+        # Apply the equation to every element in the array
+        multiplier_array = equation(min_index_array)
+        resized_multiplier_array = transform.resize(multiplier_array, (original_y_pixels, original_x_pixels), preserve_range=True,anti_aliasing=True)
+
+        os.chdir(r'E:\12_3_25_casey')
+        new_im  = stain_df_subbed - resized_multiplier_array * bleach_df_subbed
+        new_im[new_im < 0] = 0
+        #io.imsave('subbed.tif', new_im)
+
+        return new_im
+
     def dark_frame_generate(self, array, block_y_pixels, block_x_pixels):
         '''
 
@@ -5194,7 +5355,7 @@ class cycif:
         original_x_pixels = np.shape(array)[1]
 
         mean_kernal_y = math.ceil(block_y_pixels/10)
-        mean_kernal_x = math.ceil(block_x_pixels / 10)
+        mean_kernal_x = math.ceil(block_x_pixels/10)
 
         array_mean = cv2.blur(array, (mean_kernal_y, mean_kernal_x))
 
