@@ -53,5 +53,5 @@ def parallel_processing(experiment_directory, cycles, x_frame_size=2960):
 #for cycle in range(1, 7):
 #    microscope.full_cycle(experiment_directory, cycle, offset_array, cycle, pump, z_slices, x_frame_size=x_frame_size,focus_position=focus_position)
 
-cycles = [1,2,3,4,5,6]
+cycles = [4,5]
 parallel_processing(experiment_directory, cycles, x_frame_size=x_frame_size)

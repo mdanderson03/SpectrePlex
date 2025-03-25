@@ -109,14 +109,14 @@ def avg_poisson_band_curve_generator(images, ref_frame_number, min_int_range, ma
     frame_count = end_frame_number - start_frame_number
 
 
-    all_image_diff_array = np.zeros((frame_count, 2960, 5056))
+    all_image_diff_array = np.zeros((frame_count, 2960, 2960))
 
     for im in range(start_frame_number,end_frame_number):
 
         all_image_diff_array[im - start_frame_number] = ((images[im] - ref_im)*100)/ref_im
         #all_image_diff_array[im - start_frame_number] = images[im] - ref_im
 
-    partially_flattened_array = np.reshape(all_image_diff_array, (frame_count, 14965760))
+    partially_flattened_array = np.reshape(all_image_diff_array, (frame_count, 8761600))
     intensity_indicies  = np.where((flattened_ref >= min_int_range - 300) & (flattened_ref <= max_int_range - 300))[0]
     intensity_screened = partially_flattened_array[::,intensity_indicies]
     intensity_screened = intensity_screened.flatten()
@@ -135,8 +135,8 @@ def poisson_error_vs_intensity_curve(images, ref_frame_number, min_int_range, ma
     entry_counter = 0
     for intensity in range(min_int_range, max_int_range, int_gap):
 
-        intensities[entry_counter] = math.sqrt(intensity + int_gap/2 - 300)
-        std_dev[entry_counter] = np.sqrt(np.std(avg_poisson_band_curve_generator(images, ref_frame_number, intensity, intensity + gap, start_frame_number, end_frame_number)))
+        intensities[entry_counter] =intensity + int_gap/2 - 300
+        std_dev[entry_counter] = np.std(avg_poisson_band_curve_generator(images, ref_frame_number, intensity, intensity + gap, start_frame_number, end_frame_number)) * 2
         entry_counter += 1
 
     return std_dev, intensities
@@ -165,9 +165,10 @@ gap = 500
 
 #plt.hist(percent_differences, bins=100, color='skyblue', edgecolor='black')
 #plt.show()
-std_dev, intensities = poisson_error_vs_intensity_curve(images, 0, 1000, 35000, 1, 2)
+std_dev, intensities = poisson_error_vs_intensity_curve(images, 2, 10000, 45000, 3, 4)
 
-plt.scatter( intensities, std_dev)
+#plt.scatter(intensities, std_dev)
+plt.scatter(intensities/std_dev, np.sqrt(intensities))
 plt.show()
 
 

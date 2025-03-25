@@ -31,8 +31,8 @@ import shutil
 import tracemalloc
 
 
-magellan = Magellan()
-core = Core()
+#magellan = Magellan()
+#core = Core()
 
 tracemalloc.start()
 
@@ -4221,6 +4221,7 @@ class cycif:
 
 
 
+
         #make tissue exist array if needed
         if cycle_number == 1:
             self.numpy_size()
@@ -4229,6 +4230,7 @@ class cycif:
             pass
         end = time.time()
         print('binary create', end - start)
+        '''
 
         #determine in focus parts first
         #self.focus_excel_creation(experiment_directory, cycle_number)
@@ -4239,11 +4241,11 @@ class cycif:
 
         end = time.time()
         print('focus', end - start)
-        '''
+
         
 
         #flatten image
-        '''
+
 
 
         self.illumination_flattening(experiment_directory, cycle_number, single_fov=1)
@@ -4251,11 +4253,14 @@ class cycif:
 
         end = time.time()
         print('flatten', end - start)
+        '''
+
 
 
 
 
         self.darkframe_AF_sub(experiment_directory, cycle_number)
+        #self.darkframe_sub(experiment_directory, cycle_number)
         end = time.time()
         print('dark frame subtraction', end - start)
 
@@ -4264,6 +4269,7 @@ class cycif:
         #compress to 16bit
         self.stage_placement(experiment_directory, cycle_number, x_pixels=x_frame_size, down_sample_factor=4,single_fov=1)
         self.hdr_compression_2(experiment_directory, cycle_number)
+
 
 
         end = time.time()
@@ -4275,14 +4281,15 @@ class cycif:
         print('mcmicro', end - start)
 
 
+
         #generate stage placement
 
-        self.stage_placement(experiment_directory, cycle_number, x_pixels = x_frame_size, down_sample_factor=4, single_fov=1)
+        #self.stage_placement(experiment_directory, cycle_number, x_pixels = x_frame_size, down_sample_factor=4, single_fov=1)
 
 
 
         #if did DAPI focus then acquire one plane, please do the following
-        self.delete_intermediate_folders(experiment_directory, cycle_number)
+        #self.delete_intermediate_folders(experiment_directory, cycle_number)
 
         #self.zlib_compress_raw(experiment_directory, cycle_number)
 
@@ -5335,10 +5342,8 @@ class cycif:
         multiplier_array = equation(min_index_array)
         resized_multiplier_array = transform.resize(multiplier_array, (original_y_pixels, original_x_pixels), preserve_range=True,anti_aliasing=True)
 
-        os.chdir(r'E:\12_3_25_casey')
         new_im  = stain_df_subbed - resized_multiplier_array * bleach_df_subbed
         new_im[new_im < 0] = 0
-        #io.imsave('subbed.tif', new_im)
 
         return new_im
 
