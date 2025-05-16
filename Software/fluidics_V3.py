@@ -8,6 +8,7 @@ from openpyxl import Workbook, load_workbook
 import sys
 from ctypes import *
 import math
+import hamilton_mvp4
 
 sys.path.append(
     r'C:\Users\CyCIF PC\Documents\GitHub\AutoCIF\Python_64_elveflow\DLL64')  # add the path of the library here
@@ -21,7 +22,7 @@ from Elveflow64 import *
 
 class fluidics:
 
-    def __init__(self, experiment_path, mux_com_port, ob1_com_port, flow_control=1):
+    def __init__(self, experiment_path, mux_valve1_ID, mux_valve2_ID, ob1_com_port, flow_control=1):
 
         # load in data structures
         numpy_path = experiment_path + '/' + 'np_arrays'
@@ -37,25 +38,13 @@ class fluidics:
         file_name = 'fluid_info_array.npy'
         np.save(file_name, fluid_info_array)
 
-        fluid_info_array = np.zeros(3)
-        file_name = 'fluid_info_array.npy'
-        np.save(file_name, fluid_info_array)
-
-        # MUX intiialize
-        path = 'ASRL' + str(mux_com_port) + '::INSTR'
-        mux_Instr_ID = c_int32()
-        MUX_DRI_Initialization(path.encode('ascii'), byref(
-            mux_Instr_ID))  # choose the COM port, it can be ASRLXXX::INSTR (where XXX=port number)
-
-        # home
-        # answer = (c_char * 40)()
-        self.mux_ID = mux_Instr_ID.value
-        # MUX_DRI_Send_Command(self.mux_ID, 0, answer, 40)
-
         self.experiment_path = experiment_path
         self.experiment_directory = experiment_path
         self.flow_control = flow_control
         self.ob1_com_port = ob1_com_port
+
+        self.valve1_ID = mux_valve1_ID
+        self.valve2_ID = mux_valve2_ID
 
         self.pressure_on = 1000
         self.pressure_off = 0
@@ -106,48 +95,18 @@ class fluidics:
 
     def valve_select(self, valve_number):
         '''
-        Selects adjacent valve and moves back to desired valve
-        :param c_int32 mux_id: mux_id given from mux_initialization method
-        :param int valve_number: number of desired valve to be selected
-        :return: Nothing
+        Moves to desired vial number via 2 hamilton valves
+        Parameters
+        ----------
+        valve_number
+
+        Returns
+        -------
+
         '''
 
-        desired_valve = valve_number
-
-        if valve_number == 1:
-            adjacent_valve = desired_valve + 1
-        else:
-            adjacent_valve = desired_valve - 1
-
-        self.valve_move(adjacent_valve)
-        self.valve_move(desired_valve)
-
-
-    def valve_move(self, valve_number):
-        '''
-        Moves MUX to desired valve
-        :param valve_number:
-        :return:
-        '''
-
-        desired_valve = valve_number
-        valve_number = c_int32(valve_number)
-        error = MUX_DRI_Set_Valve(self.mux_ID, valve_number, 0)  # 0 is shortest path. clockwise and cc are also options
-        self.fluidics_logger(str(MUX_DRI_Set_Valve), error, desired_valve)
-
-        valve = c_int32(-1)
-        error = MUX_DRI_Get_Valve(self.mux_ID, byref(valve))
-        current_valve = int(valve.value)
-        self.fluidics_logger(str(MUX_DRI_Get_Valve), error, current_valve)
-
-        while current_valve != desired_valve:
-            MUX_DRI_Get_Valve(self.mux_ID, byref(valve))
-            current_valve = int(valve.value)
-            print('current valve',current_valve )
-            self.fluidics_logger(str(MUX_DRI_Get_Valve), error, current_valve)
-            time.sleep(1)
-
-        error = MUX_DRI_Destructor(self.mux_ID)
+        mux = hamilton_mvp4.AValveChain()
+        mux.vialChoose(valve_number, self.valve1_ID, self.valve2_ID)
 
     def flow(self, on_off_state):
 
