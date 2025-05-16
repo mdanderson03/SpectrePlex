@@ -1,53 +1,57 @@
-import datetime
-from pycromanager import Core
+import gc
+import math
+import os
+import io
+import sys
+import multiprocessing
+
+from KasaSmartPowerStrip import SmartPowerStrip
+import ob1
+
+import numpy as np
+
 from autocyplex import *
 from optparse import OptionParser
 microscope = cycif() # initialize cycif object
-experiment_directory = r'E:\7-4-24 healthy'
-pump = fluidics(experiment_directory, 6, 3, flow_control=1)
+experiment_directory = r'E:\20_3_25_gutage'
+pump = fluidics(experiment_directory, 6, 7, flow_control=1)
+#core = Core()
 
 
-z_slices = 7
+z_slices = 3
 x_frame_size = 2960
-offset_array = [0, -8, -7, -7]
 
-'''
-numpy_path = experiment_directory + '/' + 'np_arrays'
-os.chdir(numpy_path)
-exp_filename = 'exp_array.npy'
-file_name = 'fm_array.npy'
-fm_array = np.load(file_name, allow_pickle=False)
-exp_array = np.load(exp_filename, allow_pickle=False)
-print(exp_array)
+offset_array = [0, -7, -7, -6]
+focus_position = -226
 
 
+def parallel_processing(experiment_directory, cycles, x_frame_size=2960):
+    number_cores = int(len(cycles))
+    inputs = []
+    for cycle in cycles:
+        inputs.append((experiment_directory, cycle, x_frame_size))
 
-print('dapi frames', fm_array[11][0][0])
-print('a488 frames', fm_array[12][0][0])
-print('a555 frames', fm_array[13][0][0])
-print('a647 frames', fm_array[14][0][0])
-#np.save('fm_array.npy', fm_array)
-#np.save('exp_array.npy', exp_array)
-
-
-'''
-#pump.liquid_action('Stain', stain_valve=12, incub_val=5)
-#pump.liquid_action('Bleach')
+    if __name__ == '__main__':
+        with multiprocessing.Pool(processes=number_cores) as pool:
+            pool.starmap(microscope.inter_cycle_processing, inputs)
 
 
 
 
-#microscope.image_cycle_acquire(1, experiment_directory, z_slices, 'Stain', offset_array, x_frame_size=x_frame_size, establish_fm_array=0, auto_focus_run=0, auto_expose_run=0)
-#pump.liquid_action('Bleach')
-#microscope.image_cycle_acquire(1, experiment_directory, z_slices, 'Bleach', offset_array, x_frame_size=x_frame_size, establish_fm_array=0, auto_focus_run=0, auto_expose_run=0)
 
-for cycle in range(0, 8):
-    microscope.full_cycle(experiment_directory, cycle, offset_array, cycle, pump, z_slices)
+#make sure this is upper left hand corner focus z position
 
-#microscope.post_acquisition_processor(experiment_directory, x_frame_size, rolling_ball=0)
 
-#pump.liquid_action('Stain', stain_valve=1, incub_val=45)
+#microscope.repeated_image_acquistion('E:\poisson_noise_images', 25, 'DAPI', 200)
 
-#microscope.establish_fm_array(experiment_directory, 1, z_slices, offset_array, initialize=0, x_frame_size=x_frame_size, autofocus=1, auto_expose=1)
-#microscope.image_cycle_acquire(1, experiment_directory, z_slices, 'Stain', offset_array, x_frame_size=x_frame_size, establish_fm_array=0, auto_focus_run=0,auto_expose_run=1)
-microscope.post_acquisition_processor(experiment_directory, x_frame_size, rolling_ball=0)
+#use first to set cluster surface
+#microscope.wide_net_auto_focus(experiment_directory, x_frame_size=x_frame_size, offset_array=offset_array, z_slice_search_range=5, focus_position=focus_position, number_clusters_retained=6, manual_cluster_update=0)
+
+#Use second to take initial autofluorescence cycle
+#microscope.full_cycle(experiment_directory, 0, offset_array, 0, pump, z_slices, x_frame_size =x_frame_size, focus_position=focus_position)
+
+#for cycle in range(1, 7):
+#    microscope.full_cycle(experiment_directory, cycle, offset_array, cycle, pump, z_slices, x_frame_size=x_frame_size,focus_position=focus_position)
+
+cycles = [4,5]
+parallel_processing(experiment_directory, cycles, x_frame_size=x_frame_size)

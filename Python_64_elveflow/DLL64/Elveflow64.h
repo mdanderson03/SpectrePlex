@@ -13,6 +13,21 @@ typedef uint16_t  Z_MUX_DRI_Rotation;
 #define Z_MUX_DRI_Rotation_Shortest 0
 #define Z_MUX_DRI_Rotation_Clockwise 1
 #define Z_MUX_DRI_Rotation_CounterClockwise 2
+typedef uint16_t  Z_D_F_S_Resolution;
+#define Z_D_F_S_Resolution__9Bit 0
+#define Z_D_F_S_Resolution__10Bit 1
+#define Z_D_F_S_Resolution__11Bit 2
+#define Z_D_F_S_Resolution__12Bit 3
+#define Z_D_F_S_Resolution__13Bit 4
+#define Z_D_F_S_Resolution__14Bit 5
+#define Z_D_F_S_Resolution__15Bit 6
+#define Z_D_F_S_Resolution__16Bit 7
+typedef uint16_t  Z_Sensor_FSD_Calib;
+#define Z_Sensor_FSD_Calib_H2O 0
+#define Z_Sensor_FSD_Calib_IPA 1
+typedef uint16_t  Z_Sensor_digit_analog;
+#define Z_Sensor_digit_analog_Analog 0
+#define Z_Sensor_digit_analog_Digital 1
 typedef uint16_t  Z_sensor_type;
 #define Z_sensor_type_none 0
 #define Z_sensor_type_Flow_1_5_muL_min 1
@@ -29,21 +44,7 @@ typedef uint16_t  Z_sensor_type;
 #define Z_sensor_type_Press_16_bar 12
 #define Z_sensor_type_Level 13
 #define Z_sensor_type_Custom 14
-typedef uint16_t  Z_Sensor_digit_analog;
-#define Z_Sensor_digit_analog_Analog 0
-#define Z_Sensor_digit_analog_Digital 1
-typedef uint16_t  Z_Sensor_FSD_Calib;
-#define Z_Sensor_FSD_Calib_H2O 0
-#define Z_Sensor_FSD_Calib_IPA 1
-typedef uint16_t  Z_D_F_S_Resolution;
-#define Z_D_F_S_Resolution__9Bit 0
-#define Z_D_F_S_Resolution__10Bit 1
-#define Z_D_F_S_Resolution__11Bit 2
-#define Z_D_F_S_Resolution__12Bit 3
-#define Z_D_F_S_Resolution__13Bit 4
-#define Z_D_F_S_Resolution__14Bit 5
-#define Z_D_F_S_Resolution__15Bit 6
-#define Z_D_F_S_Resolution__16Bit 7
+#define Z_sensor_type_Flow_40000_muL_min 15
 typedef uint16_t  Z_MUX_DRI_Action;
 #define Z_MUX_DRI_Action_Home 0
 #define Z_MUX_DRI_Action_SerialNumber 1
@@ -303,10 +304,10 @@ int32_t __cdecl MUX_DRI_Set_Valve(int32_t MUX_DRI_ID_in,
  * If the sensor is not compatible with the OB1 version, or no digital sensor 
  * are detected an error will be thrown as output of the function.
  */
-int32_t __cdecl OB1_Add_Sens(int32_t OB1_ID, int32_t Channel_1_to_4, 
-	Z_sensor_type SensorType, Z_Sensor_digit_analog DigitalAnalog, 
-	Z_Sensor_FSD_Calib FSens_Digit_Calib, 
-	Z_D_F_S_Resolution FSens_Digit_Resolution, double CustomSens_Voltage_5_to_25);
+int32_t __cdecl OB1_Add_Sens(double CustomSens_Voltage_5_to_25, 
+	Z_D_F_S_Resolution FSens_Digit_Resolution, 
+	Z_Sensor_FSD_Calib FSens_Digit_Calib, Z_Sensor_digit_analog DigitalAnalog, 
+	Z_sensor_type SensorType, int32_t Channel_1_to_4, int32_t OB1_ID);
 /*!
  * Elveflow Library
  * BFS Device
@@ -456,10 +457,10 @@ int32_t __cdecl OB1_Reset_Digit_Sens(int32_t OB1_ID, int32_t Channel_1_to_4);
  * NB 2: Sensor connected to channel 1-2 and 3-4 have to be the same type 
  * otherwise they will not be taken into account. 
  */
-int32_t __cdecl M_S_R_D_Initialization(char Device_Name[], 
-	Z_sensor_type Sens_Ch_1, Z_sensor_type Sens_Ch_2, Z_sensor_type Sens_Ch_3, 
-	Z_sensor_type Sens_Ch_4, double CustomSens_Voltage_Ch12, 
-	double CustomSens_Voltage_Ch34, int32_t *MSRD_ID_out);
+int32_t __cdecl M_S_R_D_Initialization(double CustomSens_Voltage_Ch34, 
+	double CustomSens_Voltage_Ch12, Z_sensor_type Sens_Ch_4, 
+	Z_sensor_type Sens_Ch_3, Z_sensor_type Sens_Ch_2, Z_sensor_type Sens_Ch_1, 
+	char Device_Name[], int32_t *MSRD_ID_out);
 /*!
  * Elveflow Library
  * MSRD Device
@@ -482,10 +483,9 @@ int32_t __cdecl M_S_R_D_Initialization(char Device_Name[],
  * 
  * NB: Sensor type has to be the same as in the "Initialization" step.
  */
-int32_t __cdecl M_S_R_D_Add_Sens(int32_t M_S_R_D_ID, int32_t Channel_1_to_4, 
-	Z_sensor_type SensorType, Z_Sensor_digit_analog DigitalAnalog, 
-	Z_Sensor_FSD_Calib FSens_Digit_Calib, 
-	Z_D_F_S_Resolution FSens_Digit_Resolution);
+int32_t __cdecl M_S_R_D_Add_Sens(Z_D_F_S_Resolution FSens_Digit_Resolution, 
+	Z_Sensor_FSD_Calib FSens_Digit_Calib, Z_Sensor_digit_analog DigitalAnalog, 
+	Z_sensor_type SensorType, int32_t Channel_1_to_4, int32_t M_S_R_D_ID);
 /*!
  * Elveflow Library
  * MSRD Device

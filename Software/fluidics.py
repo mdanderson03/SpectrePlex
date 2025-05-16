@@ -1,6 +1,7 @@
 import datetime
 import os
-
+import math
+from KasaSmartPowerStrip import SmartPowerStrip
 import numpy as np
 import time
 import matplotlib.pyplot as plt
@@ -40,7 +41,7 @@ class fluidics:
             set_channel_regulator = c_int32(set_channel_regulator)  # convert to c_int32
             set_channel_sensor = int(1)
             set_channel_sensor = c_int32(set_channel_sensor)  # convert to c_int32
-            PID_Add_Remote(Instr_ID.value, set_channel_regulator, Instr_ID.value, set_channel_sensor, 0.9, 0.004, 1)
+            PID_Add_Remote(Instr_ID.value, set_channel_regulator, Instr_ID.value, set_channel_sensor, 0.9/22.5, 0.004/.03846, 1)
         else:
             pass
 
@@ -62,7 +63,7 @@ class fluidics:
         self.experiment_path = experiment_path
         self.flow_control = flow_control
 
-        self.pressure_on = 1050
+        self.pressure_on = 1000
         self.pressure_off = 0
         self.flow_on = 500
         self.flow_off = -3
@@ -204,7 +205,50 @@ class fluidics:
             else:
                 pass
 
+    def flow_meter_freeze_check(self):
+        '''
+        checks if flow meter value is changing (ie checks 3 times and if all are the same value,
+        says that the meter is frozen). If frozen, asks to reboot OB1
+        :return:
+        '''
 
+        #make ctypes structures
+        data_sens = c_double()
+        data_reg = c_double()
+        set_channel = int(1)  # convert to int
+        set_channel = c_int32(set_channel)  # convert to c_int32
+
+        #make triple value array
+        flows = np.zeros((3))
+        #populate with 3 values with second spacing
+        for x in range(0,3):
+            error = OB1_Get_Remote_Data(self.pump_ID, set_channel, byref(data_reg), byref(data_sens))
+            current_flow_rate = data_sens.value
+            self.fluidics_logger('checking if frozen_' + str(OB1_Get_Remote_Data), error, current_flow_rate)
+            flows[x] = current_flow_rate
+
+        #determine if frozen, ie see how many unique values there are
+        unique_value_count = np.unique(flows)
+
+        if unique_value_count == 1:
+            self.fluidics_logger('rebooting ob1', error, current_flow_rate)
+            self.ob1_reboot()
+        else:
+            pass
+
+    def ob1_reboot(self):
+
+        power_strip = SmartPowerStrip('10.3.141.157')
+        power_strip.toggle_plug('off', plug_num=4)
+        time.sleep(2)
+        power_strip.toggle_plug('on', plug_num=4)  # turns off socket named 'Socket1'
+
+    def filter_pump(self, filtering_time):
+
+        power_strip = SmartPowerStrip('10.3.141.157')
+        power_strip.toggle_plug('off', plug_num=5)
+        time.sleep(2)
+        power_strip.toggle_plug('on', plug_num=5)  # turns off socket named 'Socket1'
 
     def ob1_end(self):
 
@@ -300,12 +344,12 @@ class fluidics:
             plt.plot(time_points, flow_points, 'o', color='black')
             plt.show()
 
-    def liquid_action(self, action_type, stain_valve=0, incub_val=45, heater_state=0):
+    def liquid_action(self, action_type, stain_valve=0, incub_val=45, heater_state=0, microscope_object = 0, experiment_directory = 0):
 
         bleach_valve = 11
         pbs_valve = 12
-        bleach_time = 5  # minutes
-        stain_flow_time = 47  # seconds
+        bleach_time = 15  # minutes
+        stain_flow_time = 45  # seconds
         if heater_state == 0:
             stain_inc_time = incub_val  # minutes
         if heater_state == 1:
@@ -329,7 +373,7 @@ class fluidics:
 
             self.valve_select(bleach_valve)
             self.flow(flow_rate)
-            time.sleep(70)
+            time.sleep(90)
             self.flow(flow_rate_stop)
             # time.sleep(bleach_time*60)
             self.valve_select(pbs_valve)
@@ -338,11 +382,13 @@ class fluidics:
                 time.sleep(60)
 
             self.flow(flow_rate)
-            time.sleep(100)
+            time.sleep(150)
             self.flow(flow_rate_stop)
             time.sleep(5)
 
         elif action_type == 'Stain':
+
+            stain_start = 0
 
             self.valve_select(stain_valve)
             self.flow(flow_rate)
@@ -350,7 +396,19 @@ class fluidics:
             self.flow(flow_rate_stop)
             self.valve_select(pbs_valve)
 
-            for x in range(0, stain_inc_time):
+            if microscope_object != 0:
+                microscope = microscope_object
+
+                time_elapsed = microscope.recursive_stardist_autofocus(experiment_directory, stain_valve)  # int time in seconds
+                whole_minutes_elapsed = math.floor(time_elapsed/60)
+                seconds_remaining = time_elapsed % 60 # remainder in seconds of time remaining after dividing by 60
+                print(seconds_remaining)
+                time.sleep(seconds_remaining)
+                stain_start = int(whole_minutes_elapsed + 1)
+
+            for x in range(stain_start, stain_inc_time):
+
+
                 time.sleep(60)
                 print('Staining Time Elapsed ', x)
 
@@ -375,7 +433,7 @@ class fluidics:
 
             self.valve_select(pbs_valve)
             self.flow(flow_rate)
-            time.sleep(70)
+            time.sleep(100)
             self.flow(flow_rate_stop)
 
 
