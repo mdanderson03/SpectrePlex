@@ -8,7 +8,7 @@ from openpyxl import Workbook, load_workbook
 import sys
 from ctypes import *
 import math
-from hw_classes.mvp_valve import MVPvalve
+from mvp_valve import MVPvalve
 
 sys.path.append(
     r'C:\Users\CyCIF PC\Documents\GitHub\AutoCIF\Python_64_elveflow\DLL64')  # add the path of the library here
@@ -88,14 +88,9 @@ class fluidics:
 
         wb.save(filename)
 
-    def mux_end(self):
-
-        error = MUX_DRI_Destructor(self.mux_ID)
-        self.fluidics_logger(str(MUX_DRI_Destructor), error, 0)
-
-    def wait_for_readiness(device):
+    def wait_for_readiness(self, device):
         while not device.get_status()[1]:
-            sleep(0.1)
+            time.sleep(0.1)
 
     def valve_select(self, valve_number):
         '''
@@ -123,16 +118,16 @@ class fluidics:
 
             valve1.valve_input(position=valve1_port_ID)
             valve1.run_command()
-            wait_for_readiness(valve1)
+            self.wait_for_readiness(valve1)
 
             valve2.run_command(position=valve2_port_ID)
-            wait_for_readiness(valve2)
+            self.wait_for_readiness(valve2)
 
         elif 9 <= vial_ID <= 15:
             valve2_port_ID = vial_ID - 7
 
             valve2.run_command(position=valve2_port_ID)
-            wait_for_readiness(valve2)
+            self.wait_for_readiness(valve2)
 
         elif vial_ID > 15:
             print('error: vial_ID out of range. Please select option between 1-15')
