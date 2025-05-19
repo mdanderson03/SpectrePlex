@@ -8,7 +8,7 @@ from openpyxl import Workbook, load_workbook
 import sys
 from ctypes import *
 import math
-import hamilton_mvp4
+from hw_classes.mvp_valve import MVPvalve
 
 sys.path.append(
     r'C:\Users\CyCIF PC\Documents\GitHub\AutoCIF\Python_64_elveflow\DLL64')  # add the path of the library here
@@ -93,6 +93,10 @@ class fluidics:
         error = MUX_DRI_Destructor(self.mux_ID)
         self.fluidics_logger(str(MUX_DRI_Destructor), error, 0)
 
+    def wait_for_readiness(device):
+        while not device.get_status()[1]:
+            sleep(0.1)
+
     def valve_select(self, valve_number):
         '''
         Moves to desired vial number via 2 hamilton valves
@@ -105,8 +109,35 @@ class fluidics:
 
         '''
 
-        mux = hamilton_mvp4.AValveChain()
-        mux.vialChoose(valve_number, self.valve1_ID, self.valve2_ID)
+        valve1 = MVPvalve("MVP/4", "0", self.valve1_ID)
+        valve2 = MVPvalve("MVP/4", "1", self.valve2_ID)
+
+        valve1.initialize("left")
+        valve2.initialize("left")
+
+        vial_ID = valve_number
+
+        if 1 <= vial_ID <= 8:
+            valve1_port_ID = vial_ID
+            valve2_port_ID = 1
+
+            valve1.valve_input(position=valve1_port_ID)
+            valve1.run_command()
+            wait_for_readiness(valve1)
+
+            valve2.run_command(position=valve2_port_ID)
+            wait_for_readiness(valve2)
+
+        elif 9 <= vial_ID <= 15:
+            valve2_port_ID = vial_ID - 7
+
+            valve2.run_command(position=valve2_port_ID)
+            wait_for_readiness(valve2)
+
+        elif vial_ID > 15:
+            print('error: vial_ID out of range. Please select option between 1-15')
+
+        return
 
     def flow(self, on_off_state):
 
