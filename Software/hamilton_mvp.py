@@ -27,7 +27,7 @@ class AValveChain(AbstractValve):
         # Define attributes
         self.com_port = parameters
         self.verbose = 'verbose'
-        self.num_simulated_valves = 1
+        self.num_simulated_valves = 0
         # Determine simulation mode
         self.simulate = (self.num_simulated_valves > 0)
         
@@ -119,7 +119,7 @@ class AValveChain(AbstractValve):
             # Display found valves
             print("Found " + str(self.num_valves) + " Hamilton MVP Valves")
             for valve_ID in range(self.num_valves):
-                print("   " + "Device " + self.valve_names[valve_ID] + " is configured with " + self.valve_configs[valve_ID])
+                print("   " + "Device " + self.valve_names[valve_ID] + " is configured with " + self.valve_configs[valve_ID] +' and valveID of'+ str(valve_ID))
 
             print("Initializing valves...")
             
@@ -159,7 +159,7 @@ class AValveChain(AbstractValve):
                 self.current_port[valve_ID] = port_ID
 
             if wait_until_done:
-                self.waitUntilNotMoving()
+                self.waitUntilNotMoving(valve_ID)
                 
             return response[1]
         else: ## simulation code
