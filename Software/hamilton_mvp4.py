@@ -16,7 +16,7 @@ import time
 import importlib
 import serial
 
-from storm_control.fluidics.valves.valve import AbstractValve
+from valve import AbstractValve
 
 # ----------------------------------------------------------------------------------------
 # HamiltonMVP Class Definition
@@ -26,8 +26,8 @@ class AValveChain(AbstractValve):
                  parameters = None):
 
         # Define attributes
-        self.com_port = parameters.get("valves_com_port")
-        self.verbose = parameters.get("verbose", True)
+        self.com_port = 'COM3'
+        self.verbose = True
 
         
         # Create serial port 

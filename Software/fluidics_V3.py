@@ -8,7 +8,7 @@ from openpyxl import Workbook, load_workbook
 import sys
 from ctypes import *
 import math
-from mvp_valve import MVPvalve
+from hamilton_mvp import AValveChain
 
 sys.path.append(
     r'C:\Users\CyCIF PC\Documents\GitHub\AutoCIF\Python_64_elveflow\DLL64')  # add the path of the library here
@@ -22,7 +22,7 @@ from Elveflow64 import *
 
 class fluidics:
 
-    def __init__(self, experiment_path, mux_valve1_ID, mux_valve2_ID, ob1_com_port, flow_control=1):
+    def __init__(self, experiment_path, mux_valve1_ID, ob1_com_port, flow_control=1):
 
         # load in data structures
         numpy_path = experiment_path + '/' + 'np_arrays'
@@ -43,8 +43,8 @@ class fluidics:
         self.flow_control = flow_control
         self.ob1_com_port = ob1_com_port
 
-        self.valve1_ID = mux_valve1_ID
-        self.valve2_ID = mux_valve2_ID
+        self.valve1_ID = 'COM' + str(mux_valve1_ID)
+        #self.valve2_ID = mux_valve2_ID
 
         self.pressure_on = 1000
         self.pressure_off = 0
@@ -104,6 +104,10 @@ class fluidics:
 
         '''
 
+        mux = AValveChain(parameters= self.valve1_ID)
+        mux.changePort(0, valve_number, direction=0, wait_until_done=True)
+
+        '''
         valve1 = MVPvalve("MVP/4", "0", self.valve1_ID)
         valve2 = MVPvalve("MVP/4", "1", self.valve2_ID)
 
@@ -133,6 +137,7 @@ class fluidics:
             print('error: vial_ID out of range. Please select option between 1-15')
 
         return
+        '''
 
     def flow(self, on_off_state):
 
@@ -319,8 +324,8 @@ class fluidics:
 
     def liquid_action(self, action_type, stain_valve=0, incub_val=45, heater_state=0, microscope_object = 0, experiment_directory = 0, cycle = 0):
 
-        bleach_valve = 11
-        pbs_valve = 12
+        bleach_valve = 4
+        pbs_valve = 3
         bleach_time = 10  # minutes
         stain_flow_time = 45  # seconds
         if heater_state == 0:
