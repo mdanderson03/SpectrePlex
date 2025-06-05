@@ -2493,7 +2493,7 @@ class cycif:
         return
 
     def multi_channel_z_stack_capture_dapi_focus(self, experiment_directory, cycle_number, Stain_or_Bleach,
-                                      offset_array, x_pixels=5056, slice_gap=2, channels=['DAPI', 'A488', 'A555', 'A647']):
+                    offset_array, x_pixels=5056, slice_gap=2, channels=['DAPI', 'A488', 'A555', 'A647']):
         '''
         Captures and saves all images in XY and Z dimensions. Order of operation is ZC XY(snake). Entire z stack with all
         channels is made into a numpy data structure and saved before going to next tile and being reused. This is done
@@ -4213,13 +4213,7 @@ class cycif:
         :return:
         '''
 
-
-
         start = time.time()
-
-
-
-
 
 
         #make tissue exist array if needed
@@ -4230,7 +4224,6 @@ class cycif:
             pass
         end = time.time()
         print('binary create', end - start)
-        '''
 
         #determine in focus parts first
         #self.focus_excel_creation(experiment_directory, cycle_number)
@@ -4253,10 +4246,6 @@ class cycif:
 
         end = time.time()
         print('flatten', end - start)
-        '''
-
-
-
 
 
         self.darkframe_AF_sub(experiment_directory, cycle_number)
@@ -4289,7 +4278,7 @@ class cycif:
 
 
         #if did DAPI focus then acquire one plane, please do the following
-        #self.delete_intermediate_folders(experiment_directory, cycle_number)
+        self.delete_intermediate_folders(experiment_directory, cycle_number)
 
         #self.zlib_compress_raw(experiment_directory, cycle_number)
 
@@ -5549,7 +5538,7 @@ class cycif:
 
         return result
 
-    def zc_save(self, zc_tif_stack, channels, x_tile, y_tile, cycle, x_pixels, experiment_directory, Stain_or_Bleach):
+    def zc_save(self, zc_tif_stack, channels, x_tile, y_tile, cycle, x_pixels, experiment_directory, Stain_or_Bleach, single_fov = 1):
 
         z_tile_count = np.shape(zc_tif_stack)[1]
 
@@ -5572,7 +5561,10 @@ class cycif:
             os.chdir(save_directory)
 
             for z in range(0, z_tile_count):
-                file_name = 'z_' + str(z) + '_x' + str(x_tile) + '_y_' + str(y_tile) + '_c_' + str(channel) + '.tif'
+                if single_fov == 0:
+                    file_name = 'z_' + str(z) + '_x' + str(x_tile) + '_y_' + str(y_tile) + '_c_' + str(channel) + '.tif'
+                elif single_fov == 1:
+                    file_name = 'x' + str(x_tile) + '_y_' + str(y_tile) + '_c_' + str(channel) + '.tif'
                 image = zc_tif_stack[zc_index][z]
                 imwrite(file_name, image, photometric='minisblack')
 
