@@ -2,14 +2,14 @@
 #add python_xx and python_xx/DLL to the project path
 
 import sys
-sys.path.append('D:/dev/SDK/DLL32/DLL32')#add the path of the library here
-sys.path.append('D:/dev/SDK/Python_32')#add the path of the LoadElveflow.py
+sys.path.append('D:/dev/SDK/DLL64/DLL64')#add the path of the library here
+sys.path.append('D:/dev/SDK/Python_64')#add the path of the LoadElveflow.py
 
 from ctypes import *
 
 from array import array
 
-from Elveflow32 import *
+from Elveflow64 import *
 
 
 #

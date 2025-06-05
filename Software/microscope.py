@@ -31,8 +31,8 @@ import shutil
 import tracemalloc
 
 
-#magellan = Magellan()
-#core = Core()
+magellan = Magellan()
+core = Core()
 
 tracemalloc.start()
 

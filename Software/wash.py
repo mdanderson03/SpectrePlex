@@ -30,8 +30,8 @@ pump = ob1.fluidics(experiment_path, ob1_com_port, flow_control = 1)
 #turn on upper fluid filter pump
 #power_strip.toggle_plug('on', plug_num=2)
 #run actions
-pump.flow('ON HIGH')
-time.sleep(180)
+pump.flow('ON')
+time.sleep(60)
 #time.sleep(30)
 pump.flow('OFF')
 

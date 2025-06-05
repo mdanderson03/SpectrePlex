@@ -54,7 +54,8 @@ class fluidics:
         self.flow_control = flow_control
 
         self.pressure_on = 500
-        self.pressure_off = 0
+        self.pressure_on_low = 50
+        self.pressure_off = 10
         self.flow_on = 500
         self.flow_off = -3
         self.low_flow_on = 120
@@ -111,6 +112,9 @@ class fluidics:
         file_name = 'fluid_info_array.npy'
         fluid_array = np.load(file_name, allow_pickle=False)
 
+        Calib = (c_double * 1000)()  # always define array this way, calibration should have 1000 elements
+        Elveflow_Calibration_Default(byref(Calib), 1000)
+
         # set target to achieve
         if self.flow_control == 1 and on_off_state == 'ON':
             set_target = self.flow_on
@@ -124,6 +128,8 @@ class fluidics:
             set_target = self.pressure_on
         if self.flow_control == 0 and on_off_state == 'OFF':
             set_target = self.pressure_off
+        if self.flow_control == 0 and on_off_state == 'ON LOW':
+            set_target = self.pressure_on_low
         set_target_c_types = c_double(set_target)  # convert to c_double
 
         set_channel = int(1)  # convert to int
@@ -135,9 +141,11 @@ class fluidics:
         starting_flow_rate = data_sens.value
         self.fluidics_logger(str(OB1_Get_Remote_Data), error, starting_flow_rate)
 
-        # OB1_Start_Remote_Measurement(self.pump_ID, self.calibration_array, 1000)
+        #OB1_Start_Remote_Measurement(self.pump_ID, self.calibration_array, 1000)
+        print('set_pressure', str(set_target))
         error = OB1_Set_Remote_Target(self.pump_ID, set_channel, set_target_c_types)
-        self.fluidics_logger(str(OB1_Set_Remote_Target), error, set_target)
+        #error = OB1_Set_Press(self.pump_ID, set_channel, set_target, byref(Calib), 1000)
+        #self.fluidics_logger(str(OB1_Set_Press), error, set_target)
 
         time.sleep(4)  # wait 3 seconds to stabilize
         error = OB1_Get_Remote_Data(self.pump_ID, set_channel, byref(data_reg), byref(data_sens))
@@ -154,7 +162,7 @@ class fluidics:
         delta_flow_rate = current_flow_rate - starting_flow_rate
         print('start', starting_flow_rate, 'end', current_flow_rate, 'del', delta_flow_rate)
 
-        error = OB1_Get_Remote_Data(self.pump_ID, set_channel, byref(data_reg), byref(data_sens))
+        #error = OB1_Get_Remote_Data(self.pump_ID, set_channel, byref(data_reg), byref(data_sens))
         # current_flow_rate = data_sens.value
         # self.fluidics_logger(str(OB1_Get_Remote_Data), error, current_flow_rate)
 
@@ -198,6 +206,8 @@ class fluidics:
 
     def flow_check(self):
 
+        '''
+
         # make ctypes structures
         data_sens = c_double()
         data_reg = c_double()
@@ -224,6 +234,8 @@ class fluidics:
             self.ob1_reboot()
         else:
             pass
+        '''
+        return
 
     '''
     def ob1_reboot(self):
@@ -244,8 +256,9 @@ class fluidics:
 
     def ob1_reboot(self):
 
-        self.ob1_off(nretry=0)
-        self.ob1_on(nretry=0)
+        #self.ob1_off(nretry=0)
+        #self.ob1_on(nretry=0)
+        return
 
     def ob1_on(self, retry_limit=10, nretry=0):
 
