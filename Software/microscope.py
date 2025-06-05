@@ -4225,31 +4225,16 @@ class cycif:
         end = time.time()
         print('binary create', end - start)
 
-        #determine in focus parts first
-        #self.focus_excel_creation(experiment_directory, cycle_number)
-        #self.in_focus_excel_populate(experiment_directory, cycle_number, x_frame_size=x_frame_size)
-
-        #self.excel_2_focus(experiment_directory, cycle_number, x_frame_size=x_frame_size)
-        self.single_fov_file_rename(experiment_directory, cycle_number)
-
-        end = time.time()
-        print('focus', end - start)
-
-        
-
         #flatten image
 
-
-
         self.illumination_flattening(experiment_directory, cycle_number, single_fov=1)
-        #self.bottom_int_correction(experiment_directory, cycle_number=cycle_number)
 
         end = time.time()
         print('flatten', end - start)
 
 
-        self.darkframe_AF_sub(experiment_directory, cycle_number)
-        #self.darkframe_sub(experiment_directory, cycle_number)
+        #self.darkframe_AF_sub(experiment_directory, cycle_number)
+        self.darkframe_sub(experiment_directory, cycle_number)
         end = time.time()
         print('dark frame subtraction', end - start)
 
@@ -4769,6 +4754,8 @@ class cycif:
                         filename = 'x' + str(x) + '_y_' + str(y) + '_c_' + channel + '.tif'
                         color_im = io.imread(filename)
 
+                        #add 300 count floor to color_im
+                        color_im += 300
 
                         darkframe_im = self.dark_frame_generate(color_im, block_y_pixels, block_x_pixels)
                         darkframe_subbed_im = color_im - darkframe_im
