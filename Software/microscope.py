@@ -5038,28 +5038,41 @@ class cycif:
         :return:
         '''
 
-        #create new archive folder
+        tar_archive_destination_path = r'Y:\Spectreplex\archive' #Synology storage device
+        experiment_name = experiment_directory.split('\\')[-1]
+        mcmicro_path = r'Z:\Public\Thiagarajah Lab\Mike_A\SpectrePlex'
 
+        #create new archive folder
         os.chdir(experiment_directory)
         try:
             os.mkdir('archive')
         except:
             pass
 
+        #create experiment folders in micro path
+        os.chdir(mcmicro_path)
+        try:
+            os.mkdir(experiment_name)
+        except:
+            pass
+
         archive_path = experiment_directory + '/archive'
 
         #move folders into new archive folder
-
         folder_move_list = ['np_arrays', 'compression', 'exposure_times', 'fluidics data logger', 'Labelled_Nuc', 'Tissue_Binary']
-
         for folder in folder_move_list:
             moving_folder_path = experiment_directory + '/'+ folder
             shutil.move(moving_folder_path, archive_path)
 
-        #zip compress archive
+        #tar compress archive
         os.chdir(experiment_directory)
-        shutil.make_archive('archive', 'zip', '.', 'archive')
+        shutil.make_archive(experiment_name, 'tar', tar_archive_destination_path, 'archive')
 
+        #move mcmicro folder to mcmicro path
+        shutil.move(experiment_directory + '/mcmicro', mcmicro_path + '/' + experiment_name)
+        
+
+        '''
         #delete folders
         folder_to_delete = ['/Quick_Tile', '/archive', '/focus_grid_excel']
 
@@ -5073,6 +5086,7 @@ class cycif:
                 print(f"Folder '{folder_path}' not found.")
             except Exception as e:
                 print(f"An error occurred: {e}")
+        '''
 
     def block_proc_min(self, array, block_y_pixels, block_x_pixels):
         '''
