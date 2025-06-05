@@ -4264,6 +4264,7 @@ class cycif:
 
         #if did DAPI focus then acquire one plane, please do the following
         self.delete_intermediate_folders(experiment_directory, cycle_number)
+        self.archive(experiment_directory)
 
         #self.zlib_compress_raw(experiment_directory, cycle_number)
 
@@ -5070,7 +5071,7 @@ class cycif:
 
         #move mcmicro folder to mcmicro path
         shutil.move(experiment_directory + '/mcmicro', mcmicro_path + '/' + experiment_name)
-        
+
 
         '''
         #delete folders
