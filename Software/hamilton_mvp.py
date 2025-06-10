@@ -52,7 +52,7 @@ class AValveChain(AbstractValve):
         # Define valve and port properties
         self.max_valves = 16            # Maximum number of daisy chains
         self.valve_names = []
-        self.num_valves = 0
+        self.num_valves = 2
         self.valve_configs = []
         self.max_ports_per_valve = []
         self.current_port = []

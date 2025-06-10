@@ -31,8 +31,8 @@ import shutil
 import tracemalloc
 
 
-#magellan = Magellan()
-#core = Core()
+magellan = Magellan()
+core = Core()
 
 tracemalloc.start()
 
@@ -2493,7 +2493,7 @@ class cycif:
         return
 
     def multi_channel_z_stack_capture_dapi_focus(self, experiment_directory, cycle_number, Stain_or_Bleach,
-                                      offset_array, x_pixels=5056, slice_gap=2, channels=['DAPI', 'A488', 'A555', 'A647']):
+                    offset_array, x_pixels=5056, slice_gap=2, channels=['DAPI', 'A488', 'A555', 'A647']):
         '''
         Captures and saves all images in XY and Z dimensions. Order of operation is ZC XY(snake). Entire z stack with all
         channels is made into a numpy data structure and saved before going to next tile and being reused. This is done
@@ -4213,13 +4213,7 @@ class cycif:
         :return:
         '''
 
-
-
         start = time.time()
-
-
-
-
 
 
         #make tissue exist array if needed
@@ -4230,37 +4224,17 @@ class cycif:
             pass
         end = time.time()
         print('binary create', end - start)
-        '''
-
-        #determine in focus parts first
-        #self.focus_excel_creation(experiment_directory, cycle_number)
-        #self.in_focus_excel_populate(experiment_directory, cycle_number, x_frame_size=x_frame_size)
-
-        #self.excel_2_focus(experiment_directory, cycle_number, x_frame_size=x_frame_size)
-        self.single_fov_file_rename(experiment_directory, cycle_number)
-
-        end = time.time()
-        print('focus', end - start)
-
-        
 
         #flatten image
 
-
-
         self.illumination_flattening(experiment_directory, cycle_number, single_fov=1)
-        #self.bottom_int_correction(experiment_directory, cycle_number=cycle_number)
 
         end = time.time()
         print('flatten', end - start)
-        '''
 
 
-
-
-
-        self.darkframe_AF_sub(experiment_directory, cycle_number)
-        #self.darkframe_sub(experiment_directory, cycle_number)
+        #self.darkframe_AF_sub(experiment_directory, cycle_number)
+        self.darkframe_sub(experiment_directory, cycle_number)
         end = time.time()
         print('dark frame subtraction', end - start)
 
@@ -4289,7 +4263,8 @@ class cycif:
 
 
         #if did DAPI focus then acquire one plane, please do the following
-        #self.delete_intermediate_folders(experiment_directory, cycle_number)
+        self.delete_intermediate_folders(experiment_directory, cycle_number)
+        self.archive(experiment_directory)
 
         #self.zlib_compress_raw(experiment_directory, cycle_number)
 
@@ -4780,6 +4755,8 @@ class cycif:
                         filename = 'x' + str(x) + '_y_' + str(y) + '_c_' + channel + '.tif'
                         color_im = io.imread(filename)
 
+                        #add 300 count floor to color_im
+                        color_im += 300
 
                         darkframe_im = self.dark_frame_generate(color_im, block_y_pixels, block_x_pixels)
                         darkframe_subbed_im = color_im - darkframe_im
@@ -5062,28 +5039,41 @@ class cycif:
         :return:
         '''
 
-        #create new archive folder
+        tar_archive_destination_path = r'Y:\Spectreplex\archive' #Synology storage device
+        experiment_name = experiment_directory.split('\\')[-1]
+        mcmicro_path = r'Z:\Public\Thiagarajah Lab\Mike_A\SpectrePlex'
 
+        #create new archive folder
         os.chdir(experiment_directory)
         try:
             os.mkdir('archive')
         except:
             pass
 
+        #create experiment folders in micro path
+        os.chdir(mcmicro_path)
+        try:
+            os.mkdir(experiment_name)
+        except:
+            pass
+
         archive_path = experiment_directory + '/archive'
 
         #move folders into new archive folder
-
         folder_move_list = ['np_arrays', 'compression', 'exposure_times', 'fluidics data logger', 'Labelled_Nuc', 'Tissue_Binary']
-
         for folder in folder_move_list:
             moving_folder_path = experiment_directory + '/'+ folder
             shutil.move(moving_folder_path, archive_path)
 
-        #zip compress archive
+        #tar compress archive
         os.chdir(experiment_directory)
-        shutil.make_archive('archive', 'zip', '.', 'archive')
+        shutil.make_archive(experiment_name, 'tar', tar_archive_destination_path, 'archive')
 
+        #move mcmicro folder to mcmicro path
+        shutil.move(experiment_directory + '/mcmicro', mcmicro_path + '/' + experiment_name)
+
+
+        '''
         #delete folders
         folder_to_delete = ['/Quick_Tile', '/archive', '/focus_grid_excel']
 
@@ -5097,6 +5087,7 @@ class cycif:
                 print(f"Folder '{folder_path}' not found.")
             except Exception as e:
                 print(f"An error occurred: {e}")
+        '''
 
     def block_proc_min(self, array, block_y_pixels, block_x_pixels):
         '''
@@ -5549,7 +5540,7 @@ class cycif:
 
         return result
 
-    def zc_save(self, zc_tif_stack, channels, x_tile, y_tile, cycle, x_pixels, experiment_directory, Stain_or_Bleach):
+    def zc_save(self, zc_tif_stack, channels, x_tile, y_tile, cycle, x_pixels, experiment_directory, Stain_or_Bleach, single_fov = 1):
 
         z_tile_count = np.shape(zc_tif_stack)[1]
 
@@ -5572,7 +5563,10 @@ class cycif:
             os.chdir(save_directory)
 
             for z in range(0, z_tile_count):
-                file_name = 'z_' + str(z) + '_x' + str(x_tile) + '_y_' + str(y_tile) + '_c_' + str(channel) + '.tif'
+                if single_fov == 0:
+                    file_name = 'z_' + str(z) + '_x' + str(x_tile) + '_y_' + str(y_tile) + '_c_' + str(channel) + '.tif'
+                elif single_fov == 1:
+                    file_name = 'x' + str(x_tile) + '_y_' + str(y_tile) + '_c_' + str(channel) + '.tif'
                 image = zc_tif_stack[zc_index][z]
                 imwrite(file_name, image, photometric='minisblack')
 
