@@ -4,17 +4,13 @@ import os
 import io
 import sys
 import multiprocessing
-
-from KasaSmartPowerStrip import SmartPowerStrip
-import ob1
-
 import numpy as np
 
 from autocyplex import *
 from optparse import OptionParser
 microscope = cycif() # initialize cycif object
 experiment_directory = r'E:\03_6_25_test_double_hamilton_wirth_flow_meter'
-pump = fluidics(experiment_directory, 12, 11, 7, flow_control=1)
+pump = fluidics(experiment_directory, 12, 11, 3)
 #core = Core()
 
 
@@ -22,7 +18,10 @@ z_slices = 3
 x_frame_size = 2960
 
 offset_array = [0, -7, -7, -6]
-focus_position = 594
+focus_position = 0
+
+pump.flow(1000, 1000)
+
 
 
 def parallel_processing(experiment_directory, cycles, x_frame_size=2960):
@@ -49,8 +48,8 @@ def parallel_processing(experiment_directory, cycles, x_frame_size=2960):
 #Use second to take initial autofluorescence cycle
 #microscope.full_cycle(experiment_directory, 0, offset_array, 0, pump, z_slices, x_frame_size =x_frame_size, focus_position=focus_position)
 
-for cycle in range(1, 11):
-    microscope.full_cycle(experiment_directory, cycle, offset_array, cycle, pump, z_slices, x_frame_size=x_frame_size,focus_position=focus_position)
+#for cycle in range(1, 11):
+#    microscope.full_cycle(experiment_directory, cycle, offset_array, cycle, pump, z_slices, x_frame_size=x_frame_size,focus_position=focus_position)
 
 #for cycle in range(3, 7):
 #    microscope.full_cycle(experiment_directory, cycle, offset_array, cycle + 2, pump, z_slices, x_frame_size=x_frame_size,focus_position=focus_position)
