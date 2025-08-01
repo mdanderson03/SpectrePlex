@@ -10,7 +10,7 @@ from autocyplex import *
 from optparse import OptionParser
 microscope = cycif() # initialize cycif object
 experiment_directory = r'E:\03_6_25_test_double_hamilton_wirth_flow_meter'
-pump = fluidics(experiment_directory, 12, 11, 3)
+pump = fluidics(experiment_directory, 12, 11, 6)
 #core = Core()
 
 

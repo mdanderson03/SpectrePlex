@@ -17,6 +17,7 @@ import serial
 
 
 
+
 class APump():
     def __init__(self, parameters = False):
 
@@ -192,7 +193,7 @@ class APump():
             
     def setPort(self, port_id, wait = True):
         # Check to see if it is within the number of ports
-        if port_id >= self.num_ports:
+        if port_id > self.num_ports:
             print("An invalid port was requested for the PSD4")
             assert False
         
@@ -276,10 +277,32 @@ class APump():
             print("Unknown response from PSD4")
             assert False
 
-    def volume_dispense(self, vol_2_dispense, dispense_vel_ulmin, wait_until_flow_done = True):
+    def load_syringe(self, volume, wait_until_flow_done = True):
+
+        #set port to distribution valve
+        dist_port = 2
+        self.setPort(dist_port)
+
+        #set fill speed
+        self.setSpeed(4000)
+
+        #find current fill position
+        (is_moving, pos_in_uL, vel_in_mLmin, valve_pos) = self.getStatus()
+
+        if volume + pos_in_uL > self.syringe_volume * 1000:
+            print('Error: More Volume than Syringe Capacity Requested')
+        else:
+            self.startFill(volume + pos_in_uL)
+
+        while wait_until_flow_done == True:
+            time.sleep(1)
+            (is_moving, pos_in_uL, vel_in_mLmin, valve_pos) = self.getStatus()
+            wait_until_flow_done = is_moving
+
+    def volume_dispense(self, vol_2_dispense, dispense_vel_ulmin, device_port = 3, wait_until_flow_done = True):
         '''
         Dispenses additional volume in uLs. Gives back error if ask
-        for more than max possible.
+        for more than max possible. Only pushes out of syringe, will not fill
 
         Parameters
         ----------
@@ -292,12 +315,15 @@ class APump():
 
         '''
 
+        #set to device port
+        self.setPort(device_port)
+
         #set flow velcity in uL/min
         self.setSpeed(dispense_vel_ulmin)
 
         #determine new volume to move to
         (is_moving, pos_in_uL, vel_in_mLmin, valve_pos) = self.getStatus()
-        new_vol = pos_in_uL + vol_2_dispense
+        new_vol = pos_in_uL + (-1 * abs(vol_2_dispense)) #mandate negative amount
         if new_vol > self.syringe_volume * 1000:
             print('Error: More Volume than Syringe Capacity Requested')
         else:
@@ -308,7 +334,7 @@ class APump():
             (is_moving, pos_in_uL, vel_in_mLmin, valve_pos) = self.getStatus()
             wait_until_flow_done = is_moving
 
-    def empty_syringe(self, wait_until_flow_done = True):
+    def empty_syringe(self):
         '''
         Expels all volume from syringe into drain port path
 
@@ -321,14 +347,7 @@ class APump():
 
         '''
 
-        self.setPort(5)
-        self.setSpeed(2500)
-        self.startFill(0)
-
-        while wait_until_flow_done == True:
-            time.sleep(1)
-            (is_moving, pos_in_uL, vel_in_mLmin, valve_pos) = self.getStatus()
-            wait_until_flow_done = is_moving
+        self.initializePump()
     
     def read(self):
        # response = self.serial.readline().decode()

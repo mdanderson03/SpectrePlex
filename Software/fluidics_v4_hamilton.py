@@ -36,7 +36,7 @@ class fluidics:
             "syringe_type": "smooth_flow"
         }
         self.sy = APump(parameters=parameters)
-        self.device_number = 1 #makes valve 1 only connected to device
+        self.device_number = 2 #makes valve 1 only connected to device
 
         #recalibrate volume and expel into waste reservior
         self.sy.setPort(5) #5 is waste port
