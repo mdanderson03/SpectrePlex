@@ -5,7 +5,7 @@ from hamilton_psd4 import APump
 
 
 parameters = {
-  "pump_com_port": "COM14",
+  "pump_com_port": "COM4",
   "pump_ID": "PSD4",
   "verbose": False,
   "simulate_pump": False,
@@ -17,11 +17,11 @@ parameters = {
 
 sy = APump(parameters=parameters)
 #sy.setPort(6)
-sy.write('/1h3000R\r')
+#sy.write('/1h3000R\r')
 #sy.read()
 #for x in range(0, 4):
-#sy.initializePump()
-#sy.load_syringe(350)
+sy.initializePump()
+sy.load_syringe(350)
 
 #time.sleep(90)
 
