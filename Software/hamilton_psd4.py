@@ -333,21 +333,6 @@ class APump():
             time.sleep(1)
             (is_moving, pos_in_uL, vel_in_mLmin, valve_pos) = self.getStatus()
             wait_until_flow_done = is_moving
-
-    def empty_syringe(self):
-        '''
-        Expels all volume from syringe into drain port path
-
-        Parameters
-        ----------
-        wait_until_flow_done
-
-        Returns
-        -------
-
-        '''
-
-        self.initializePump()
     
     def read(self):
        # response = self.serial.readline().decode()

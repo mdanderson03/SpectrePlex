@@ -154,6 +154,69 @@ class fluidics:
             time.sleep(0.5)
             self.sy.volume_dispense(250, 500, wait_until_flow_done=True)
 
+    def load_stain(self, pre_expel_vol, load_volume, stain_valve):
+        '''
+        Loads stain into syringe. First a volume (pre-expel) is taken in and expelled.
+        Next, the stain is pulled into the syringe in the indicated volume.
+        Parameters
+        ----------
+        pre_expel_vol
+        load_volume
+        stain_valve
+
+        Returns
+        -------
+
+        '''
+
+        pbs_valve = 12
+        load_syringe_valve = 2
+
+        #set to PBS valve and load syringe valves
+        #self.valve_select(pbs_valve)
+        self.sy.setPort(load_syringe_valve)
+
+        #load syringe of initial volume and expel
+        self.sy.load_syringe(pre_expel_vol, wait_until_flow_done=True)
+        self.sy.initializePump()
+        #move to stain valve and bring stain solution in
+        #self.valve_select(stain_valve)
+        self.sy.load_syringe(load_volume)
+
+    def deposit_stain(self, expel_volume, post_expel_volume, device_valve = 3):
+        '''
+        Pushes out volume of stain into device and then sucks PBS back into syringe
+        and follows by pushing fluid front post_expel_volume more.
+        Parameters
+        ----------
+        expel_volume
+        post_expel_volume
+        device_valve
+
+        Returns
+        -------
+
+        '''
+
+        pbs_valve = 12
+        load_syringe_valve = 2
+
+        self.sy.volume_dispense(expel_volume, dispense_vel_ulmin=500, device_port=device_valve, wait_until_flow_done=True)
+
+        if post_expel_volume > 0:
+            #if volume is non zero, then expel syringe, swap to PBS valve and fill
+            self.sy.initializePump()
+            self.sy.setPort(load_syringe_valve)
+            self.valve_select(pbs_valve)
+            self.sy.load_syringe(post_expel_volume*2)
+
+            self.sy.volume_dispense(post_expel_volume, dispense_vel_ulmin=500, device_port=device_valve, wait_until_flow_done=True)
+
+
+
+
+
+
     def flow(self, volume_2_dispense, flow_rate):
         '''
         volume 2 dispense is in uL and flow_rate is uL/min
