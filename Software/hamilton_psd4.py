@@ -57,7 +57,7 @@ class APump():
         
         # Create serial port
         self.serial = serial.Serial(port = self.com_port, 
-                                    timeout=0.1)
+                                    timeout=0.5)
 
         # Define initial pump status
         self.flow_status = "Stopped"
@@ -336,6 +336,7 @@ class APump():
     
     def read(self):
        # response = self.serial.readline().decode()
+        self.serial.flushOutput()
         response = self.serial.readline()
 
         if self.verbose:
@@ -343,6 +344,7 @@ class APump():
         return response
 
     def write(self, message):
+        self.serial.flushInput()
         self.serial.write(message.encode())
         if self.verbose:
             print("Wrote: " + message[:-1]) # Display all but final carriage return

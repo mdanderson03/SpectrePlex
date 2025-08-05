@@ -8,20 +8,27 @@ from hamilton_psd4 import APump
 parameters = {
   "pump_com_port": "COM4",
   "pump_ID": "PSD4",
-  "verbose": False,
+  "verbose": True,
   "simulate_pump": False,
   "serial_verbose": False,
   "high_res": True,
   "syringe_volume": 12.5,
   "syringe_type": "smooth_flow"
 }
-
 sy = APump(parameters=parameters)
-#sy.setPort(6)
-#sy.write('/1h3000R\r')
+
+
+
+
+
+    #sy.setPort(6)
+#sy.write('/1ZR\r')
+sy.write('/1h30003R\r')
+sy.read()
+
 #sy.read()
 #for x in range(0, 4):
-sy.initializePump()
+#sy.initializePump()
 #sy.load_syringe(350)
 
 
