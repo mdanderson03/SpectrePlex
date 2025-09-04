@@ -1,7 +1,5 @@
 import copy
-
-import ome_types
-from pycromanager import Core, Magellan, Studio
+from pycromanager import Core, Magellan
 import numpy as np
 import time
 from skimage import io, filters, morphology, restoration, util, transform
@@ -16,13 +14,13 @@ from sklearn.linear_model import HuberRegressor
 from ome_types import from_xml, OME, to_xml
 from copy import deepcopy
 from pystackreg import StackReg
-from pybasic import shading_correction
+#from pybasic import shading_correction
 from path import Path
 from csbdeep.utils import normalize
 from stardist.models import StarDist2D
 from matplotlib import pyplot as plt
 import cv2
-from pywt import wavedecn, waverecn
+#from pywt import wavedecn, waverecn
 from scipy.ndimage import gaussian_filter
 from joblib import Parallel, delayed
 import multiprocessing
@@ -31,8 +29,8 @@ import shutil
 import tracemalloc
 
 
-#magellan = Magellan()
-#core = Core()
+magellan = Magellan()
+core = Core()
 
 tracemalloc.start()
 

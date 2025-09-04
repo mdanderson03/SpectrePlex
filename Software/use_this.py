@@ -1,26 +1,26 @@
-import gc
-import math
-import os
-import io
-import sys
-import multiprocessing
-import numpy as np
+#import gc
+#import math
+#import os
+#import io
+#import sys
+#import multiprocessing
+#import numpy as np
 
 from autocyplex import *
-from optparse import OptionParser
+#from optparse import OptionParser
 microscope = cycif() # initialize cycif object
-experiment_directory = r'E:\03_6_25_test_double_hamilton_wirth_flow_meter'
-pump = fluidics(experiment_directory, 12, 11, 6)
-#core = Core()
+experiment_directory = r'E:\09_02_blank_testing'
+#pump = fluidics(6,5,7)
+
 
 
 z_slices = 3
 x_frame_size = 2960
 
 offset_array = [0, -7, -7, -6]
-focus_position = 0
+focus_position = 13
 
-pump.flow(1000, 1000)
+
 
 
 
@@ -43,7 +43,7 @@ def parallel_processing(experiment_directory, cycles, x_frame_size=2960):
 #microscope.repeated_image_acquistion('E:\poisson_noise_images', 25, 'DAPI', 200)
 
 #use first to set cluster surface
-#microscope.wide_net_auto_focus(experiment_directory, x_frame_size=x_frame_size, offset_array=offset_array, z_slice_search_range=5, focus_position=focus_position, number_clusters_retained=1, manual_cluster_update=0)
+microscope.wide_net_auto_focus(experiment_directory, x_frame_size=x_frame_size, offset_array=offset_array, z_slice_search_range=5, focus_position=focus_position, number_clusters_retained=1, manual_cluster_update=0)
 
 #Use second to take initial autofluorescence cycle
 #microscope.full_cycle(experiment_directory, 0, offset_array, 0, pump, z_slices, x_frame_size =x_frame_size, focus_position=focus_position)

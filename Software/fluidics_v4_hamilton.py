@@ -8,11 +8,11 @@ from hamilton_psd4 import APump
 
 class fluidics:
 
-    def __init__(self, experiment_path, mux_valve1_ID, mux_valve2_ID, syringe_com_port):
+    def __init__(self, mux_valve1_ID, mux_valve2_ID, syringe_com_port):
 
 
-        self.experiment_path = experiment_path
-        self.experiment_directory = experiment_path
+        #self.experiment_path = experiment_path
+        #self.experiment_directory = experiment_path
 
         #initialize distribution valves
         ###############################################
@@ -20,8 +20,8 @@ class fluidics:
         self.valve1_ID = 'COM' + str(mux_valve1_ID)
         self.valve2_ID = 'COM' + str(mux_valve2_ID)
 
-        #self.mux1 = AValveChain(parameters=self.valve1_ID)
-        #self.mux2 = AValveChain(parameters=self.valve2_ID)
+        self.mux1 = AValveChain(parameters=self.valve1_ID)
+        self.mux2 = AValveChain(parameters=self.valve2_ID)
 
         #   initialize syringe pump
         ###########################################
@@ -109,6 +109,12 @@ class fluidics:
 
         '''
 
+        #remap from physical valve number to reference valve number
+        #physical = how eppendorfs are organized, interal = valve on dist valve module
+
+        remap_vector = [0,9,6,7,1,2,3,4,5,10,8, 15,14]
+        valve_number = int(remap_vector[valve_number])
+
         if valve_number <= 7:
             self.mux1.changePort(0, valve_number - 1, direction=0, wait_until_done=True)
         elif valve_number >= 8 and valve_number <= 15:
@@ -149,12 +155,16 @@ class fluidics:
 
     def valve_prime(self):
 
-        for valve in range(1,12):
+        valves = [1,2,3,4,5,6,7,8,11,12]
+
+
+        #for valve in range(1,12):
+        for valve in valves:
             self.valve_select(valve)
             time.sleep(0.5)
-            self.sy.volume_dispense(250, 500, wait_until_flow_done=True)
+            self.sy.load_syringe(200, wait_until_flow_done=True)
 
-    def load_stain(self, pre_expel_vol, load_volume, stain_valve):
+    def load_stain(self, load_volume, stain_valve):
         '''
         Loads stain into syringe. First a volume (pre-expel) is taken in and expelled.
         Next, the stain is pulled into the syringe in the indicated volume.
@@ -174,13 +184,13 @@ class fluidics:
 
         #set to PBS valve and load syringe valves
         #self.valve_select(pbs_valve)
-        self.sy.setPort(load_syringe_valve)
+        #self.sy.setPort(load_syringe_valve)
 
         #load syringe of initial volume and expel
-        self.sy.load_syringe(pre_expel_vol, wait_until_flow_done=True)
+        #self.sy.load_syringe(pre_expel_vol, wait_until_flow_done=True)
         self.sy.initializePump()
         #move to stain valve and bring stain solution in
-        #self.valve_select(stain_valve)
+        self.valve_select(stain_valve)
         self.sy.load_syringe(load_volume)
 
     def deposit_stain(self, expel_volume, post_expel_volume, device_valve = 3):
