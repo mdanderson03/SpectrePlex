@@ -240,13 +240,14 @@ class fluidics:
 
         '''
 
+        self.sy.load_syringe(volume_2_dispense)
         self.sy.volume_dispense(volume_2_dispense, flow_rate, wait_until_flow_done=True)
 
     def liquid_action(self, action_type, stain_valve=0, incub_val=45, heater_state=0):
 
         bleach_valve = 11
         pbs_valve = 12
-        bleach_time = 10  # minutes
+        bleach_time = 1  # minutes
         bleach_flow_rate = 1000
         wash_flow_rate = 1000
         stain_flow_rate = 500
@@ -273,11 +274,8 @@ class fluidics:
             self.valve_select(stain_valve)
             self.flow(400, stain_flow_rate)
 
-            self.valve_select(pbs_valve)
-            self.valve_select(pbs_valve)
-            self.flow(1500, wash_flow_rate)
+            for x in range(0, incub_val):
 
-            for x in range(0, stain_inc_time):
                 time.sleep(60)
                 print('Staining Time Elapsed ', x)
 

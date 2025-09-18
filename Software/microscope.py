@@ -9,8 +9,6 @@ import math
 from tifffile import imwrite
 import tifffile as tf
 from openpyxl import load_workbook, Workbook
-from skspatial.objects import Plane, Points
-from sklearn.linear_model import HuberRegressor
 from ome_types import from_xml, OME, to_xml
 from copy import deepcopy
 from pystackreg import StackReg
@@ -18,9 +16,7 @@ from pystackreg import StackReg
 from path import Path
 from csbdeep.utils import normalize
 from stardist.models import StarDist2D
-from matplotlib import pyplot as plt
 import cv2
-#from pywt import wavedecn, waverecn
 from scipy.ndimage import gaussian_filter
 from joblib import Parallel, delayed
 import multiprocessing
@@ -873,7 +869,7 @@ class cycif:
 
             scaled_im = mag * im
             hdr_array[index] = scaled_im
-            im[im > 65234] = 0
+            im[im > 65532] = 1 #gets rid of saturation contributions
 
             del_I = np.sqrt(im)
 
@@ -2045,12 +2041,13 @@ class cycif:
             for y in range(0, y_tile_count):
                 if tissue_fm[y][x] > 1:
                     os.chdir(dapi_im_path)
-                    file_name = 'z_' + str(z_center_index) + '_x' + str(x) + '_y_' + str(y) + '_c_DAPI.tif'
+                    file_name = 'x' + str(x) + '_y_' + str(y) + '_c_DAPI.tif'
                     labelled_file_name = 'x' + str(x) + '_y_' + str(y) + '_c_DAPI.tif'
                     img = io.imread(file_name)
                     img = img.astype('int32')
                     img[img < 0] = 0
-                    #img = skimage.util.img_as_uint(img)
+                    labels = img
+                    img = skimage.util.img_as_uint(img)
                     labels, _ = model.predict_instances(normalize(img))
                     labels[labels > 0] = 1
 
@@ -3074,13 +3071,13 @@ class cycif:
 
             # print(status_str)
             print('cycle', cycle_number)
-            pump.liquid_action('Stain', incub_val=incub_val, stain_valve=stain_valve, experiment_directory=experiment_directory)
+            pump.liquid_action('Stain', stain_valve=stain_valve,incub_val=incub_val)
             #self.reacquire_run_autofocus(experiment_directory, cycle_number, z_slices, offset_array, x_frame_size)
             # print(status_str)
             #start low flow to constantly flow fluid while imaging to reduce fluorescence of fluidic over time
-            pump.liquid_action('low flow on')
+            #pump.liquid_action('low flow on')
             self.image_cycle_acquire(cycle_number, experiment_directory, z_slices, 'Stain', offset_array,x_frame_size=x_frame_size, establish_fm_array=0, auto_focus_run=0,auto_expose_run=3)
-            pump.liquid_action('flow off')
+            #pump.liquid_action('flow off')
             time.sleep(1)
 
             # print(status_str)
