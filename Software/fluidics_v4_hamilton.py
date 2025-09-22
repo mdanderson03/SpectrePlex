@@ -241,6 +241,7 @@ class fluidics:
         '''
 
         self.sy.load_syringe(volume_2_dispense)
+        time.sleep(10)
         self.sy.volume_dispense(volume_2_dispense, flow_rate, wait_until_flow_done=True)
 
     def liquid_action(self, action_type, stain_valve=0, incub_val=45, heater_state=0):

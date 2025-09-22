@@ -9,7 +9,7 @@
 from autocyplex import *
 #from optparse import OptionParser
 microscope = cycif() # initialize cycif object
-experiment_directory = r'E:\09_18_blank_testing'
+experiment_directory = r'D:\09_22_blank_testing_trial2'
 pump = fluidics(6,5,7)
 
 
@@ -18,7 +18,7 @@ z_slices = 3
 x_frame_size = 2960
 
 offset_array = [0, -7, -7, -6]
-focus_position = 1061
+focus_position = 3
 
 
 
@@ -50,7 +50,7 @@ def parallel_processing(experiment_directory, cycles, x_frame_size=2960):
 #microscope.full_cycle(experiment_directory, 0, offset_array, 0, pump, z_slices, x_frame_size =x_frame_size, focus_position=focus_position)
 
 for cycle in range(1, 9):
-    microscope.full_cycle(experiment_directory, cycle, offset_array, cycle, pump, z_slices, x_frame_size=x_frame_size,focus_position=focus_position)
+    microscope.full_cycle(experiment_directory, cycle, offset_array, cycle, pump, z_slices, incub_val = 5, x_frame_size=x_frame_size,focus_position=focus_position)
 
 #for cycle in range(3, 7):
 #    microscope.full_cycle(experiment_directory, cycle, offset_array, cycle + 2, pump, z_slices, x_frame_size=x_frame_size,focus_position=focus_position)
