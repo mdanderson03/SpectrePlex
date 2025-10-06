@@ -12,7 +12,7 @@ from openpyxl import load_workbook, Workbook
 from ome_types import from_xml, OME, to_xml
 from copy import deepcopy
 from pystackreg import StackReg
-#from pybasic import shading_correction
+from pybasic import shading_correction
 from path import Path
 from csbdeep.utils import normalize
 from stardist.models import StarDist2D
@@ -3087,6 +3087,24 @@ class cycif:
             self.image_cycle_acquire(cycle_number, experiment_directory, z_slices, 'Bleach', offset_array, x_frame_size=x_frame_size, establish_fm_array=0, auto_focus_run=0,auto_expose_run=0)
             time.sleep(1)
 
+    def prim_second_full_cycle(self, experiment_directory, cycle_number, offset_array, fluidics_object, z_slices, prim_vial = 1, second_vial = 2, incub_val=45, x_frame_size=2960):
+
+        pump = fluidics_object
+
+        # print(status_str)
+        print('cycle', cycle_number)
+        pump.liquid_action('Stain', stain_valve=prim_vial,incub_val=incub_val)
+        pump.liquid_action('Stain', stain_valve=second_vial, incub_val=incub_val)
+        self.image_cycle_acquire(cycle_number, experiment_directory, z_slices, 'Stain', offset_array,x_frame_size=x_frame_size, establish_fm_array=0, auto_focus_run=0,auto_expose_run=3)
+        time.sleep(1)
+
+        # print(status_str)
+        pump.liquid_action('Bleach')  # nuc is valve=7, pbs valve=8, bleach valve=1 (action, stain_valve, heater state (off = 0, on = 1))
+        time.sleep(1)
+        # print(status_str)
+        self.image_cycle_acquire(cycle_number, experiment_directory, z_slices, 'Bleach', offset_array, x_frame_size=x_frame_size, establish_fm_array=0, auto_focus_run=0,auto_expose_run=0)
+        time.sleep(1)
+
 
     def tissue_integrity_cycles(self, experiment_directory, cycle_number, offset_array, stain_valve, fluidics_object, z_slices, incub_val=45, x_frame_size=2960, focus_position = 'none', number_clusters = 6):
 
@@ -3610,7 +3628,7 @@ class cycif:
 
         new_ome = OME()
         #ome = from_xml(r'C:\Users\mike\Documents\GitHub\AutoCIF/image.xml', parser='lxml')
-        ome = from_xml(r'C:\Users\CyCIF PC\Documents\GitHub\AutoCIF/image.xml', parser='lxml')
+        ome = from_xml(r'C:\Users\ch199435\Documents\GitHub\SpectrePlex/image.xml', parser='lxml')
         ome = ome.images[0]
 
         numpy_path = experiment_directory + '/' + 'np_arrays'
@@ -4214,7 +4232,7 @@ class cycif:
         #make tissue exist array if needed
         if cycle_number == 1:
             self.numpy_size()
-            self.tissue_exist_array_generate(experiment_directory, x_frame_size=x_frame_size)
+            #self.tissue_exist_array_generate(experiment_directory, x_frame_size=x_frame_size)
         else:
             pass
         end = time.time()
@@ -4222,29 +4240,29 @@ class cycif:
 
         #flatten image
 
-        self.illumination_flattening(experiment_directory, cycle_number, single_fov=1)
+        #self.illumination_flattening(experiment_directory, cycle_number, single_fov=1)
 
         end = time.time()
         print('flatten', end - start)
 
 
         #self.darkframe_AF_sub(experiment_directory, cycle_number)
-        self.darkframe_sub(experiment_directory, cycle_number)
+        #self.darkframe_sub(experiment_directory, cycle_number)
         end = time.time()
         print('dark frame subtraction', end - start)
 
 
 
         #compress to 16bit
-        self.stage_placement(experiment_directory, cycle_number, x_pixels=x_frame_size, down_sample_factor=4,single_fov=1)
-        self.hdr_compression_2(experiment_directory, cycle_number)
+        #self.stage_placement(experiment_directory, cycle_number, x_pixels=x_frame_size, down_sample_factor=4,single_fov=1)
+        #self.hdr_compression_2(experiment_directory, cycle_number)
 
 
 
         end = time.time()
         print('compress', end - start)
 
-        self.mcmicro_image_stack_generator_separate_clusters(cycle_number, experiment_directory, x_frame_size)
+        #self.mcmicro_image_stack_generator_separate_clusters(cycle_number, experiment_directory, x_frame_size)
 
         end = time.time()
         print('mcmicro', end - start)
@@ -4258,7 +4276,7 @@ class cycif:
 
 
         #if did DAPI focus then acquire one plane, please do the following
-        self.delete_intermediate_folders(experiment_directory, cycle_number)
+        #self.delete_intermediate_folders(experiment_directory, cycle_number)
         self.archive(experiment_directory)
 
         #self.zlib_compress_raw(experiment_directory, cycle_number)
@@ -5055,17 +5073,17 @@ class cycif:
         archive_path = experiment_directory + '/archive'
 
         #move folders into new archive folder
-        folder_move_list = ['np_arrays', 'compression', 'exposure_times', 'fluidics data logger', 'Labelled_Nuc', 'Tissue_Binary']
-        for folder in folder_move_list:
-            moving_folder_path = experiment_directory + '/'+ folder
-            shutil.move(moving_folder_path, archive_path)
+        #folder_move_list = ['np_arrays', 'compression', 'exposure_times', 'Labelled_Nuc', 'Tissue_Binary']
+        #for folder in folder_move_list:
+        #    moving_folder_path = experiment_directory + '/'+ folder
+        #    shutil.move(moving_folder_path, archive_path)
 
         #tar compress archive
         os.chdir(experiment_directory)
-        shutil.make_archive(experiment_name, 'tar', tar_archive_destination_path, 'archive')
+        shutil.make_archive(experiment_name, 'tar', root_dir=tar_archive_destination_path, base_dir='archive')
 
         #move mcmicro folder to mcmicro path
-        shutil.move(experiment_directory + '/mcmicro', mcmicro_path + '/' + experiment_name)
+        #shutil.move(experiment_directory + '/mcmicro', mcmicro_path + '/' + experiment_name)
 
 
         '''

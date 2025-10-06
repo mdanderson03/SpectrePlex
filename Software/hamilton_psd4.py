@@ -280,7 +280,7 @@ class APump():
     def load_syringe(self, volume, wait_until_flow_done = True):
 
         #set port to distribution valve
-        dist_port = 2
+        dist_port = 5
         self.setPort(dist_port)
 
         #set fill speed

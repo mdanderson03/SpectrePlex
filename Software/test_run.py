@@ -1,7 +1,7 @@
 import time
 
 from hamilton_psd4 import APump
-from fluidics_v4_hamilton import fluidics
+#from fluidics_v4_hamilton import fluidics
 from hamilton_mvp import AValveChain
 
 
@@ -11,14 +11,16 @@ parameters = {"pump_com_port": "COM7","pump_ID": "PSD4","verbose": False,"simula
 sy = APump(parameters=parameters)
 
 sy.initializePump()
+
 #print(sy.getStatus())
 sy.load_syringe(1000)
-sy.volume_dispense(1000, 500)
+
+sy.volume_dispense(900, 500, device_port=3)
 #pump = fluidics(6,5,7)
 
 #valves = [8]
 #for valve in valves:
-#    pump.liquid_action('Stain', valve, incub_val=1)
+#pump.liquid_action('Stain', stain_valve=1, incub_val=5)
 #    pump.liquid_action('Bleach')
 #pump.load_stain( 1500, 12)
 #pump.deposit_stain(1300, 0)
