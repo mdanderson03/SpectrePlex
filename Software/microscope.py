@@ -4232,7 +4232,7 @@ class cycif:
         #make tissue exist array if needed
         if cycle_number == 1:
             self.numpy_size()
-            #self.tissue_exist_array_generate(experiment_directory, x_frame_size=x_frame_size)
+            self.tissue_exist_array_generate(experiment_directory, x_frame_size=x_frame_size)
         else:
             pass
         end = time.time()
@@ -4240,14 +4240,14 @@ class cycif:
 
         #flatten image
 
-        #self.illumination_flattening(experiment_directory, cycle_number, single_fov=1)
+        self.illumination_flattening(experiment_directory, cycle_number, single_fov=1)
 
         end = time.time()
         print('flatten', end - start)
 
 
         #self.darkframe_AF_sub(experiment_directory, cycle_number)
-        #self.darkframe_sub(experiment_directory, cycle_number)
+        self.darkframe_sub(experiment_directory, cycle_number)
         end = time.time()
         print('dark frame subtraction', end - start)
 
@@ -4262,7 +4262,7 @@ class cycif:
         end = time.time()
         print('compress', end - start)
 
-        #self.mcmicro_image_stack_generator_separate_clusters(cycle_number, experiment_directory, x_frame_size)
+        self.mcmicro_image_stack_generator_separate_clusters(cycle_number, experiment_directory, x_frame_size)
 
         end = time.time()
         print('mcmicro', end - start)
@@ -4271,13 +4271,13 @@ class cycif:
 
         #generate stage placement
 
-        #self.stage_placement(experiment_directory, cycle_number, x_pixels = x_frame_size, down_sample_factor=4, single_fov=1)
+        self.stage_placement(experiment_directory, cycle_number, x_pixels = x_frame_size, down_sample_factor=4, single_fov=1)
 
 
 
         #if did DAPI focus then acquire one plane, please do the following
         #self.delete_intermediate_folders(experiment_directory, cycle_number)
-        self.archive(experiment_directory)
+        #self.archive(experiment_directory)
 
         #self.zlib_compress_raw(experiment_directory, cycle_number)
 
@@ -5079,11 +5079,11 @@ class cycif:
         #    shutil.move(moving_folder_path, archive_path)
 
         #tar compress archive
-        os.chdir(experiment_directory)
-        shutil.make_archive(experiment_name, 'tar', root_dir=tar_archive_destination_path, base_dir='archive')
+
+        #shutil.make_archive(experiment_name, 'tar', root_dir=tar_archive_destination_path, base_dir='archive')
 
         #move mcmicro folder to mcmicro path
-        #shutil.move(experiment_directory + '/mcmicro', mcmicro_path + '/' + experiment_name)
+        shutil.copy(experiment_directory + '/mcmicro', mcmicro_path + '/' + experiment_name)
 
 
         '''
