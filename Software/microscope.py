@@ -207,8 +207,8 @@ class cycif:
         y_tiles = np.shape(fm_array[0])[0]
         x_tiles = np.shape(fm_array[0])[1]
 
-        exp_calc_array = np.random.rand(4, 3, y_tiles, x_tiles)
-        exp_array = [10, 50, 50, 50]
+        exp_calc_array = np.random.rand(5, 3, y_tiles, x_tiles)
+        exp_array = [10, 50, 50, 50, 50]
         exp_calc_array[::, 0, ::, ::] = 100
 
         file_name = 'exp_calc_array.npy'
@@ -469,6 +469,7 @@ class cycif:
             ws.cell(row=4, column=3).value = 'Max Int A488'
             ws.cell(row=4, column=4).value = 'Max Int A555'
             ws.cell(row=4, column=5).value = 'Max Int A647'
+            ws.cell(row=4, column=6).value = 'Max Int A750'
 
         if os.path.isfile('HDR_Exp.xlsx') == True:
             wb = load_workbook('HDR_Exp.xlsx')
@@ -1207,6 +1208,7 @@ class cycif:
         a488_channel_offset = off_array[1]  # determine if each of these are good and repeatable offsets
         a555_channel_offset = off_array[2]
         a647_channel_offset = off_array[3]
+        a750_channel_offset = off_array[4]
 
         y_tiles = np.shape(fm_array[0])[0]
         x_tiles = np.shape(fm_array[0])[1]
@@ -1231,17 +1233,19 @@ class cycif:
         fm_array[5] = z_slice_array
         fm_array[7] = z_slice_array
         fm_array[9] = z_slice_array
+        fm_array[11] = z_slice_array
 
-        fm_array[10] = np.full((y_tiles, x_tiles), 2)
-        fm_array[11] = all_ones_array
-        fm_array[12] = all_ones_array
+        fm_array[12] = np.full((y_tiles, x_tiles), 2)
         fm_array[13] = all_ones_array
         fm_array[14] = all_ones_array
+        #fm_array[13] = all_ones_array
+        #fm_array[14] = all_ones_array
 
         fm_array[2] = fm_array[2] + int(((z_slice_array[0][0] - 1) * slice_gap) / 2)
         fm_array[4] = fm_array[4] + int(((z_slice_array[0][0] - 1) * slice_gap) / 2)
         fm_array[6] = fm_array[6] + int(((z_slice_array[0][0] - 1) * slice_gap) / 2)
         fm_array[8] = fm_array[8] + int(((z_slice_array[0][0] - 1) * slice_gap) / 2)
+        fm_array[10] = fm_array[10] + int(((z_slice_array[0][0] - 1) * slice_gap) / 2)
 
         np.save(file_name, fm_array)
 
@@ -1297,12 +1301,14 @@ class cycif:
         fm_array[4] -= (original_z_others - desired_z_slices_other) * slice_gap #a488
         fm_array[6] -= (original_z_others - desired_z_slices_other) * slice_gap #a555
         fm_array[8] -= (original_z_others - desired_z_slices_other) * slice_gap #a647
+        fm_array[10] -= (original_z_others - desired_z_slices_other) * slice_gap  # a750
 
         #update z slices
         fm_array[3] = desired_z_slices_dapi
         fm_array[5] = desired_z_slices_other
         fm_array[7] = desired_z_slices_other
         fm_array[9] = desired_z_slices_other
+        fm_array[11] = desired_z_slices_other
 
         np.save('fm_array.npy', fm_array)
 
@@ -1637,7 +1643,7 @@ class cycif:
                     fl_number = float(sci_number)
                     tissue_fm_code_number += fl_number
 
-                fm_array[10][y][x] = tissue_fm_code_number
+                fm_array[12][y][x] = tissue_fm_code_number
 
         os.chdir(numpy_path)
         np.save(file_name, fm_array)
@@ -2312,7 +2318,7 @@ class cycif:
         return averaged_image
 
     def multi_channel_z_stack_capture(self, experiment_directory, cycle_number, Stain_or_Bleach,
-                                      x_pixels=5056, slice_gap=2, channels=['DAPI', 'A488', 'A555', 'A647']):
+                                      x_pixels=5056, slice_gap=2, channels=['DAPI', 'A488', 'A555', 'A647', 'A750']):
         '''
         Captures and saves all images in XY and Z dimensions. Order of operation is ZC XY(snake). Entire z stack with all
         channels is made into a numpy data structure and saved before going to next tile and being reused. This is done
@@ -2519,7 +2525,7 @@ class cycif:
         # determine attributes like tile counts,z slices and channel counts
         numpy_x = full_array[0]
         numpy_y = full_array[1]
-        tissue_fm = full_array[10]
+        tissue_fm = full_array[12]
 
         side_pixel_count = int((5056 - x_pixels)/2)
 
@@ -2532,7 +2538,7 @@ class cycif:
         core.set_xy_position(numpy_x[0][0], numpy_y[0][0])
         time.sleep(1)
         # generate numpy data structures
-        zc_tif_stack = np.random.rand(4, int(z_slices), height_pixels, width_pixels).astype('float32')
+        zc_tif_stack = np.random.rand(5, int(z_slices), height_pixels, width_pixels).astype('float32')
         zc_dapi_tif_stack = np.random.rand(int(z_slices_dapi), height_pixels, width_pixels).astype('float32')
 
         image_number_counter = 0
@@ -2565,6 +2571,10 @@ class cycif:
                                 channel_index = 8
                                 tif_stack_c_index = 3
                                 zc_index = 3
+                            if channel == 'A750':
+                                channel_index = 10
+                                tif_stack_c_index = 4
+                                zc_index = 4
 
                             z_slices = int(full_array[channel_index + 1][0][0])
                             z_registration = np.ones(z_slices)
@@ -2684,6 +2694,10 @@ class cycif:
                                 channel_index = 8
                                 tif_stack_c_index = 3
                                 zc_index = 3
+                            if channel == 'A750':
+                                channel_index = 10
+                                tif_stack_c_index = 4
+                                zc_index = 4
 
                             z_slices = int(full_array[channel_index + 1][0][0])
                             z_registration = np.ones(z_slices)
@@ -2785,7 +2799,7 @@ class cycif:
         return
 
     def image_cycle_acquire(self, cycle_number, experiment_directory, z_slices, stain_bleach, offset_array, x_frame_size=5056, fm_array_adjuster = 0, establish_fm_array=0, auto_focus_run=0, auto_expose_run=0,
-                            channels=['DAPI', 'A488', 'A555', 'A647'], focus_position = 'none'):
+                            channels=['DAPI', 'A488', 'A555', 'A647', 'A750'], focus_position = 'none'):
 
         self.establish_fm_array(experiment_directory, cycle_number, z_slices, offset_array,
                                 initialize=establish_fm_array, x_frame_size=x_frame_size, fm_array_adjuster= fm_array_adjuster, autofocus=auto_focus_run,
@@ -3055,7 +3069,7 @@ class cycif:
 
         #self.recursive_stardist_autofocus(experiment_directory, cycle=0)
         #self.image_cycle_acquire(0, experiment_directory, 3, 'Bleach', offset_array, x_frame_size=x_frame_size,establish_fm_array=0, auto_focus_run=0, auto_expose_run=0, channels=['DAPI'],focus_position=focus_position)
-        self.image_cycle_acquire(0, experiment_directory, 3, 'Stain', offset_array, x_frame_size=x_frame_size,establish_fm_array=0, auto_focus_run=0, auto_expose_run=3)
+        #self.image_cycle_acquire(0, experiment_directory, 3, 'Stain', offset_array, x_frame_size=x_frame_size,establish_fm_array=0, auto_focus_run=0, auto_expose_run=3)
 
     def full_cycle(self, experiment_directory, cycle_number, offset_array, stain_valve, fluidics_object, z_slices, incub_val=45, x_frame_size=2960, focus_position = 'none'):
 
@@ -3063,7 +3077,7 @@ class cycif:
 
         if cycle_number == 0:
             self.initialize(experiment_directory, offset_array, z_slices, x_frame_size=x_frame_size, focus_position = focus_position)
-            pump.liquid_action('Bleach', stain_valve=stain_valve)  # nuc is valve=7, pbs valve=8, bleach valve=1 (action, stain_valve, heater state (off = 0, on = 1))
+            #pump.liquid_action('Bleach', stain_valve=stain_valve)  # nuc is valve=7, pbs valve=8, bleach valve=1 (action, stain_valve, heater state (off = 0, on = 1))
             time.sleep(5)
             # print(status_str)
             self.image_cycle_acquire(cycle_number, experiment_directory, z_slices, 'Bleach', offset_array, x_frame_size=x_frame_size, establish_fm_array=0, auto_focus_run=0,auto_expose_run=0)
@@ -3237,7 +3251,7 @@ class cycif:
 
     def file_structure(self, experiment_directory, highest_cycle_count):
 
-        channels = ['DAPI', 'A488', 'A555', 'A647']
+        channels = ['DAPI', 'A488', 'A555', 'A647', 'A750']
         cycles = np.linspace(0, highest_cycle_count).astype(int)
 
         # folder layer one
@@ -3466,6 +3480,8 @@ class cycif:
             cycle_number) + '\Tiles' + '/focused_basic_darkframe'
         a647_im_path = experiment_directory + '\A647\Stain\cy_' + str(
             cycle_number) + '\Tiles' + '/focused_basic_darkframe'
+        a750_im_path = experiment_directory + '\A750\Stain\cy_' + str(
+            cycle_number) + '\Tiles' + '/focused_basic_darkframe'
 
         mcmicro_path = experiment_directory + r'\mcmicro'
 
@@ -3505,6 +3521,7 @@ class cycif:
                     a488_file_name = 'x' + str(x) + '_y_' + str(y) + '_c_A488.tif'
                     a555_file_name = 'x' + str(x) + '_y_' + str(y) + '_c_A555.tif'
                     a647_file_name = 'x' + str(x) + '_y_' + str(y) + '_c_A647.tif'
+                    a750_file_name = 'x' + str(x) + '_y_' + str(y) + '_c_A750.tif'
 
                     for cluster in clusters_in_tile:
 
@@ -3823,7 +3840,7 @@ class cycif:
 
         # load images into python
 
-        channels = ['DAPI', 'A488', 'A555', 'A647']
+        channels = ['DAPI', 'A488', 'A555', 'A647', 'A750']
         #types = ['Stain', 'Bleach']
         types = ['Stain']
 
@@ -3922,7 +3939,7 @@ class cycif:
 
         directory_start = experiment_directory + '//'
 
-        for channel in range(0, 4):
+        for channel in range(0, 5):
 
             if channel == 0:
                 channel_name = 'DAPI'
@@ -3932,6 +3949,8 @@ class cycif:
                 channel_name = 'A555'
             if channel == 3:
                 channel_name = 'A647'
+            if channel == 4:
+                channel_name = 'A750'
 
             print('channel', channel_name, 'cycle', cycle_number)
 
@@ -4262,7 +4281,7 @@ class cycif:
         end = time.time()
         print('compress', end - start)
 
-        self.mcmicro_image_stack_generator_separate_clusters(cycle_number, experiment_directory, x_frame_size)
+        #self.mcmicro_image_stack_generator_separate_clusters(cycle_number, experiment_directory, x_frame_size)
 
         end = time.time()
         print('mcmicro', end - start)
@@ -4753,7 +4772,7 @@ class cycif:
         block_y_pixels = 75
         block_x_pixels = 75
 
-        channels = ['DAPI', 'A488', 'A555', 'A647']
+        channels = ['DAPI', 'A488', 'A555', 'A647', 'A750']
 
         for y in range(0, y_tile_count):
             for x in range(0, x_tile_count):
@@ -5566,6 +5585,8 @@ class cycif:
                 zc_index = 2
             if channel == 'A647':
                 zc_index = 3
+            if channel == 'A750':
+                zc_index = 4
 
             # establish x range to collect in image
 
