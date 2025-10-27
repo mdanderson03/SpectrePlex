@@ -595,7 +595,7 @@ class cycif:
         os.chdir(numpy_path)
         file_name = 'fm_array.npy'
         fm_array = np.load(file_name, allow_pickle=False)
-        tissue_fm = fm_array[10]
+        tissue_fm = fm_array[12]
         x_tile_count = np.shape(tissue_fm)[1]
         y_tile_count = np.shape(tissue_fm)[0]
 
@@ -3272,6 +3272,7 @@ class cycif:
         self.folder_addon(quick_tile_directory, ['A488'])
         self.folder_addon(quick_tile_directory, ['A555'])
         self.folder_addon(quick_tile_directory, ['A647'])
+        self.folder_addon(quick_tile_directory, ['A750'])
 
         for channel in channels:
 
@@ -3466,7 +3467,7 @@ class cycif:
 
         numpy_x = full_array[0]
         numpy_y = full_array[1]
-        tissue_fm = full_array[10]
+        tissue_fm = full_array[12]
         # numpy_tissue = full_array[10]
         y_tile_count = numpy_x.shape[0]
         x_tile_count = numpy_y.shape[1]
@@ -3492,7 +3493,7 @@ class cycif:
         most_tiles_in_cluster = np.max(tiles_in_cluster)
         most_tiles_in_cluster = int(most_tiles_in_cluster)
 
-        mcmicro_stack = np.zeros((number_clusters, (most_tiles_in_cluster) * 4, 2960, x_frame_size)).astype('uint16')
+        mcmicro_stack = np.zeros((number_clusters, (most_tiles_in_cluster) * 5, 2960, x_frame_size)).astype('uint16')
 
         # create sub folders in mcmicro folder
         os.chdir(mcmicro_path)
@@ -3567,6 +3568,16 @@ class cycif:
                         image = np.nan_to_num(image, posinf=0)
                         mcmicro_stack[cluster - 1][base_count_number_stack + 3] = image
 
+                        os.chdir(a750_im_path)
+                        try:
+                            image = io.imread(a750_file_name)
+                        except:
+                            image = cv2.imread(a750_file_name)[::, ::, 0]
+
+                        # image[image > 65500] = 65500
+                        image = np.nan_to_num(image, posinf=0)
+                        mcmicro_stack[cluster - 1][base_count_number_stack + 4] = image
+
                         tile[cluster - 1] += 1
 
                     else:
@@ -3581,6 +3592,144 @@ class cycif:
             #image_stack = image_stack.astype('uint16')
             os.chdir(mc_micro_cluster_path)
             tf.imwrite(mcmicro_file_name, image_stack, photometric='minisblack', description=xml_metadata)
+            #tf.imwrite(mcmicro_file_name, mcmicro_stack, photometric='minisblack')
+
+    def mcmicro_image_stack_generator_separate_clusters_5th_channel(self, cycle_number, experiment_directory, x_frame_size):
+
+        numpy_path = experiment_directory + '/' + 'np_arrays'
+        os.chdir(numpy_path)
+        full_array = np.load('fm_array.npy', allow_pickle=False)
+        tissue_exist = np.load('tissue_exist.npy', allow_pickle=False)
+
+        #xml_metadata = self.metadata_generator(experiment_directory, x_frame_size)
+
+        numpy_x = full_array[0]
+        numpy_y = full_array[1]
+        tissue_fm = full_array[12]
+        # numpy_tissue = full_array[10]
+        y_tile_count = numpy_x.shape[0]
+        x_tile_count = numpy_y.shape[1]
+        tile_count = int(tissue_exist.sum())
+
+        dapi_im_path = experiment_directory + '\DAPI\Stain\cy_' + str(
+            cycle_number) + '\Tiles' + '/focused_basic_darkframe'
+        a488_im_path = experiment_directory + '\A488\Stain\cy_' + str(
+            cycle_number) + '\Tiles' + '/focused_basic_darkframe'
+        a555_im_path = experiment_directory + '\A555\Stain\cy_' + str(
+            cycle_number) + '\Tiles' + '/focused_basic_darkframe'
+        a647_im_path = experiment_directory + '\A647\Stain\cy_' + str(
+            cycle_number) + '\Tiles' + '/focused_basic_darkframe'
+        a750_im_path = experiment_directory + '\A750\Stain\cy_' + str(
+            cycle_number) + '\Tiles' + '/focused_basic_darkframe'
+
+        mcmicro_path = experiment_directory + r'\mcmicro'
+
+        # determine max cluster count
+        highest_number = np.max(full_array[10])
+        number_clusters = math.floor(math.log10(highest_number))
+        tiles_in_cluster = self.number_tiles_each_cluster(experiment_directory)
+        most_tiles_in_cluster = np.max(tiles_in_cluster)
+        most_tiles_in_cluster = int(most_tiles_in_cluster)
+
+        mcmicro_stack = np.zeros((number_clusters, (most_tiles_in_cluster) * 5, 2960, x_frame_size)).astype('uint16')
+
+        # create sub folders in mcmicro folder
+        os.chdir(mcmicro_path)
+        for x in range(0, number_clusters):
+            os.chdir(mcmicro_path)
+            sub_folder_name = 'cluster_' + str(x)
+            try:
+                os.mkdir(sub_folder_name)
+            except:
+                pass
+            os.chdir(sub_folder_name)
+            try:
+                os.mkdir('raw')
+            except:
+                pass
+
+        tile = np.zeros(number_clusters).astype('int8')
+        for x in range(0, x_tile_count):
+            for y in range(0, y_tile_count):
+
+                if tissue_exist[y][x] == 1:
+
+                    clusters_in_tile = self.tissue_fm_decode(tissue_fm[y][x])
+
+                    dapi_file_name = 'x' + str(x) + '_y_' + str(y) + '_c_DAPI.tif'
+                    a488_file_name = 'x' + str(x) + '_y_' + str(y) + '_c_A488.tif'
+                    a555_file_name = 'x' + str(x) + '_y_' + str(y) + '_c_A555.tif'
+                    a647_file_name = 'x' + str(x) + '_y_' + str(y) + '_c_A647.tif'
+                    a750_file_name = 'x' + str(x) + '_y_' + str(y) + '_c_A750.tif'
+
+                    for cluster in clusters_in_tile:
+
+                        base_count_number_stack = int(tile[cluster - 1] * 4)
+
+                        os.chdir(dapi_im_path)
+                        try:
+                            image = io.imread(dapi_file_name)
+                        except:
+                            image = cv2.imread(dapi_file_name)[::, ::, 0]
+
+                        #image[image > 65500] = 65500
+                        image = np.nan_to_num(image, posinf=0)
+                        mcmicro_stack[cluster - 1][base_count_number_stack + 0] = image
+
+                        os.chdir(a488_im_path)
+                        try:
+                            image = io.imread(a488_file_name)
+                        except:
+                            image = cv2.imread(a488_file_name)[::, ::, 0]
+
+                        #image[image > 65500] = 65500
+                        image = np.nan_to_num(image, posinf=0)
+                        mcmicro_stack[cluster - 1][base_count_number_stack + 1] = image
+
+                        os.chdir(a555_im_path)
+                        try:
+                            image = io.imread(a555_file_name)
+                        except:
+                            image = cv2.imread(a555_file_name)[::, ::, 0]
+
+                        #image[image > 65500] = 65500
+                        image = np.nan_to_num(image, posinf=0)
+                        mcmicro_stack[cluster - 1][base_count_number_stack + 2] = image
+
+                        os.chdir(a647_im_path)
+                        try:
+                            image = io.imread(a647_file_name)
+                        except:
+                            image = cv2.imread(a647_file_name)[::, ::, 0]
+
+                        #image[image > 65500] = 65500
+                        image = np.nan_to_num(image, posinf=0)
+                        mcmicro_stack[cluster - 1][base_count_number_stack + 3] = image
+
+                        os.chdir(a750_im_path)
+                        try:
+                            image = io.imread(a750_file_name)
+                        except:
+                            image = cv2.imread(a750_file_name)[::, ::, 0]
+
+                        # image[image > 65500] = 65500
+                        image = np.nan_to_num(image, posinf=0)
+                        mcmicro_stack[cluster - 1][base_count_number_stack + 4] = image
+
+                        tile[cluster - 1] += 1
+
+                    else:
+                        pass
+
+        for x in range(0, number_clusters):
+            mc_micro_cluster_path = mcmicro_path +'\cluster_' + str(x) +r'\raw'
+            os.chdir(mc_micro_cluster_path)
+            mcmicro_file_name = str(experiment_directory.split("\\")[-1]) + '-cycle-0' + str(cycle_number) + '.ome.tif'
+            image_stack = mcmicro_stack[x][0:(int(tiles_in_cluster[x])*4)]
+            xml_metadata = self.metadata_generator_separate_clusters_5th_channel(experiment_directory, x_frame_size, cluster_number= x + 1)
+            #image_stack = image_stack.astype('uint16')
+            os.chdir(mc_micro_cluster_path)
+            tf.imwrite(mcmicro_file_name, image_stack, photometric='minisblack', description=xml_metadata.encode())
             #tf.imwrite(mcmicro_file_name, mcmicro_stack, photometric='minisblack')
 
     def metadata_generator(self, experiment_directory, x_frame_size):
@@ -3655,7 +3804,7 @@ class cycif:
 
         numpy_x = full_array[0]
         numpy_y = full_array[1]
-        tissue_fm = full_array[10]
+        tissue_fm = full_array[12]
         #numpy_tissue = full_array[10]
         y_tile_count = numpy_x.shape[0]
         x_tile_count = numpy_y.shape[1]
@@ -3677,6 +3826,7 @@ class cycif:
         # sub in other optional numbers to make metadata more accurate
 
         for x in range(0, total_tile_count):
+
             tile_metadata = deepcopy(ome)
             new_ome.images.append(tile_metadata)
 
@@ -3692,6 +3842,7 @@ class cycif:
                 if np.sum(boolean) > 0:
 
                     for p in range(0, 4):
+                        print(p)
                         new_x = numpy_x[y][x]
                         new_y = numpy_y[y][x]
                         new_ome.images[tile_counter].pixels.planes[p].position_y = deepcopy(new_y)
@@ -3702,6 +3853,71 @@ class cycif:
                 else:
                     pass
 
+
+        xml = to_xml(new_ome)
+
+        return xml
+
+    def metadata_generator_separate_clusters_5th_channel(self, experiment_directory, x_frame_size, cluster_number):
+
+        new_ome = OME()
+        # ome = from_xml(r'C:\Users\mike\Documents\GitHub\AutoCIF/image.xml', parser='lxml')
+        ome = from_xml(r'C:\Users\ch199435\Documents\GitHub\SpectrePlex/image_5th_channel.xml', parser='lxml')
+        ome = ome.images[0]
+
+        numpy_path = experiment_directory + '/' + 'np_arrays'
+        os.chdir(numpy_path)
+        full_array = np.load('fm_array.npy', allow_pickle=False)
+        tissue_exist = np.load('tissue_exist.npy', allow_pickle=False)
+
+        numpy_x = full_array[0]
+        numpy_y = full_array[1]
+        tissue_fm = full_array[12]
+        # numpy_tissue = full_array[10]
+        y_tile_count = numpy_x.shape[0]
+        x_tile_count = numpy_y.shape[1]
+        total_tile_count = int(self.number_tiles_each_cluster(experiment_directory)[cluster_number - 1])
+        # total_tile_count = int(tissue_exist.sum())
+        print(total_tile_count)
+
+        y_gap = 532
+        col_col_gap = 10
+        # for r in range(3, -1, -1):
+        #    numpy_y[r][0] = numpy_y[r + 1][0] - y_gap
+        #    numpy_y[r][1] = numpy_y[r + 1][1] - y_gap - col_col_gap
+
+        # sub in needed pixel size and pixel grid changes
+        ome.pixels.physical_size_x = 0.2004
+        ome.pixels.physical_size_y = 0.2004
+        ome.pixels.size_x = x_frame_size
+        ome.pixels.size_y = 2960
+        # sub in other optional numbers to make metadata more accurate
+
+        for x in range(0, total_tile_count):
+            tile_metadata = deepcopy(ome)
+            new_ome.images.append(tile_metadata)
+
+        # sub in stage positional information into each tile. numpy[y][x]
+        tile_counter = 0
+        for x in range(0, x_tile_count):
+            for y in range(0, y_tile_count):
+
+                clusters_in_tile = self.tissue_fm_decode(tissue_fm[y][x])
+
+                boolean = np.isin(clusters_in_tile, cluster_number, assume_unique=True)
+                if np.sum(boolean) > 0:
+
+                    for p in range(0, 5):
+                        print(p)
+                        new_x = numpy_x[y][x]
+                        new_y = numpy_y[y][x]
+                        new_ome.images[tile_counter].pixels.planes[p].position_y = deepcopy(new_y)
+                        new_ome.images[tile_counter].pixels.planes[p].position_x = deepcopy(new_x)
+                        new_ome.images[tile_counter].pixels.tiff_data_blocks[p].ifd = (5 * tile_counter) + p
+                    tile_counter += 1
+
+                else:
+                    pass
 
         xml = to_xml(new_ome)
 
@@ -3974,6 +4190,7 @@ class cycif:
                     stain_directory = directory_start + channel_name + '\Stain\cy_' + str(cycle_number) + r'\Tiles'
                     training_directory = directory_start + channel_name + '\Stain\cy_' + str(cycle_number) + r'\Tiles'
                     stain_output_directory = directory_start + channel_name + '\Stain\cy_' + str(cycle_number) + r'\Tiles\focused_basic_corrected'
+                    bleach_directory = directory_start + channel_name + '\Bleach\cy_' + str(cycle_number) + r'\Tiles'
 
 
 
@@ -3989,7 +4206,7 @@ class cycif:
             #ff_directory = r'C:\Users\CyCIF PC\Desktop\new A647 FF'
 
             epsilon = 1e-06
-            optimizer = shading_correction.BaSiC(training_directory)
+            optimizer = shading_correction.BaSiC(training_directory, estimate_darkfield=False)
             #optimizer = shading_correction.BaSiC(ff_directory)
             optimizer.prepare()
             optimizer.run()
@@ -4259,14 +4476,14 @@ class cycif:
 
         #flatten image
 
-        self.illumination_flattening(experiment_directory, cycle_number, single_fov=1)
+        #self.illumination_flattening(experiment_directory, cycle_number, single_fov=1)
 
         end = time.time()
         print('flatten', end - start)
 
 
         #self.darkframe_AF_sub(experiment_directory, cycle_number)
-        self.darkframe_sub(experiment_directory, cycle_number)
+        #self.darkframe_sub(experiment_directory, cycle_number)
         end = time.time()
         print('dark frame subtraction', end - start)
 
@@ -4281,7 +4498,7 @@ class cycif:
         end = time.time()
         print('compress', end - start)
 
-        #self.mcmicro_image_stack_generator_separate_clusters(cycle_number, experiment_directory, x_frame_size)
+        self.mcmicro_image_stack_generator_separate_clusters_5th_channel(cycle_number, experiment_directory, x_frame_size)
 
         end = time.time()
         print('mcmicro', end - start)
@@ -4290,7 +4507,7 @@ class cycif:
 
         #generate stage placement
 
-        self.stage_placement(experiment_directory, cycle_number, x_pixels = x_frame_size, down_sample_factor=4, single_fov=1)
+        #self.stage_placement(experiment_directory, cycle_number, x_pixels = x_frame_size, down_sample_factor=4, single_fov=1)
 
 
 
@@ -5678,7 +5895,7 @@ class cycif:
         y_tile_count = numpy_x.shape[0]
         x_tile_count = numpy_y.shape[1]
 
-        tissue_fm = fm_array[10]
+        tissue_fm = fm_array[12]
 
         # determine max cluster count
         highest_number = np.max(tissue_fm)

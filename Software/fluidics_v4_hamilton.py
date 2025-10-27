@@ -155,7 +155,8 @@ class fluidics:
 
     def valve_prime(self):
 
-        valves = [1,2,3,4,5,6,7,8,9,11,12]
+        #valves = [1,2,3,4,5,6,7,8,9,11,12]
+        valves = [1, 2, 3, 4, 11, 12]
 
 
         #for valve in range(1,12):
@@ -163,6 +164,8 @@ class fluidics:
             self.valve_select(valve)
             time.sleep(0.5)
             self.sy.load_syringe(300, wait_until_flow_done=True)
+
+        self.sy.initializePump()
 
     def load_stain(self, load_volume, stain_valve):
         '''
