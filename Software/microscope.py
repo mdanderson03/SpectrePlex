@@ -602,7 +602,7 @@ class cycif:
         row_number = int(cycle_number + 1)
 
         min_bin_fraction = 0.000001
-        channels = np.array(['A488', 'A555', 'A647'])
+        channels = np.array(['A488', 'A555', 'A647', 'A750'])
 
         for channel in channels:
 
@@ -2019,7 +2019,7 @@ class cycif:
         numpy_path = experiment_directory + '/' + 'np_arrays'
         os.chdir(numpy_path)
         full_array = np.load('fm_array.npy', allow_pickle=False)
-        tissue_fm = full_array[10]
+        tissue_fm = full_array[12]
 
         numpy_x = full_array[0]
         numpy_y = full_array[1]
@@ -3077,7 +3077,7 @@ class cycif:
 
         if cycle_number == 0:
             self.initialize(experiment_directory, offset_array, z_slices, x_frame_size=x_frame_size, focus_position = focus_position)
-            #pump.liquid_action('Bleach', stain_valve=stain_valve)  # nuc is valve=7, pbs valve=8, bleach valve=1 (action, stain_valve, heater state (off = 0, on = 1))
+            pump.liquid_action('Bleach', stain_valve=stain_valve)  # nuc is valve=7, pbs valve=8, bleach valve=1 (action, stain_valve, heater state (off = 0, on = 1))
             time.sleep(5)
             # print(status_str)
             self.image_cycle_acquire(cycle_number, experiment_directory, z_slices, 'Bleach', offset_array, x_frame_size=x_frame_size, establish_fm_array=0, auto_focus_run=0,auto_expose_run=0)
@@ -3107,8 +3107,8 @@ class cycif:
 
         # print(status_str)
         print('cycle', cycle_number)
-        pump.liquid_action('Stain', stain_valve=prim_vial,incub_val=incub_val)
-        pump.liquid_action('Stain', stain_valve=second_vial, incub_val=incub_val)
+        #pump.liquid_action('Stain', stain_valve=prim_vial,incub_val=incub_val)
+        #pump.liquid_action('Stain', stain_valve=second_vial, incub_val=incub_val)
         self.image_cycle_acquire(cycle_number, experiment_directory, z_slices, 'Stain', offset_array,x_frame_size=x_frame_size, establish_fm_array=0, auto_focus_run=0,auto_expose_run=3)
         time.sleep(1)
 
@@ -3625,11 +3625,13 @@ class cycif:
         mcmicro_path = experiment_directory + r'\mcmicro'
 
         # determine max cluster count
-        highest_number = np.max(full_array[10])
+        highest_number = np.max(full_array[12])
         number_clusters = math.floor(math.log10(highest_number))
         tiles_in_cluster = self.number_tiles_each_cluster(experiment_directory)
+
         most_tiles_in_cluster = np.max(tiles_in_cluster)
         most_tiles_in_cluster = int(most_tiles_in_cluster)
+
 
         mcmicro_stack = np.zeros((number_clusters, (most_tiles_in_cluster) * 5, 2960, x_frame_size)).astype('uint16')
 
@@ -3664,7 +3666,7 @@ class cycif:
 
                     for cluster in clusters_in_tile:
 
-                        base_count_number_stack = int(tile[cluster - 1] * 4)
+                        base_count_number_stack = int(tile[cluster - 1] * 5)
 
                         os.chdir(dapi_im_path)
                         try:
@@ -3716,6 +3718,9 @@ class cycif:
                         image = np.nan_to_num(image, posinf=0)
                         mcmicro_stack[cluster - 1][base_count_number_stack + 4] = image
 
+
+
+
                         tile[cluster - 1] += 1
 
                     else:
@@ -3725,7 +3730,8 @@ class cycif:
             mc_micro_cluster_path = mcmicro_path +'\cluster_' + str(x) +r'\raw'
             os.chdir(mc_micro_cluster_path)
             mcmicro_file_name = str(experiment_directory.split("\\")[-1]) + '-cycle-0' + str(cycle_number) + '.ome.tif'
-            image_stack = mcmicro_stack[x][0:(int(tiles_in_cluster[x])*4)]
+            mcmicro_file_name_no_meta = str(experiment_directory.split("\\")[-1]) + '-cycle-0' + str(cycle_number) + 'no_meta.ome.tif'
+            image_stack = mcmicro_stack[x][0:(int(tiles_in_cluster[x])*5)]
             xml_metadata = self.metadata_generator_separate_clusters_5th_channel(experiment_directory, x_frame_size, cluster_number= x + 1)
             #image_stack = image_stack.astype('uint16')
             os.chdir(mc_micro_cluster_path)
@@ -3862,7 +3868,7 @@ class cycif:
 
         new_ome = OME()
         # ome = from_xml(r'C:\Users\mike\Documents\GitHub\AutoCIF/image.xml', parser='lxml')
-        ome = from_xml(r'C:\Users\ch199435\Documents\GitHub\SpectrePlex/image_5th_channel.xml', parser='lxml')
+        ome = from_xml(r"C:\Users\ch199435\OneDrive - Boston Children's Hospital\Documents\GitHub\SpectrePlex/image_5th_channel.xml", parser='lxml')
         ome = ome.images[0]
 
         numpy_path = experiment_directory + '/' + 'np_arrays'
@@ -3878,7 +3884,6 @@ class cycif:
         x_tile_count = numpy_y.shape[1]
         total_tile_count = int(self.number_tiles_each_cluster(experiment_directory)[cluster_number - 1])
         # total_tile_count = int(tissue_exist.sum())
-        print(total_tile_count)
 
         y_gap = 532
         col_col_gap = 10
@@ -4498,7 +4503,7 @@ class cycif:
         end = time.time()
         print('compress', end - start)
 
-        self.mcmicro_image_stack_generator_separate_clusters_5th_channel(cycle_number, experiment_directory, x_frame_size)
+        #self.mcmicro_image_stack_generator_separate_clusters_5th_channel(cycle_number, experiment_directory, x_frame_size)
 
         end = time.time()
         print('mcmicro', end - start)
@@ -5300,11 +5305,11 @@ class cycif:
             pass
 
         #create experiment folders in micro path
-        os.chdir(mcmicro_path)
-        try:
-            os.mkdir(experiment_name)
-        except:
-            pass
+        #os.chdir(mcmicro_path)
+        #try:
+        #    os.mkdir(experiment_name)
+        #except:
+        #    pass
 
         archive_path = experiment_directory + '/archive'
 
@@ -5316,10 +5321,11 @@ class cycif:
 
         #tar compress archive
 
-        #shutil.make_archive(experiment_name, 'tar', root_dir=tar_archive_destination_path, base_dir='archive')
+        os.chdir('tar_archive_destination_path')
+        shutil.make_archive(experiment_name, 'tar', root_dir=tar_archive_destination_path, base_dir='archive')
 
         #move mcmicro folder to mcmicro path
-        shutil.copy(experiment_directory + '/mcmicro', mcmicro_path + '/' + experiment_name)
+        #shutil.copy(experiment_directory + '/mcmicro', mcmicro_path + '/' + experiment_name)
 
 
         '''
