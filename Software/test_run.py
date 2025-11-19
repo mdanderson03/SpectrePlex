@@ -13,9 +13,10 @@ sy = APump(parameters=parameters)
 sy.initializePump()
 
 #print(sy.getStatus())
-sy.load_syringe(1000)
-
-sy.volume_dispense(700, 200, device_port=3)
+print('loading')
+sy.load_syringe(350)
+print('dispensing')
+#sy.volume_dispense(200, 500, device_port=3)
 #pump = fluidics(6,5,7)
 
 #valves = [8]

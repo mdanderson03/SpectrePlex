@@ -14,7 +14,7 @@ microscope = cycif() # initialize cycif object
 # experiment_directory = r'D:\09_25_casey_S16_7223_2'
 # experiment_directory = r'D:\S24_07110'
 experiment_directory = r'D:\14_11_25_SP23_9657_A1'
-#pump = fluidics(6,5,7)
+pump = fluidics(6,5,7)
 #pump = 1
 
 z_slices = 3
@@ -37,7 +37,7 @@ focus_position = -56
 #         with multiprocessing.Pool(processes=number_cores) as pool:
 #             pool.starmap(microscope.inter_cycle_processing, inputs)
 
-#pump.liquid_action('Stain', stain_valve=2)
+pump.liquid_action('Stain', stain_valve=1)
 
 #pump.valve_prime()0
 
@@ -66,4 +66,4 @@ focus_position = -56
 #for cycle in cycles:
 #    microscope.inter_cycle_processing(experiment_directory, cycle, x_frame_size=x_frame_size)
 #parallel_processing(experiment_directory, cycles, x_frame_size=x_frame_size)
-microscope.archive(experiment_directory)
+#microscope.archive(experiment_directory)

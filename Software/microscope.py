@@ -5297,32 +5297,32 @@ class cycif:
         experiment_name = experiment_directory.split('\\')[-1]
         mcmicro_path = r'Z:\Public\Thiagarajah Lab\Mike_A\SpectrePlex'
 
-        #create new archive folder
+        # create new archive folder
         os.chdir(experiment_directory)
         try:
             os.mkdir('archive')
         except:
             pass
 
-        #create experiment folders in micro path
-        #os.chdir(mcmicro_path)
-        #try:
-        #    os.mkdir(experiment_name)
-        #except:
-        #    pass
+        # create experiment folders in micro path
+        os.chdir(mcmicro_path)
+        try:
+            os.mkdir(experiment_name)
+        except:
+            pass
 
         archive_path = experiment_directory + '/archive'
 
-        #move folders into new archive folder
-        #folder_move_list = ['np_arrays', 'compression', 'exposure_times', 'Labelled_Nuc', 'Tissue_Binary']
+        # move folders into new archive folder
+        #folder_move_list = ['np_arrays', 'compression', 'exposure_times', 'fluidics data logger', 'Labelled_Nuc',
+        #                    'Tissue_Binary']
         #for folder in folder_move_list:
-        #    moving_folder_path = experiment_directory + '/'+ folder
+        #    moving_folder_path = experiment_directory + '/' + folder
         #    shutil.move(moving_folder_path, archive_path)
 
-        #tar compress archive
-
-        os.chdir('tar_archive_destination_path')
-        shutil.make_archive(experiment_name, 'tar', root_dir=tar_archive_destination_path, base_dir='archive')
+        # tar compress archive
+        os.chdir(experiment_directory)
+        shutil.make_archive(experiment_name, 'tar', tar_archive_destination_path, 'archive')
 
         #move mcmicro folder to mcmicro path
         #shutil.copy(experiment_directory + '/mcmicro', mcmicro_path + '/' + experiment_name)
