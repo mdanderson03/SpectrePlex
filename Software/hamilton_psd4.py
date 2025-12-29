@@ -333,6 +333,73 @@ class APump():
             time.sleep(1)
             (is_moving, pos_in_uL, vel_in_mLmin, valve_pos) = self.getStatus()
             wait_until_flow_done = is_moving
+
+    def swish(self, swish_volume, swish_vel_ulmin, swish_duration, device_port=3):
+        '''
+
+        Parameters
+        ----------
+        swish_volume(int):
+        swish_vel_ulmin (int): in uL/min
+        swish_duration (float): in minutes
+        device_port(int):
+
+        Returns
+        -------
+
+        '''
+
+        # set port to distribution valve
+        dist_port = device_port
+        self.setPort(dist_port)
+
+        #set Swish speed
+        self.setSpeed(swish_vel_ulmin)
+
+        #find current fill position
+        #if position is < swish volume, pull in volume until = swish volume
+        (is_moving, pos_in_uL, vel_in_mLmin, valve_pos) = self.getStatus()
+
+        if pos_in_uL < swish_volume:
+            print('Volume in Syringe < Swish Volume, Will Pull in more to match Swish Volume')
+            self.startFill(swish_volume)
+        else:
+            pass
+
+        #wait until syringe is at swish volume or higher
+
+        while wait_until_flow_done == True:
+            time.sleep(1)
+            (is_moving, pos_in_uL, vel_in_mLmin, valve_pos) = self.getStatus()
+            wait_until_flow_done = is_moving
+
+        #determine starting time for swish cycles
+        starting_time = time.time() #starting time in seconds
+        end_time = swish_duration * 60 # convert to seconds
+        current_elapsed_time = time.time() - starting_time
+
+        while current_elapsed_time < end_time:
+
+            #push out phase
+            self.startFill(pos_in_uL - swish_volume)
+
+            while wait_until_flow_done == True:
+                time.sleep(1)
+                (is_moving, pos_in_uL, vel_in_mLmin, valve_pos) = self.getStatus()
+                wait_until_flow_done = is_moving
+
+
+            #pull in phase
+            self.startFill(pos_in_uL + swish_volume)
+
+            while wait_until_flow_done == True:
+                time.sleep(1)
+                (is_moving, pos_in_uL, vel_in_mLmin, valve_pos) = self.getStatus()
+                wait_until_flow_done = is_moving
+
+            #update time
+            current_elapsed_time = time.timea() - starting_time
+
     
     def read(self):
        # response = self.serial.readline().decode()
