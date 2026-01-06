@@ -1,4 +1,6 @@
 import copy
+import tarfile
+
 from pycromanager import Core, Magellan
 import numpy as np
 import time
@@ -26,6 +28,7 @@ import tracemalloc
 
 
 magellan = Magellan()
+#
 core = Core()
 
 tracemalloc.start()
@@ -3080,7 +3083,7 @@ class cycif:
             pump.liquid_action('Bleach', stain_valve=stain_valve)  # nuc is valve=7, pbs valve=8, bleach valve=1 (action, stain_valve, heater state (off = 0, on = 1))
             time.sleep(5)
             # print(status_str)
-            self.image_cycle_acquire(cycle_number, experiment_directory, z_slices, 'Bleach', offset_array, x_frame_size=x_frame_size, establish_fm_array=0, auto_focus_run=0,auto_expose_run=0)
+            self.image_cycle_acquire(cycle_number, experiment_directory, z_slices, 'Stain', offset_array, x_frame_size=x_frame_size, establish_fm_array=0, auto_focus_run=0,auto_expose_run=3)
         else:
 
             # print(status_str)
@@ -3107,8 +3110,8 @@ class cycif:
 
         # print(status_str)
         print('cycle', cycle_number)
-        #pump.liquid_action('Stain', stain_valve=prim_vial,incub_val=incub_val)
-        #pump.liquid_action('Stain', stain_valve=second_vial, incub_val=incub_val)
+        pump.liquid_action('Stain', stain_valve=prim_vial,incub_val=incub_val)
+        pump.liquid_action('Stain', stain_valve=second_vial, incub_val=incub_val)
         self.image_cycle_acquire(cycle_number, experiment_directory, z_slices, 'Stain', offset_array,x_frame_size=x_frame_size, establish_fm_array=0, auto_focus_run=0,auto_expose_run=3)
         time.sleep(1)
 
@@ -4481,29 +4484,29 @@ class cycif:
 
         #flatten image
 
-        #self.illumination_flattening(experiment_directory, cycle_number, single_fov=1)
+        self.illumination_flattening(experiment_directory, cycle_number, single_fov=1)
 
         end = time.time()
         print('flatten', end - start)
 
 
         #self.darkframe_AF_sub(experiment_directory, cycle_number)
-        #self.darkframe_sub(experiment_directory, cycle_number)
+        self.darkframe_sub(experiment_directory, cycle_number)
         end = time.time()
         print('dark frame subtraction', end - start)
 
 
 
         #compress to 16bit
-        #self.stage_placement(experiment_directory, cycle_number, x_pixels=x_frame_size, down_sample_factor=4,single_fov=1)
-        #self.hdr_compression_2(experiment_directory, cycle_number)
+        self.stage_placement(experiment_directory, cycle_number, x_pixels=x_frame_size, down_sample_factor=4,single_fov=1)
+        self.hdr_compression_2(experiment_directory, cycle_number)
 
 
 
         end = time.time()
         print('compress', end - start)
 
-        #self.mcmicro_image_stack_generator_separate_clusters_5th_channel(cycle_number, experiment_directory, x_frame_size)
+        self.mcmicro_image_stack_generator_separate_clusters_5th_channel(cycle_number, experiment_directory, x_frame_size)
 
         end = time.time()
         print('mcmicro', end - start)
@@ -4512,12 +4515,12 @@ class cycif:
 
         #generate stage placement
 
-        #self.stage_placement(experiment_directory, cycle_number, x_pixels = x_frame_size, down_sample_factor=4, single_fov=1)
+        self.stage_placement(experiment_directory, cycle_number, x_pixels = x_frame_size, down_sample_factor=4, single_fov=1)
 
 
 
         #if did DAPI focus then acquire one plane, please do the following
-        #self.delete_intermediate_folders(experiment_directory, cycle_number)
+        self.delete_intermediate_folders(experiment_directory, cycle_number)
         #self.archive(experiment_directory)
 
         #self.zlib_compress_raw(experiment_directory, cycle_number)
@@ -5294,8 +5297,10 @@ class cycif:
         '''
 
         tar_archive_destination_path = r'Y:\Spectreplex\archive' #Synology storage device
+        unstitched_destination_path = r'Y:\Spectreplex\unstitched'  # Synology storage device
+        unstitched_origin_path = experiment_directory + '//' + 'mcmicro' # Synology storage device
         experiment_name = experiment_directory.split('\\')[-1]
-        mcmicro_path = r'Z:\Public\Thiagarajah Lab\Mike_A\SpectrePlex'
+        source_folder = experiment_directory
 
         # create new archive folder
         os.chdir(experiment_directory)
@@ -5304,14 +5309,16 @@ class cycif:
         except:
             pass
 
-        # create experiment folders in micro path
-        os.chdir(mcmicro_path)
+        # create new archive folder
+        os.chdir(unstitched_destination_path)
         try:
-            os.mkdir(experiment_name)
+            os.mkdir('experiment_name')
         except:
             pass
 
-        archive_path = experiment_directory + '/archive'
+        unstitched_destination_path =  unstitched_destination_path + '/' + str(experiment_name)
+
+        tar_output_path = os.path.join(os.path.dirname(source_folder), os.path.basename(source_folder) + '.tar')
 
         # move folders into new archive folder
         #folder_move_list = ['np_arrays', 'compression', 'exposure_times', 'fluidics data logger', 'Labelled_Nuc',
@@ -5320,12 +5327,12 @@ class cycif:
         #    moving_folder_path = experiment_directory + '/' + folder
         #    shutil.move(moving_folder_path, archive_path)
 
-        # tar compress archive
-        os.chdir(experiment_directory)
-        shutil.make_archive(experiment_name, 'tar', tar_archive_destination_path, 'archive')
+        #with tarfile.open(tar_output_path, 'w') as tar:
+        #    tar.add(source_folder, arcname=os.path.basename(source_folder))
 
         #move mcmicro folder to mcmicro path
-        #shutil.copy(experiment_directory + '/mcmicro', mcmicro_path + '/' + experiment_name)
+        #shutil.move(tar_output_path, tar_archive_destination_path)
+        shutil.move(unstitched_origin_path, unstitched_destination_path)
 
 
         '''

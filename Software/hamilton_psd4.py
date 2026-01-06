@@ -247,6 +247,7 @@ class APump():
 
         # Define the volume in uL
         new_step_pos = int(new_volume_uL/(self.steps_to_volume * 1000))
+        #print('new steps: ', new_step_pos)
         
         # Coerce to the hardware limits
         if new_step_pos < self.min_stroke_in_steps:
@@ -367,6 +368,7 @@ class APump():
             pass
 
         #wait until syringe is at swish volume or higher
+        wait_until_flow_done = True
 
         while wait_until_flow_done == True:
             time.sleep(1)
@@ -381,24 +383,31 @@ class APump():
         while current_elapsed_time < end_time:
 
             #push out phase
+            print('push', str(time.time()-starting_time))
             self.startFill(pos_in_uL - swish_volume)
 
+            wait_until_flow_done = True
             while wait_until_flow_done == True:
                 time.sleep(1)
                 (is_moving, pos_in_uL, vel_in_mLmin, valve_pos) = self.getStatus()
+                print('position', pos_in_uL)
                 wait_until_flow_done = is_moving
 
 
             #pull in phase
-            self.startFill(pos_in_uL + swish_volume)
+            print('pull', str(time.time() - starting_time))
+            self.startFill(pos_in_uL + 1)
 
+            wait_until_flow_done = True
             while wait_until_flow_done == True:
                 time.sleep(1)
                 (is_moving, pos_in_uL, vel_in_mLmin, valve_pos) = self.getStatus()
+
+                print('position', pos_in_uL)
                 wait_until_flow_done = is_moving
 
             #update time
-            current_elapsed_time = time.timea() - starting_time
+            current_elapsed_time = time.time() - starting_time
 
     
     def read(self):

@@ -240,7 +240,7 @@ class fluidics:
 
         self.sy.initializePump()
 
-    def wash_bleach(self, volume_2_dispense, flow_rate):
+    def bleach(self, volume_2_dispense, flow_rate):
         '''
         volume 2 dispense is in uL and flow_rate is uL/min
         Parameters
@@ -253,10 +253,33 @@ class fluidics:
 
         '''
 
-        self.sy.load_syringe(volume_2_dispense + 300)
+        self.sy.load_syringe(volume_2_dispense + 150)
         time.sleep(3)
         self.sy.volume_dispense(volume_2_dispense, flow_rate, wait_until_flow_done=True)
+        self.sy.volume_dispense(150, flow_rate, device_port=6, wait_until_flow_done=True)
+
+    def wash(self, volume_2_dispense, flow_rate):
+        '''
+        volume 2 dispense is in uL and flow_rate is uL/min
+        Parameters
+        ----------
+        volume_2_dispense
+        flow_rate
+
+        Returns
+        -------
+
+        '''
+
+        self.sy.load_syringe(300)
         self.sy.volume_dispense(300, flow_rate, device_port=6, wait_until_flow_done=True)
+
+
+
+        self.sy.load_syringe(volume_2_dispense + 500)
+        time.sleep(3)
+        self.sy.volume_dispense(volume_2_dispense, flow_rate, wait_until_flow_done=True)
+        self.sy.volume_dispense(500, flow_rate, device_port=6, wait_until_flow_done=True)
 
     def stain(self, flow_rate):
         '''
@@ -271,19 +294,20 @@ class fluidics:
 
         '''
 
-        self.sy.load_syringe(60)
-        self.sy.volume_dispense(60, flow_rate, device_port=6, wait_until_flow_done=True)
+        self.sy.load_syringe(100)
+        self.sy.volume_dispense(100, flow_rate, device_port=6, wait_until_flow_done=True)
+
         time.sleep(3)
-        self.sy.load_syringe(320)
-        self.sy.volume_dispense(270, flow_rate, wait_until_flow_done=True)
-        self.sy.volume_dispense(50, flow_rate, device_port=6, wait_until_flow_done=True)
+        self.sy.load_syringe(470)
+        self.sy.volume_dispense(250, flow_rate, wait_until_flow_done=True)
+        self.sy.volume_dispense(20, flow_rate, device_port=6, wait_until_flow_done=True)
 
 
     def liquid_action(self, action_type, stain_valve=0, incub_val=45, heater_state=0):
 
         bleach_valve = 11
         pbs_valve = 12
-        bleach_time = 8  # minutes
+        bleach_time = 6  # minutes
         bleach_flow_rate = 500
         wash_flow_rate = 500
         stain_flow_rate = 500
@@ -297,13 +321,13 @@ class fluidics:
         if action_type == 'Bleach':
 
             self.valve_select(bleach_valve)
-            self.wash_bleach(700, flow_rate=500)
+            self.bleach(700, flow_rate=500)
 
             for x in range(0, bleach_time):
                 time.sleep(60)
 
             self.valve_select(pbs_valve)
-            self.wash_bleach(700, flow_rate=500)
+            self.wash(1000, flow_rate=500)
 
         elif action_type == 'Stain':
 
@@ -316,7 +340,7 @@ class fluidics:
                 print('Staining Time Elapsed ', x)
 
             self.valve_select(pbs_valve)
-            self.wash_bleach(700, flow_rate=500)
+            self.wash(1000, flow_rate=500)
 
         elif action_type == "Wash":
 
