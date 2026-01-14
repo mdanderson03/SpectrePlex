@@ -361,19 +361,19 @@ class APump():
         #if position is < swish volume, pull in volume until = swish volume
         (is_moving, pos_in_uL, vel_in_mLmin, valve_pos) = self.getStatus()
 
-        if pos_in_uL < swish_volume:
-            print('Volume in Syringe < Swish Volume, Will Pull in more to match Swish Volume')
-            self.startFill(swish_volume)
-        else:
-            pass
+        #if pos_in_uL < swish_volume:
+        #    print('Volume in Syringe < Swish Volume, Will Pull in more to match Swish Volume')
+        #    self.startFill(swish_volume)
+        #else:
+        #    pass
 
         #wait until syringe is at swish volume or higher
-        wait_until_flow_done = True
+        #wait_until_flow_done = True
 
-        while wait_until_flow_done == True:
-            time.sleep(1)
-            (is_moving, pos_in_uL, vel_in_mLmin, valve_pos) = self.getStatus()
-            wait_until_flow_done = is_moving
+        #while wait_until_flow_done == True:
+        #    time.sleep(1)
+        #    (is_moving, pos_in_uL, vel_in_mLmin, valve_pos) = self.getStatus()
+        #    wait_until_flow_done = is_moving
 
         #determine starting time for swish cycles
         starting_time = time.time() #starting time in seconds
@@ -383,31 +383,31 @@ class APump():
         while current_elapsed_time < end_time:
 
             #push out phase
-            print('push', str(time.time()-starting_time))
-            self.startFill(pos_in_uL - swish_volume)
+            #print('push', str(time.time()-starting_time))
+            #self.startFill(pos_in_uL - swish_volume)
 
-            wait_until_flow_done = True
-            while wait_until_flow_done == True:
-                time.sleep(1)
-                (is_moving, pos_in_uL, vel_in_mLmin, valve_pos) = self.getStatus()
-                print('position', pos_in_uL)
-                wait_until_flow_done = is_moving
+            #wait_until_flow_done = True
+            #while wait_until_flow_done == True:
+            #    time.sleep(1)
+            #    (is_moving, pos_in_uL, vel_in_mLmin, valve_pos) = self.getStatus()
+            #    print('position', pos_in_uL)
+            #    wait_until_flow_done = is_moving
 
 
             #pull in phase
-            print('pull', str(time.time() - starting_time))
-            self.startFill(pos_in_uL + 1)
+            self.startFill(pos_in_uL + swish_volume)
 
             wait_until_flow_done = True
             while wait_until_flow_done == True:
                 time.sleep(1)
                 (is_moving, pos_in_uL, vel_in_mLmin, valve_pos) = self.getStatus()
 
-                print('position', pos_in_uL)
+
                 wait_until_flow_done = is_moving
 
             #update time
             current_elapsed_time = time.time() - starting_time
+            print('Staining Time Elapsed ', current_elapsed_time/60)
 
     
     def read(self):

@@ -3080,7 +3080,7 @@ class cycif:
 
         if cycle_number == 0:
             self.initialize(experiment_directory, offset_array, z_slices, x_frame_size=x_frame_size, focus_position = focus_position)
-            pump.liquid_action('Bleach', stain_valve=stain_valve)  # nuc is valve=7, pbs valve=8, bleach valve=1 (action, stain_valve, heater state (off = 0, on = 1))
+            #pump.liquid_action('Bleach', stain_valve=stain_valve)  # nuc is valve=7, pbs valve=8, bleach valve=1 (action, stain_valve, heater state (off = 0, on = 1))
             time.sleep(5)
             # print(status_str)
             self.image_cycle_acquire(cycle_number, experiment_directory, z_slices, 'Stain', offset_array, x_frame_size=x_frame_size, establish_fm_array=0, auto_focus_run=0,auto_expose_run=3)
@@ -5302,12 +5302,6 @@ class cycif:
         experiment_name = experiment_directory.split('\\')[-1]
         source_folder = experiment_directory
 
-        # create new archive folder
-        os.chdir(experiment_directory)
-        try:
-            os.mkdir('archive')
-        except:
-            pass
 
         # create new archive folder
         os.chdir(unstitched_destination_path)
@@ -5331,7 +5325,11 @@ class cycif:
         #    tar.add(source_folder, arcname=os.path.basename(source_folder))
 
         #move mcmicro folder to mcmicro path
-        #shutil.move(tar_output_path, tar_archive_destination_path)
+        shutil.move(tar_output_path, tar_archive_destination_path)
+
+
+
+
         shutil.move(unstitched_origin_path, unstitched_destination_path)
 
 

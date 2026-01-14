@@ -15,17 +15,17 @@ sy.initializePump()
 
 print('loading')
 #sy.startFill(500)
-sy.load_syringe(500)
+sy.load_syringe(800)
 print('dispensing')
 #sy.startFill(500)
-sy.volume_dispense(500, 500, device_port=3)
+sy.volume_dispense(800, 500, device_port=3)
 #x=0
 #for x in range(0,50):
 #    time.sleep(0.5)
 #    (is_moving, pos_in_uL, vel_in_mLmin, valve_pos) = sy.getStatus()
 #    print(pos_in_uL)
 #    x =+1
-#sy.swish(50, 500, 1)
+#sy.swish(1, 100, 2)
 #pump = fluidics(6,5,7)
 
 #valves = [8]

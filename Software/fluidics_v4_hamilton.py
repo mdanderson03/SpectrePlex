@@ -191,7 +191,7 @@ class fluidics:
 
         #load syringe of initial volume and expel
         #self.sy.load_syringe(pre_expel_vol, wait_until_flow_done=True)
-        self.sy.initializePump()
+        #self.sy.initializePump()
         #move to stain valve and bring stain solution in
         self.valve_select(stain_valve)
         self.sy.load_syringe(load_volume)
@@ -298,9 +298,9 @@ class fluidics:
         self.sy.volume_dispense(100, flow_rate, device_port=6, wait_until_flow_done=True)
 
         time.sleep(3)
-        self.sy.load_syringe(470)
-        self.sy.volume_dispense(250, flow_rate, wait_until_flow_done=True)
-        self.sy.volume_dispense(20, flow_rate, device_port=6, wait_until_flow_done=True)
+        self.sy.load_syringe(370)
+        self.sy.volume_dispense(330, flow_rate, wait_until_flow_done=True)
+        self.sy.volume_dispense(40, flow_rate, device_port=6, wait_until_flow_done=True)
 
 
     def liquid_action(self, action_type, stain_valve=0, incub_val=45, heater_state=0):
@@ -334,10 +334,7 @@ class fluidics:
             self.valve_select(stain_valve)
             self.stain(flow_rate=500)
 
-            for x in range(0, incub_val):
-
-                time.sleep(60)
-                print('Staining Time Elapsed ', x)
+            self.sy.swish(0.1, 125, swish_duration=incub_val)
 
             self.valve_select(pbs_valve)
             self.wash(1000, flow_rate=500)
