@@ -5321,16 +5321,14 @@ class cycif:
         #    moving_folder_path = experiment_directory + '/' + folder
         #    shutil.move(moving_folder_path, archive_path)
 
-        #with tarfile.open(tar_output_path, 'w') as tar:
-        #    tar.add(source_folder, arcname=os.path.basename(source_folder))
+        shutil.move(unstitched_origin_path, unstitched_destination_path)
+
+        with tarfile.open(tar_output_path, 'w') as tar:
+            tar.add(source_folder, arcname=os.path.basename(source_folder))
 
         #move mcmicro folder to mcmicro path
         shutil.move(tar_output_path, tar_archive_destination_path)
 
-
-
-
-        shutil.move(unstitched_origin_path, unstitched_destination_path)
 
 
         '''
