@@ -30,6 +30,8 @@ class APump():
         self.high_res_mode = parameters.get("high_res", True)
         self.syringe_volume = parameters.get("syringe_volume", 12.5)
         self.syringe_type = parameters.get("syringe_type", "smooth_flow")
+        self.return_step_count = parameters.get("return_step_count", 500)
+        self.backoff_step_count = parameters.get("backoff_step_count", 500)
         
         self.min_velocity_in_steps_s = 2
         self.max_velocity_in_steps_s = 10000
@@ -78,7 +80,8 @@ class APump():
         print("   Minimum Speed: " + str(self.min_velocity_in_steps_s * 1000 * self.syringe_volume * (4/self.high_res_step) * 60 ) + " uL/min")
 
     def initializePump(self):
-        message = "/1ZR\r"
+
+        message = "/1k" + str(self.backoff_step_count) + "ZR\r"
         self.write(message)
         response = self.read()
         
@@ -118,7 +121,15 @@ class APump():
             message = '/1N1R\r'
         else:
             message = '/1N0R\r'
-            
+
+        self.write(message)
+        response = self.read()
+        if len(response) < 2:
+            assert False
+
+        #set return step count (must be <=6400 in high res smooth mode)
+        message ='/1K' + str(self.return_step_count) +'R\r'
+
         self.write(message)
         response = self.read()
         if len(response) < 2:
