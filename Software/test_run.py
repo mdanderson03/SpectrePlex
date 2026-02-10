@@ -15,10 +15,15 @@ sy.initializePump()
 
 print('loading')
 #sy.startFill(500)
-sy.load_syringe(800)
+message = "/1?12R\r"
+sy.write(message)
+response = sy.read()
+print(response)
+#sy.load_syringe(80)
 print('dispensing')
-#sy.startFill(500)
-sy.volume_dispense(800, 500, device_port=3)
+#sy.startFill(440)
+#sy.volume_dispense(80, 500, device_port=6)
+#sy.load_syringe(380)
 #x=0
 #for x in range(0,50):
 #    time.sleep(0.5)

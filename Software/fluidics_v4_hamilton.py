@@ -112,7 +112,7 @@ class fluidics:
         #remap from physical valve number to reference valve number
         #physical = how eppendorfs are organized, interal = valve on dist valve module
 
-        remap_vector = [0,9,6,7,1,2,3,4,5,8,10, 15,14]
+        remap_vector = [0,8,9,6,5,1,3,4,2,7,10,12,13,14,15]
         valve_number = int(remap_vector[valve_number])
 
         if valve_number <= 7:
@@ -155,8 +155,8 @@ class fluidics:
 
     def valve_prime(self):
 
-        #valves = [1,2,3,4,5,6,7,8,9,11,12]
-        valves = [1, 2, 3, 4, 11, 12]
+        #valves = [1,2,3,4,5,6,7,8,9,11,12,13]
+        valves = [1, 7]
 
 
         #for valve in range(1,12):
@@ -225,6 +225,39 @@ class fluidics:
 
             self.sy.volume_dispense(post_expel_volume, dispense_vel_ulmin=500, device_port=device_valve, wait_until_flow_done=True)
 
+    def back_flush(self, valve_list=[1, 2, 3, 4, 5, 6, 7, 8, 9, 10]):
+        '''
+
+        Parameters
+        ----------
+        valve_list(list, int): list of valve numbers to back flush into
+
+        Returns
+        -------
+
+        '''
+
+        # Suck in water
+        water_port = 4
+        self.sy.setPort(water_port)
+
+        # suck in enough volume to flush with
+        self.sy.setSpeed(6000)
+        fill_volume = len(valve_list) * 500  # 500uL per valve to flush
+        self.sy.startFill(fill_volume)
+
+        wait_until_flow_done = True
+        while wait_until_flow_done == True:
+            time.sleep(1)
+            (is_moving, pos_in_uL, vel_in_mLmin, valve_pos) = self.sy.getStatus()
+
+            wait_until_flow_done = is_moving
+
+        # loop through each intended valve and dispense 500uL
+
+        for valve in valve_list:
+            self.valve_select(valve)
+            self.sy.volume_dispense(500, 1000, 5)
 
     def clean_valve(self):
 
@@ -305,8 +338,8 @@ class fluidics:
 
     def liquid_action(self, action_type, stain_valve=0, incub_val=45, heater_state=0):
 
-        bleach_valve = 11
-        pbs_valve = 12
+        bleach_valve = 14
+        pbs_valve = 13
         bleach_time = 6  # minutes
         bleach_flow_rate = 500
         wash_flow_rate = 500
