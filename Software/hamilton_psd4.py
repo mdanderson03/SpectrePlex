@@ -30,8 +30,8 @@ class APump():
         self.high_res_mode = parameters.get("high_res", True)
         self.syringe_volume = parameters.get("syringe_volume", 12.5)
         self.syringe_type = parameters.get("syringe_type", "smooth_flow")
-        self.return_step_count = parameters.get("return_step_count", 500)
-        self.backoff_step_count = parameters.get("backoff_step_count", 500)
+        self.return_step_count = parameters.get("return_step_count", 1000)
+        self.backoff_step_count = parameters.get("backoff_step_count", 2000)
         
         self.min_velocity_in_steps_s = 2
         self.max_velocity_in_steps_s = 10000
@@ -81,7 +81,7 @@ class APump():
 
     def initializePump(self):
 
-        message = "/1k" + str(self.backoff_step_count) + "ZR\r"
+        message = "/1k" + str(self.backoff_step_count) + "YR\r"
         self.write(message)
         response = self.read()
         
@@ -96,6 +96,15 @@ class APump():
                 (is_moving, pos_in_uL, vel_in_mLmin, valve_pos) = self.getStatus()
             except:
                 is_moving = True
+
+        #set return step count (must be <=6400 in high res smooth mode)
+        message ='/1K' + str(self.return_step_count) +'R\r'
+        print(message)
+
+        self.write(message)
+        response = self.read()
+        if len(response) < 2:
+            assert False
 
     def configurePump(self):
         
@@ -121,14 +130,6 @@ class APump():
             message = '/1N1R\r'
         else:
             message = '/1N0R\r'
-
-        self.write(message)
-        response = self.read()
-        if len(response) < 2:
-            assert False
-
-        #set return step count (must be <=6400 in high res smooth mode)
-        message ='/1K' + str(self.return_step_count) +'R\r'
 
         self.write(message)
         response = self.read()
@@ -292,11 +293,11 @@ class APump():
     def load_syringe(self, volume, wait_until_flow_done = True):
 
         #set port to distribution valve
-        dist_port = 5
+        dist_port = 6
         self.setPort(dist_port)
 
         #set fill speed
-        self.setSpeed(500)
+        self.setSpeed(750)
 
         #find current fill position
         (is_moving, pos_in_uL, vel_in_mLmin, valve_pos) = self.getStatus()
@@ -368,23 +369,24 @@ class APump():
         #set Swish speed
         self.setSpeed(swish_vel_ulmin)
 
-        #find current fill position
-        #if position is < swish volume, pull in volume until = swish volume
-        (is_moving, pos_in_uL, vel_in_mLmin, valve_pos) = self.getStatus()
 
-        #if pos_in_uL < swish_volume:
-        #    print('Volume in Syringe < Swish Volume, Will Pull in more to match Swish Volume')
-        #    self.startFill(swish_volume)
-        #else:
-        #    pass
-
+        self.startFill(swish_volume)
         #wait until syringe is at swish volume or higher
-        #wait_until_flow_done = True
+        wait_until_flow_done = True
+        while wait_until_flow_done == True:
+            time.sleep(1)
+            (is_moving, pos_in_uL, vel_in_mLmin, valve_pos) = self.getStatus()
+            wait_until_flow_done = is_moving
 
-        #while wait_until_flow_done == True:
-        #    time.sleep(1)
-        #    (is_moving, pos_in_uL, vel_in_mLmin, valve_pos) = self.getStatus()
-        #    wait_until_flow_done = is_moving
+
+
+        self.startFill(0)
+        #wait until syringe is at swish volume or higher
+        wait_until_flow_done = True
+        while wait_until_flow_done == True:
+            time.sleep(1)
+            (is_moving, pos_in_uL, vel_in_mLmin, valve_pos) = self.getStatus()
+            wait_until_flow_done = is_moving
 
         #determine starting time for swish cycles
         starting_time = time.time() #starting time in seconds
@@ -412,9 +414,9 @@ class APump():
             while wait_until_flow_done == True:
                 time.sleep(1)
                 (is_moving, pos_in_uL, vel_in_mLmin, valve_pos) = self.getStatus()
-
-
                 wait_until_flow_done = is_moving
+
+            time.sleep(10)
 
             #update time
             current_elapsed_time = time.time() - starting_time

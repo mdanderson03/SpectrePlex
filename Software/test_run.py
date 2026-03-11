@@ -12,40 +12,9 @@ sy = APump(parameters=parameters)
 
 sy.initializePump()
 
-
 print('loading')
-#sy.startFill(500)
-message = "/1?12R\r"
-sy.write(message)
-response = sy.read()
-print(response)
-#sy.load_syringe(80)
+
+sy.load_syringe(1000)
 print('dispensing')
-#sy.startFill(440)
-#sy.volume_dispense(80, 500, device_port=6)
-#sy.load_syringe(380)
-#x=0
-#for x in range(0,50):
-#    time.sleep(0.5)
-#    (is_moving, pos_in_uL, vel_in_mLmin, valve_pos) = sy.getStatus()
-#    print(pos_in_uL)
-#    x =+1
-#sy.swish(1, 100, 2)
-#pump = fluidics(6,5,7)
 
-#valves = [8]
-#for valve in valves:
-#pump.liquid_action('Stain', stain_valve=1, incub_val=5)
-#    pump.liquid_action('Bleach')
-#pump.load_stain( 1500, 12)
-#pump.deposit_stain(1300, 0)
-#pump.load_stain( 3000, 3)
-#pump.valve_prime()
-
-
-
-
-#pump.load_stain( 3000, 12)
-#pump.load_stain( 3000, 12)
-
-
+sy.volume_dispense(800, 500, device_port=3)

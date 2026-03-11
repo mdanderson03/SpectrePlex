@@ -39,7 +39,7 @@ class fluidics:
         self.device_number = 2 #makes valve 1 only connected to device
 
         #recalibrate volume and expel into waste reservior
-        self.sy.setPort(5) #5 is waste port
+        #self.sy.setPort(5) #5 is waste port
         self.sy.initializePump()
 
         return
@@ -112,7 +112,7 @@ class fluidics:
         #remap from physical valve number to reference valve number
         #physical = how eppendorfs are organized, interal = valve on dist valve module
 
-        remap_vector = [0,8,9,6,5,1,3,4,2,7,10,12,13,14,15]
+        remap_vector = [0,8,9,10,7,1,2,3,4,5,6,12,13,14,11]
         valve_number = int(remap_vector[valve_number])
 
         if valve_number <= 7:
@@ -155,15 +155,15 @@ class fluidics:
 
     def valve_prime(self):
 
-        #valves = [1,2,3,4,5,6,7,8,9,11,12,13]
-        valves = [1, 7]
+        valves = [1,2,3,4,5,6,7,8,9]
+        #valves = [14]
 
 
         #for valve in range(1,12):
         for valve in valves:
             self.valve_select(valve)
             time.sleep(0.5)
-            self.sy.load_syringe(300, wait_until_flow_done=True)
+            self.sy.load_syringe(520, wait_until_flow_done=True)
 
         self.sy.initializePump()
 
@@ -287,9 +287,8 @@ class fluidics:
         '''
 
         self.sy.load_syringe(volume_2_dispense + 150)
-        time.sleep(3)
         self.sy.volume_dispense(volume_2_dispense, flow_rate, wait_until_flow_done=True)
-        self.sy.volume_dispense(150, flow_rate, device_port=6, wait_until_flow_done=True)
+        self.sy.volume_dispense(150, flow_rate, device_port=1, wait_until_flow_done=True)
 
     def wash(self, volume_2_dispense, flow_rate):
         '''
@@ -304,15 +303,8 @@ class fluidics:
 
         '''
 
-        self.sy.load_syringe(300)
-        self.sy.volume_dispense(300, flow_rate, device_port=6, wait_until_flow_done=True)
-
-
-
-        self.sy.load_syringe(volume_2_dispense + 500)
-        time.sleep(3)
-        self.sy.volume_dispense(volume_2_dispense, flow_rate, wait_until_flow_done=True)
-        self.sy.volume_dispense(500, flow_rate, device_port=6, wait_until_flow_done=True)
+        self.sy.load_syringe(volume_2_dispense + 100)
+        self.sy.volume_dispense(volume_2_dispense, flow_rate, device_port=3, wait_until_flow_done=True)
 
     def stain(self, flow_rate):
         '''
@@ -326,21 +318,24 @@ class fluidics:
         -------
 
         '''
-
-        self.sy.load_syringe(100)
-        self.sy.volume_dispense(100, flow_rate, device_port=6, wait_until_flow_done=True)
-
-        time.sleep(3)
-        self.sy.load_syringe(370)
-        self.sy.volume_dispense(330, flow_rate, wait_until_flow_done=True)
-        self.sy.volume_dispense(40, flow_rate, device_port=6, wait_until_flow_done=True)
+        self.sy.initializePump()
+        self.sy.load_syringe(160)
+        self.sy.volume_dispense(160, flow_rate, device_port=1, wait_until_flow_done=True)
+        print('loading in rest of stain')
+        self.sy.initializePump()
+        self.sy.load_syringe(340)
+        print('loading in dead vol')
+        self.valve_select(13)
+        self.sy.load_syringe(160)
+        print('dispensing')
+        self.sy.volume_dispense(450, flow_rate, wait_until_flow_done=True)
 
 
     def liquid_action(self, action_type, stain_valve=0, incub_val=45, heater_state=0):
 
         bleach_valve = 14
         pbs_valve = 13
-        bleach_time = 6  # minutes
+        bleach_time = 5  # minutes
         bleach_flow_rate = 500
         wash_flow_rate = 500
         stain_flow_rate = 500
@@ -360,17 +355,22 @@ class fluidics:
                 time.sleep(60)
 
             self.valve_select(pbs_valve)
-            self.wash(1000, flow_rate=500)
+            self.wash(1200, flow_rate=500)
+            self.wash(800, flow_rate=500)
+            self.wash(800, flow_rate=500)
 
         elif action_type == 'Stain':
 
             self.valve_select(stain_valve)
             self.stain(flow_rate=500)
 
-            self.sy.swish(0.1, 125, swish_duration=incub_val)
+            self.sy.swish(50, 100, swish_duration=incub_val)
 
             self.valve_select(pbs_valve)
-            self.wash(1000, flow_rate=500)
+            self.wash(1200, flow_rate=500)
+            self.wash(800, flow_rate=500)
+            self.wash(800, flow_rate=500)
+
 
         elif action_type == "Wash":
 

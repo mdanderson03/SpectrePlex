@@ -2832,7 +2832,7 @@ class cycif:
         self.fm_map_z_shifter(experiment_directory, z_slices, 1)
         self.exp_logbook(experiment_directory, cycle_number)
         start = time.time()
-        self.multi_channel_z_stack_capture_dapi_focus(experiment_directory, cycle_number, stain_bleach,offset_array= offset_array, x_pixels=x_frame_size, slice_gap=2, channels=channels)
+        self.multi_channel_z_stack_capture_dapi_focus(experiment_directory, cycle_number, stain_bleach,offset_array= offset_array, x_pixels=x_frame_size, slice_gap=1, channels=channels)
         #self.multi_channel_z_stack_capture(experiment_directory, cycle_number, stain_bleach,x_pixels=x_frame_size, slice_gap=2, channels=channels)
         end = time.time()
         print('acquistion time', end - start)
