@@ -297,7 +297,7 @@ class APump():
         self.setPort(dist_port)
 
         #set fill speed
-        self.setSpeed(750)
+        self.setSpeed(500)
 
         #find current fill position
         (is_moving, pos_in_uL, vel_in_mLmin, valve_pos) = self.getStatus()

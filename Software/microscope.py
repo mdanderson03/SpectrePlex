@@ -211,7 +211,7 @@ class cycif:
         x_tiles = np.shape(fm_array[0])[1]
 
         exp_calc_array = np.random.rand(5, 3, y_tiles, x_tiles)
-        exp_array = [10, 50, 50, 50, 50]
+        exp_array = [10, 50, 50, 700, 50]
         exp_calc_array[::, 0, ::, ::] = 100
 
         file_name = 'exp_calc_array.npy'
@@ -873,7 +873,7 @@ class cycif:
 
             scaled_im = mag * im
             hdr_array[index] = scaled_im
-            im[im > 65532] = 1 #gets rid of saturation contributions
+            im[im > 65532] = 65532 #gets rid of saturation contributions
 
             del_I = np.sqrt(im)
 
@@ -2310,7 +2310,7 @@ class cycif:
                 tagged_image = core.get_tagged_image()
                 pixels = np.reshape(tagged_image.pix,
                                     newshape=[tagged_image.tags["Height"], tagged_image.tags["Width"]])
-                pixels = np.nan_to_num(pixels, posinf=65535, nan=65535)
+                pixels = np.nan_to_num(pixels, posinf=65000, nan=65000)
                 pixels[pixels > 65535] = 65535
                 pixels = pixels.astype('float32')
                 hdr_array[x] = pixels[::, side_pixel_count:side_pixel_count + x_frame_size]
@@ -3083,7 +3083,7 @@ class cycif:
             #pump.liquid_action('Bleach', stain_valve=stain_valve)  # nuc is valve=7, pbs valve=8, bleach valve=1 (action, stain_valve, heater state (off = 0, on = 1))
             time.sleep(5)
             # print(status_str)
-            self.image_cycle_acquire(cycle_number, experiment_directory, z_slices, 'Stain', offset_array, x_frame_size=x_frame_size, establish_fm_array=0, auto_focus_run=0,auto_expose_run=3)
+            self.image_cycle_acquire(0, experiment_directory, z_slices, 'Stain', offset_array, x_frame_size=x_frame_size, establish_fm_array=0, auto_focus_run=0,auto_expose_run=3)
         else:
 
             # print(status_str)
@@ -3094,7 +3094,7 @@ class cycif:
             #start low flow to constantly flow fluid while imaging to reduce fluorescence of fluidic over time
             #pump.liquid_action('low flow on')
             self.image_cycle_acquire(cycle_number, experiment_directory, z_slices, 'Stain', offset_array,x_frame_size=x_frame_size, establish_fm_array=0, auto_focus_run=0,auto_expose_run=3)
-            #pump.liquid_action('flow off')
+            pump.stop_syringe()
             time.sleep(1)
 
             # print(status_str)
@@ -3110,9 +3110,10 @@ class cycif:
 
         # print(status_str)
         print('cycle', cycle_number)
-        pump.liquid_action('Stain', stain_valve=prim_vial,incub_val=incub_val)
-        pump.liquid_action('Stain', stain_valve=second_vial, incub_val=incub_val)
-        self.image_cycle_acquire(cycle_number, experiment_directory, z_slices, 'Stain', offset_array,x_frame_size=x_frame_size, establish_fm_array=0, auto_focus_run=0,auto_expose_run=3)
+        #pump.liquid_action('Stain', stain_valve=prim_vial,incub_val=incub_val)
+        #pump.liquid_action('Stain', stain_valve=second_vial, incub_val=incub_val)
+        #self.image_cycle_acquire(cycle_number, experiment_directory, z_slices, 'Stain', offset_array,x_frame_size=x_frame_size, establish_fm_array=0, auto_focus_run=0,auto_expose_run=3)
+        #pump.stop_syringe()
         time.sleep(1)
 
         # print(status_str)

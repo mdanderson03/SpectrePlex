@@ -155,7 +155,7 @@ class fluidics:
 
     def valve_prime(self):
 
-        valves = [1,2,3,4,5,6,7,8,9]
+        valves = [1,2,3,4,5,6,7,8,9,10, 11, 12]
         #valves = [14]
 
 
@@ -163,7 +163,8 @@ class fluidics:
         for valve in valves:
             self.valve_select(valve)
             time.sleep(0.5)
-            self.sy.load_syringe(520, wait_until_flow_done=True)
+            self.sy.load_syringe(350, wait_until_flow_done=True)
+
 
         self.sy.initializePump()
 
@@ -273,6 +274,9 @@ class fluidics:
 
         self.sy.initializePump()
 
+    def stop_syringe(self):
+        self.sy.write('/1T\r')
+
     def bleach(self, volume_2_dispense, flow_rate):
         '''
         volume 2 dispense is in uL and flow_rate is uL/min
@@ -303,8 +307,13 @@ class fluidics:
 
         '''
 
-        self.sy.load_syringe(volume_2_dispense + 100)
+        self.sy.load_syringe(volume_2_dispense + 150)
         self.sy.volume_dispense(volume_2_dispense, flow_rate, device_port=3, wait_until_flow_done=True)
+
+    def low_flow(self, volume_2_dispense, flow_rate):
+        self.sy.load_syringe(volume_2_dispense)
+        print('dispensing')
+        self.sy.volume_dispense(volume_2_dispense, flow_rate, device_port=3, wait_until_flow_done=False)
 
     def stain(self, flow_rate):
         '''
@@ -323,19 +332,19 @@ class fluidics:
         self.sy.volume_dispense(160, flow_rate, device_port=1, wait_until_flow_done=True)
         print('loading in rest of stain')
         self.sy.initializePump()
-        self.sy.load_syringe(340)
+        self.sy.load_syringe(300)
         print('loading in dead vol')
         self.valve_select(13)
         self.sy.load_syringe(160)
         print('dispensing')
-        self.sy.volume_dispense(450, flow_rate, wait_until_flow_done=True)
+        self.sy.volume_dispense(410, flow_rate, wait_until_flow_done=True)
 
 
     def liquid_action(self, action_type, stain_valve=0, incub_val=45, heater_state=0):
 
         bleach_valve = 14
         pbs_valve = 13
-        bleach_time = 5  # minutes
+        bleach_time = 7  # minutes
         bleach_flow_rate = 500
         wash_flow_rate = 500
         stain_flow_rate = 500
@@ -355,21 +364,21 @@ class fluidics:
                 time.sleep(60)
 
             self.valve_select(pbs_valve)
-            self.wash(1200, flow_rate=500)
-            self.wash(800, flow_rate=500)
-            self.wash(800, flow_rate=500)
+            self.wash(700, flow_rate=500)
+            self.wash(500, flow_rate=500)
 
         elif action_type == 'Stain':
 
             self.valve_select(stain_valve)
             self.stain(flow_rate=500)
 
-            self.sy.swish(50, 100, swish_duration=incub_val)
+            self.sy.swish(1, 100, swish_duration=incub_val)
 
             self.valve_select(pbs_valve)
-            self.wash(1200, flow_rate=500)
-            self.wash(800, flow_rate=500)
-            self.wash(800, flow_rate=500)
+            self.wash(700, flow_rate=500)
+            self.wash(500, flow_rate=500)
+            self.low_flow(800, 100)
+
 
 
         elif action_type == "Wash":
