@@ -11,20 +11,17 @@ offset_array = [0, -7, -6.7, -6, -7]
 
 focus_position = -12
 
-#pump.valve_prime()
+
 #use first to set cluster surface
 #microscope.wide_net_auto_focus(experiment_directory, x_frame_size=x_frame_size, offset_array=offset_array, z_slice_search_range=15, focus_position=focus_position, number_clusters_retained=5, manual_cluster_update=0)
-#pump.valve_prime()
-#pump.liquid_action('Stain', stain_valve=1, incub_val=2)
-#Use second to take initial autofluorescence cycle
-#microscope.full_cycle(experiment_directory, 0, offset_array, 0,
-# pump, z_slices, x_frame_size =x_frame_size, focus_position=focus_position)
 
-#microscope.full_cycle(experiment_directory, 8, offset_array, 9, pump, z_slices, incub_val = 45, x_frame_size=x_frame_size,focus_position=focus_position)
+#uncomment to get autofluorescence
+#microscope.full_cycle(experiment_directory, 0, offset_array, 9, pump, z_slices, incub_val = 45, x_frame_size=x_frame_size,focus_position=focus_position)
 
+#below are rest of loops and prim and secodnary cycle
 #microscope.prim_second_full_cycle(experiment_directory, cycle_number=1, offset_array=offset_array, fluidics_object=pump, z_slices=z_slices, prim_vial=1, second_vial=2)
 
-for cycle in range(11, 12):
+for cycle in range(2, 12):
     microscope.full_cycle(experiment_directory, cycle, offset_array, cycle + 1, pump, z_slices, incub_val = 45, x_frame_size=x_frame_size,focus_position=focus_position)
 
 microscope.inter_cycle_processing(experiment_directory, 1, x_frame_size=x_frame_size)
