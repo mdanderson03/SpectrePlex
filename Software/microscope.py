@@ -867,6 +867,7 @@ class cycif:
         for index in range(0, 3):
             exp_offset = 27.43
             mag = (max_hdr_time + exp_offset) / (hdr_times[index] + exp_offset)
+
             del_offset = 1.2 * (max_hdr_time - hdr_times[index]) / (hdr_times[index] + exp_offset) ** 2
 
             im = copy.deepcopy(hdr_array[index])
@@ -2253,6 +2254,7 @@ class cycif:
         '''
 
         side_pixel_count = int((5056 - x_frame_size)/2)
+        image_good = 0
 
         if channel =='DAPI':
             hdr = 0
@@ -2281,18 +2283,27 @@ class cycif:
             # make array to hold images in
             average_array = np.random.rand(frame_count, 2960, x_frame_size).astype('float32')
 
-            # acquire and populate array
-            for x in range(0, frame_count):
-                time.sleep(0.1)
-                core.set_config("amp", 'high')
-                core.snap_image()
-                tagged_image = core.get_tagged_image()
-                pixels = np.reshape(tagged_image.pix,newshape=[tagged_image.tags["Height"], tagged_image.tags["Width"]])
-                pixels = np.nan_to_num(pixels, posinf=65500)
-                average_array[x] = pixels[::, side_pixel_count:side_pixel_count + x_frame_size]
+            while image_good == 0:
+                try:
+                    # acquire and populate array
+                    for x in range(0, frame_count):
+                        time.sleep(0.1)
+                        core.set_config("amp", 'high')
+                        core.snap_image()
+                        tagged_image = core.get_tagged_image()
+                        pixels = np.reshape(tagged_image.pix,newshape=[tagged_image.tags["Height"], tagged_image.tags["Width"]])
+                        pixels = np.nan_to_num(pixels, posinf=65500)
+                        average_array[x] = pixels[::, side_pixel_count:side_pixel_count + x_frame_size]
 
-            #find array average and return averaged image
-            averaged_image = np.average(average_array, axis = 0)
+                    #find array average and return averaged image
+                    averaged_image = np.average(average_array, axis = 0)
+                    # allow to pass on
+                    image_good = 1
+
+                except:
+                    # force system to recapture images
+                    image_good = 0
+
         if hdr ==1:
 
             hdr_times = self.hdr_exp_times
@@ -2301,22 +2312,36 @@ class cycif:
             # make array to hold images in
             hdr_array = np.random.rand(hdr_frame_count, 2960, x_frame_size).astype('float32')
 
-            # acquire and populate array
-            for x in range(0, hdr_frame_count):
-                exp_time = int(hdr_times[x])
-                core.set_exposure(exp_time)
-                core.set_config("amp", 'high')
-                core.snap_image()
-                tagged_image = core.get_tagged_image()
-                pixels = np.reshape(tagged_image.pix,
-                                    newshape=[tagged_image.tags["Height"], tagged_image.tags["Width"]])
-                pixels = np.nan_to_num(pixels, posinf=65000, nan=65000)
-                pixels[pixels > 65535] = 65535
-                pixels = pixels.astype('float32')
-                hdr_array[x] = pixels[::, side_pixel_count:side_pixel_count + x_frame_size]
+            while image_good == 0:
+                try:
+                    # acquire and populate array
+                    for x in range(0, hdr_frame_count):
+                        exp_time = int(hdr_times[x])
+                        core.set_exposure(exp_time)
+                        #had issue where exp time wasnt being consistently set, so ijust repeated the command a second time
 
-            # find array average and return averaged image
-            averaged_image = self.hdr_fuser(hdr_array)
+                        while exp_time != core.get_exposure():
+                            print('didnt match')
+                            core.set_exposure(exp_time)
+
+                        core.set_config("amp", 'high')
+                        core.snap_image()
+                        tagged_image = core.get_tagged_image()
+                        pixels = np.reshape(tagged_image.pix,
+                                            newshape=[tagged_image.tags["Height"], tagged_image.tags["Width"]])
+                        pixels = np.nan_to_num(pixels, posinf=65000, nan=65000)
+                        pixels[pixels > 65535] = 65535
+                        pixels = pixels.astype('float32')
+                        hdr_array[x] = pixels[::, side_pixel_count:side_pixel_count + x_frame_size]
+
+                    # find array average and return averaged image
+                    averaged_image = self.hdr_fuser(hdr_array)
+                    #allow to pass on
+                    image_good = 1
+
+                except:
+                    #force system to recapture images
+                    image_good = 0
 
         return averaged_image
 
@@ -2832,7 +2857,7 @@ class cycif:
         self.fm_map_z_shifter(experiment_directory, z_slices, 1)
         self.exp_logbook(experiment_directory, cycle_number)
         start = time.time()
-        self.multi_channel_z_stack_capture_dapi_focus(experiment_directory, cycle_number, stain_bleach,offset_array= offset_array, x_pixels=x_frame_size, slice_gap=1, channels=channels)
+        self.multi_channel_z_stack_capture_dapi_focus(experiment_directory, cycle_number, stain_bleach,offset_array= offset_array, x_pixels=x_frame_size, slice_gap=2, channels=channels)
         #self.multi_channel_z_stack_capture(experiment_directory, cycle_number, stain_bleach,x_pixels=x_frame_size, slice_gap=2, channels=channels)
         end = time.time()
         print('acquistion time', end - start)
@@ -3081,9 +3106,11 @@ class cycif:
         if cycle_number == 0:
             self.initialize(experiment_directory, offset_array, z_slices, x_frame_size=x_frame_size, focus_position = focus_position)
             #pump.liquid_action('Bleach', stain_valve=stain_valve)  # nuc is valve=7, pbs valve=8, bleach valve=1 (action, stain_valve, heater state (off = 0, on = 1))
-            time.sleep(5)
+            time.sleep(1)
             # print(status_str)
-            self.image_cycle_acquire(0, experiment_directory, z_slices, 'Stain', offset_array, x_frame_size=x_frame_size, establish_fm_array=0, auto_focus_run=0,auto_expose_run=3)
+            self.image_cycle_acquire(0, experiment_directory, z_slices, 'Stain', offset_array, x_frame_size=x_frame_size, establish_fm_array=0, auto_focus_run=0,auto_expose_run=0, channels=['DAPI'])
+            self.image_cycle_acquire(0, experiment_directory, z_slices, 'Stain', offset_array,x_frame_size=x_frame_size, establish_fm_array=0, auto_focus_run=0,auto_expose_run=0, channels=['DAPI'])
+            self.image_cycle_acquire(0, experiment_directory, z_slices, 'Stain', offset_array,x_frame_size=x_frame_size, establish_fm_array=0, auto_focus_run=0,auto_expose_run=3)
         else:
 
             # print(status_str)
@@ -3111,9 +3138,10 @@ class cycif:
         # print(status_str)
         print('cycle', cycle_number)
         pump.liquid_action('Stain', stain_valve=prim_vial,incub_val=incub_val)
+        #pump.stop_syringe()
         pump.liquid_action('Stain', stain_valve=second_vial, incub_val=incub_val)
         self.image_cycle_acquire(cycle_number, experiment_directory, z_slices, 'Stain', offset_array,x_frame_size=x_frame_size, establish_fm_array=0, auto_focus_run=0,auto_expose_run=3)
-        pump.stop_syringe()
+        #pump.stop_syringe()
         time.sleep(1)
 
         # print(status_str)
@@ -5322,13 +5350,16 @@ class cycif:
         #    moving_folder_path = experiment_directory + '/' + folder
         #    shutil.move(moving_folder_path, archive_path)
 
-        shutil.move(unstitched_origin_path, unstitched_destination_path)
+        #shutil.move(unstitched_origin_path, unstitched_destination_path)
+
+
 
         with tarfile.open(tar_output_path, 'w') as tar:
             tar.add(source_folder, arcname=os.path.basename(source_folder))
 
         #move mcmicro folder to mcmicro path
         shutil.move(tar_output_path, tar_archive_destination_path)
+
 
 
 

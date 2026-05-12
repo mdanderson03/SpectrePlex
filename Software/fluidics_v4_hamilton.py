@@ -332,12 +332,12 @@ class fluidics:
         self.sy.volume_dispense(160, flow_rate, device_port=1, wait_until_flow_done=True)
         print('loading in rest of stain')
         self.sy.initializePump()
-        self.sy.load_syringe(300)
+        self.sy.load_syringe(280)
         print('loading in dead vol')
         self.valve_select(13)
         self.sy.load_syringe(160)
         print('dispensing')
-        self.sy.volume_dispense(410, flow_rate, wait_until_flow_done=True)
+        self.sy.volume_dispense(390, flow_rate, wait_until_flow_done=True)
 
 
     def liquid_action(self, action_type, stain_valve=0, incub_val=45, heater_state=0):
@@ -376,8 +376,8 @@ class fluidics:
 
             self.valve_select(pbs_valve)
             self.wash(700, flow_rate=500)
-            self.wash(500, flow_rate=500)
-            self.low_flow(800, 100)
+            self.wash(700, flow_rate=500)
+            #self.low_flow(800, 100)
 
 
 
