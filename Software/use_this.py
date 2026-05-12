@@ -19,11 +19,16 @@ focus_position = 13
 #uncomment to get autofluorescence
 #microscope.full_cycle(experiment_directory, 0, offset_array, 0, pump, z_slices, incub_val = 45, x_frame_size=x_frame_size,focus_position=focus_position)
 
+microscope.image_cycle_acquire(4, experiment_directory,z_slices, 'Stain', offset_array,x_frame_size=x_frame_size, establish_fm_array=0, auto_focus_run=0,auto_expose_run=3)
+pump.liquid_action('Bleach')
+microscope.image_cycle_acquire(4, experiment_directory,z_slices, 'Bleach', offset_array,x_frame_size=x_frame_size, establish_fm_array=0, auto_focus_run=0,auto_expose_run=0)
+
+
 #below are rest of loops and prim and secondary cycle
 
-microscope.prim_second_full_cycle(experiment_directory, cycle_number=1, offset_array=offset_array, fluidics_object=pump, z_slices=z_slices, prim_vial=1, second_vial=2)
+#microscope.prim_second_full_cycle(experiment_directory, cycle_number=1, offset_array=offset_array, fluidics_object=pump, z_slices=z_slices, prim_vial=1, second_vial=2)
 #
-for cycle in range(2, 12):
+for cycle in range(5, 12):
      microscope.full_cycle(experiment_directory, cycle, offset_array, cycle + 1, pump, z_slices, incub_val = 45, x_frame_size=x_frame_size,focus_position=focus_position)
 #
 microscope.inter_cycle_processing(experiment_directory, 1, x_frame_size=x_frame_size)
