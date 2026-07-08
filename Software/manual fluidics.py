@@ -10,8 +10,10 @@ sy = APump(parameters=parameters)
 
 
 print('loading')
-sy.load_syringe(800)
+
+
+sy.load_syringe(700)
 print('dispensing')
 #sy.setPort(3)
-sy.volume_dispense(600, 500, device_port=3)
+#sy.volume_dispense(1000, 1000, device_port=3)
 

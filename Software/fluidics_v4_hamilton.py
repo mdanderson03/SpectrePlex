@@ -156,7 +156,7 @@ class fluidics:
     def valve_prime(self):
 
         valves = [1,2,3,4,5,6,7,8,9,10, 11, 12]
-        #valves = [14]
+        #valves = [1,2,3,4,5]
 
 
         #for valve in range(1,12):

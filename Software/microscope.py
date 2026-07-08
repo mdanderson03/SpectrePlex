@@ -25,6 +25,7 @@ import multiprocessing
 import itertools
 import shutil
 import tracemalloc
+import subprocess
 
 
 magellan = Magellan()
@@ -2320,8 +2321,8 @@ class cycif:
                         core.set_exposure(exp_time)
                         #had issue where exp time wasnt being consistently set, so ijust repeated the command a second time
 
-                        while exp_time != core.get_exposure():
-                            print('didnt match')
+                        while abs(int(exp_time) - int(core.get_exposure())) > 5:
+                            print('didnt match', '_got ',core.get_exposure(), '_asked for', exp_time )
                             core.set_exposure(exp_time)
 
                         core.set_config("amp", 'high')
@@ -5350,7 +5351,7 @@ class cycif:
         #    moving_folder_path = experiment_directory + '/' + folder
         #    shutil.move(moving_folder_path, archive_path)
 
-        #shutil.move(unstitched_origin_path, unstitched_destination_path)
+        shutil.move(unstitched_origin_path, unstitched_destination_path)
 
 
 
