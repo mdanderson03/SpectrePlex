@@ -611,7 +611,8 @@ class cycif:
         for channel in channels:
 
             quicktile_path = experiment_directory + '\Quick_Tile/' + channel
-            flattened_path = experiment_directory + '//' + channel + '\Stain\cy_' + str(cycle_number) + r'\Tiles\focused_basic_darkframe'
+            #flattened_path = experiment_directory + '//' + channel + '\Stain\cy_' + str(cycle_number) + r'\Tiles\focused_basic_darkframe'
+            flattened_path = experiment_directory + '//' + channel + '\Stain\cy_' + str(cycle_number) + r'\Tiles\focused_basic_corrected'
             high_col = (np.where(channels == channel)[0][0] + 1) * 2
 
             os.chdir(quicktile_path)
@@ -3141,15 +3142,15 @@ class cycif:
         pump.liquid_action('Stain', stain_valve=prim_vial,incub_val=incub_val)
         #pump.stop_syringe()
         pump.liquid_action('Stain', stain_valve=second_vial, incub_val=incub_val)
-        self.image_cycle_acquire(cycle_number, experiment_directory, z_slices, 'Stain', offset_array,x_frame_size=x_frame_size, establish_fm_array=0, auto_focus_run=0,auto_expose_run=3)
+        #self.image_cycle_acquire(cycle_number, experiment_directory, z_slices, 'Stain', offset_array,x_frame_size=x_frame_size, establish_fm_array=0, auto_focus_run=0,auto_expose_run=3)
         #pump.stop_syringe()
         time.sleep(1)
 
         # print(status_str)
-        pump.liquid_action('Bleach')  # nuc is valve=7, pbs valve=8, bleach valve=1 (action, stain_valve, heater state (off = 0, on = 1))
+        #pump.liquid_action('Bleach')  # nuc is valve=7, pbs valve=8, bleach valve=1 (action, stain_valve, heater state (off = 0, on = 1))
         time.sleep(1)
         # print(status_str)
-        self.image_cycle_acquire(cycle_number, experiment_directory, z_slices, 'Bleach', offset_array, x_frame_size=x_frame_size, establish_fm_array=0, auto_focus_run=0,auto_expose_run=0)
+        #self.image_cycle_acquire(cycle_number, experiment_directory, z_slices, 'Bleach', offset_array, x_frame_size=x_frame_size, establish_fm_array=0, auto_focus_run=0,auto_expose_run=0)
         time.sleep(1)
 
 
@@ -3644,6 +3645,21 @@ class cycif:
         x_tile_count = numpy_y.shape[1]
         tile_count = int(tissue_exist.sum())
 
+
+
+        dapi_im_path = experiment_directory + '\DAPI\Stain\cy_' + str(
+            cycle_number) + '\Tiles' + '/focused_basic_corrected'
+        a488_im_path = experiment_directory + '\A488\Stain\cy_' + str(
+            cycle_number) + '\Tiles' + '/focused_basic_corrected'
+        a555_im_path = experiment_directory + '\A555\Stain\cy_' + str(
+            cycle_number) + '\Tiles' + '/focused_basic_corrected'
+        a647_im_path = experiment_directory + '\A647\Stain\cy_' + str(
+            cycle_number) + '\Tiles' + '/focused_basic_corrected'
+        a750_im_path = experiment_directory + '\A750\Stain\cy_' + str(
+            cycle_number) + '\Tiles' + '/focused_basic_corrected'
+
+        '''
+
         dapi_im_path = experiment_directory + '\DAPI\Stain\cy_' + str(
             cycle_number) + '\Tiles' + '/focused_basic_darkframe'
         a488_im_path = experiment_directory + '\A488\Stain\cy_' + str(
@@ -3654,6 +3670,7 @@ class cycif:
             cycle_number) + '\Tiles' + '/focused_basic_darkframe'
         a750_im_path = experiment_directory + '\A750\Stain\cy_' + str(
             cycle_number) + '\Tiles' + '/focused_basic_darkframe'
+        '''
 
         mcmicro_path = experiment_directory + r'\mcmicro'
 
@@ -4514,22 +4531,22 @@ class cycif:
 
         #flatten image
 
-        self.illumination_flattening(experiment_directory, cycle_number, single_fov=1)
+        #self.illumination_flattening(experiment_directory, cycle_number, single_fov=1)
 
         end = time.time()
         print('flatten', end - start)
 
 
         #self.darkframe_AF_sub(experiment_directory, cycle_number)
-        self.darkframe_sub(experiment_directory, cycle_number)
+        #self.darkframe_sub(experiment_directory, cycle_number)
         end = time.time()
         print('dark frame subtraction', end - start)
 
 
 
         #compress to 16bit
-        self.stage_placement(experiment_directory, cycle_number, x_pixels=x_frame_size, down_sample_factor=4,single_fov=1)
-        self.hdr_compression_2(experiment_directory, cycle_number)
+        #self.stage_placement(experiment_directory, cycle_number, x_pixels=x_frame_size, down_sample_factor=4,single_fov=1)
+        #self.hdr_compression_2(experiment_directory, cycle_number)
 
 
 
@@ -4545,12 +4562,12 @@ class cycif:
 
         #generate stage placement
 
-        self.stage_placement(experiment_directory, cycle_number, x_pixels = x_frame_size, down_sample_factor=4, single_fov=1)
+        #self.stage_placement(experiment_directory, cycle_number, x_pixels = x_frame_size, down_sample_factor=4, single_fov=1)
 
 
 
         #if did DAPI focus then acquire one plane, please do the following
-        self.delete_intermediate_folders(experiment_directory, cycle_number)
+        #self.delete_intermediate_folders(experiment_directory, cycle_number)
         #self.archive(experiment_directory)
 
         #self.zlib_compress_raw(experiment_directory, cycle_number)

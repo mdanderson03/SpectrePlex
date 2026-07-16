@@ -12,7 +12,7 @@ offset_array = [0, -7, -6.7, -6, -7]
 
 focus_position = -67
 
-pump.valve_prime()
+#pump.valve_prime()
 #use first to set cluster surface
 #microscope.wide_net_auto_focus(experiment_directory, x_frame_size=x_frame_size, offset_array=offset_array, z_slice_search_range=7, focus_position=focus_position, number_clusters_retained=5, manual_cluster_update=0)
 
@@ -28,7 +28,7 @@ pump.valve_prime()
 #print('count_started')
 #time.sleep(45*60)
 #print('count ended')
-#subprocess.run(['python','partial_cycle.py', str(1), str(2), experiment_directory], capture_output=True, text=True)
+subprocess.run(['python','partial_cycle.py', str(1), str(2), experiment_directory], capture_output=True, text=True)
 #microscope.image_cycle_acquire(2, experiment_directory,z_slices, 'Stain', offset_array,x_frame_size=x_frame_size, establish_fm_array=0, auto_focus_run=0,auto_expose_run=3)
 #pump.liquid_action('Bleach')
 #microscope.image_cycle_acquire(9, experiment_directory,z_slices, 'Bleach', offset_array,x_frame_size=x_frame_size, establish_fm_array=0, auto_focus_run=0,auto_expose_run=0)
@@ -49,7 +49,7 @@ pump.valve_prime()
 #     microscope.full_cycle(experiment_directory, cycle, offset_array, cycle - 3, pump, z_slices, incub_val = 45, x_frame_size=x_frame_size,focus_position=focus_position)
 #
 #microscope.inter_cycle_processing(experiment_directory, 1, x_frame_size=x_frame_size)
-#cycles = [0,2,3,4,5,6,7,8,9,10,11]
+#cycles = [0,1,3,6,9,12,13,14]
 
 #for cycle in cycles:
 #    microscope.inter_cycle_processing(experiment_directory, cycle, x_frame_size=x_frame_size)
