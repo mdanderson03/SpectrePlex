@@ -3,7 +3,7 @@ import sys
 
 microscope = cycif() # initialize cycif object
 pump = fluidics(6,5,4)
-z_slices = 11
+z_slices = 15
 x_frame_size = 2960
 offset_array = [0, -7, -6.7, -6, -7]
 
