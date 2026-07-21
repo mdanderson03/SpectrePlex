@@ -4123,10 +4123,10 @@ class cycif:
                 if type == 'Stain':
                     if channel == 'DAPI':
                         im_path = experiment_directory + '/' + channel + "/" + type + '\cy_' + str(
-                            cycle_number) + '\Tiles' + r'\focused_basic_darkframe'
+                            cycle_number) + '\Tiles' + r'\focused_basic'
                     else:
                         im_path = experiment_directory + '/' + channel + "/" + type + '\cy_' + str(
-                            cycle_number) + '\Tiles' + '/focused_basic_darkframe'
+                            cycle_number) + '\Tiles' + '/focused_basic'
 
                 elif type == 'Bleach':
                     if single_fov != 1:
@@ -4533,7 +4533,7 @@ class cycif:
 
         #flatten image
 
-        #self.illumination_flattening(experiment_directory, cycle_number, single_fov=1)
+        self.illumination_flattening(experiment_directory, cycle_number, single_fov=1)
 
         end = time.time()
         print('flatten', end - start)
@@ -4547,8 +4547,8 @@ class cycif:
 
 
         #compress to 16bit
-        #self.stage_placement(experiment_directory, cycle_number, x_pixels=x_frame_size, down_sample_factor=4,single_fov=1)
-        #self.hdr_compression_2(experiment_directory, cycle_number)
+        self.stage_placement(experiment_directory, cycle_number, x_pixels=x_frame_size, down_sample_factor=4,single_fov=1)
+        self.hdr_compression_2(experiment_directory, cycle_number)
 
 
 
