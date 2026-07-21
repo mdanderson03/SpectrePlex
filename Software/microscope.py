@@ -3141,18 +3141,18 @@ class cycif:
 
         # print(status_str)
         print('cycle', cycle_number)
-        pump.liquid_action('Stain', stain_valve=prim_vial,incub_val=incub_val)
+        #pump.liquid_action('Stain', stain_valve=prim_vial,incub_val=incub_val)
         #pump.stop_syringe()
-        pump.liquid_action('Stain', stain_valve=second_vial, incub_val=incub_val)
-        #self.image_cycle_acquire(cycle_number, experiment_directory, z_slices, 'Stain', offset_array,x_frame_size=x_frame_size, establish_fm_array=0, auto_focus_run=0,auto_expose_run=3)
+        #pump.liquid_action('Stain', stain_valve=second_vial, incub_val=incub_val)
+        self.image_cycle_acquire(cycle_number, experiment_directory, z_slices, 'Stain', offset_array,x_frame_size=x_frame_size, establish_fm_array=0, auto_focus_run=0,auto_expose_run=3)
         #pump.stop_syringe()
         time.sleep(1)
 
         # print(status_str)
-        #pump.liquid_action('Bleach')  # nuc is valve=7, pbs valve=8, bleach valve=1 (action, stain_valve, heater state (off = 0, on = 1))
+        pump.liquid_action('Bleach')  # nuc is valve=7, pbs valve=8, bleach valve=1 (action, stain_valve, heater state (off = 0, on = 1))
         time.sleep(1)
         # print(status_str)
-        #self.image_cycle_acquire(cycle_number, experiment_directory, z_slices, 'Bleach', offset_array, x_frame_size=x_frame_size, establish_fm_array=0, auto_focus_run=0,auto_expose_run=0)
+        self.image_cycle_acquire(cycle_number, experiment_directory, z_slices, 'Bleach', offset_array, x_frame_size=x_frame_size, establish_fm_array=0, auto_focus_run=0,auto_expose_run=0)
         time.sleep(1)
 
 
