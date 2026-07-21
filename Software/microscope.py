@@ -3141,9 +3141,9 @@ class cycif:
 
         # print(status_str)
         print('cycle', cycle_number)
-        #pump.liquid_action('Stain', stain_valve=prim_vial,incub_val=incub_val)
+        pump.liquid_action('Stain', stain_valve=prim_vial,incub_val=incub_val)
         #pump.stop_syringe()
-        #pump.liquid_action('Stain', stain_valve=second_vial, incub_val=incub_val)
+        pump.liquid_action('Stain', stain_valve=second_vial, incub_val=incub_val)
         self.image_cycle_acquire(cycle_number, experiment_directory, z_slices, 'Stain', offset_array,x_frame_size=x_frame_size, establish_fm_array=0, auto_focus_run=0,auto_expose_run=3)
         #pump.stop_syringe()
         time.sleep(1)
