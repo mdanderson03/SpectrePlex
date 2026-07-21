@@ -2829,7 +2829,7 @@ class cycif:
         return
 
     def image_cycle_acquire(self, cycle_number, experiment_directory, z_slices, stain_bleach, offset_array, x_frame_size=5056, fm_array_adjuster = 0, establish_fm_array=0, auto_focus_run=0, auto_expose_run=0,
-                            channels=['DAPI', 'A488', 'A555', 'A647', 'A750'], focus_position = 'none'):
+                            channels=['DAPI', 'A488', 'A555', 'A647', 'A750'], focus_position = 'none', slice_gap = 2):
 
         self.establish_fm_array(experiment_directory, cycle_number, z_slices, offset_array,
                                 initialize=establish_fm_array, x_frame_size=x_frame_size, fm_array_adjuster= fm_array_adjuster, autofocus=auto_focus_run,
@@ -2859,7 +2859,7 @@ class cycif:
         self.fm_map_z_shifter(experiment_directory, z_slices, 1)
         self.exp_logbook(experiment_directory, cycle_number)
         start = time.time()
-        self.multi_channel_z_stack_capture_dapi_focus(experiment_directory, cycle_number, stain_bleach,offset_array= offset_array, x_pixels=x_frame_size, slice_gap=2, channels=channels)
+        self.multi_channel_z_stack_capture_dapi_focus(experiment_directory, cycle_number, stain_bleach,offset_array= offset_array, x_pixels=x_frame_size, slice_gap=slice_gap, channels=channels)
         #self.multi_channel_z_stack_capture(experiment_directory, cycle_number, stain_bleach,x_pixels=x_frame_size, slice_gap=2, channels=channels)
         end = time.time()
         print('acquistion time', end - start)
@@ -3066,7 +3066,7 @@ class cycif:
         if manual_cluster_update == 0:
             z_wide_range = z_slice_search_range
 
-            self.image_cycle_acquire(0, experiment_directory,z_wide_range, 'Bleach', offset_array, x_frame_size=x_frame_size,establish_fm_array=1, auto_focus_run=0, auto_expose_run=0, channels=['DAPI'],focus_position=focus_position)
+            self.image_cycle_acquire(0, experiment_directory,z_wide_range, 'Bleach', offset_array, x_frame_size=x_frame_size,establish_fm_array=1, auto_focus_run=0, auto_expose_run=0, channels=['DAPI'],focus_position=focus_position, slice_gap = 5)
             self.generate_nuc_mask(experiment_directory, 0)
             self.tissue_region_identifier(experiment_directory, x_frame_size = x_frame_size, clusters_retained=number_clusters_retained)
 
@@ -3110,7 +3110,9 @@ class cycif:
             #pump.liquid_action('Bleach', stain_valve=stain_valve)  # nuc is valve=7, pbs valve=8, bleach valve=1 (action, stain_valve, heater state (off = 0, on = 1))
             time.sleep(1)
             # print(status_str)
-            self.image_cycle_acquire(0, experiment_directory, z_slices, 'Stain', offset_array, x_frame_size=x_frame_size, establish_fm_array=0, auto_focus_run=0,auto_expose_run=0, channels=['DAPI'])
+            self.image_cycle_acquire(0, experiment_directory, 13, 'Stain', offset_array, x_frame_size=x_frame_size, establish_fm_array=0, auto_focus_run=0,auto_expose_run=0, channels=['DAPI'], slice_gap= 5)
+            self.image_cycle_acquire(0, experiment_directory, z_slices, 'Stain', offset_array,x_frame_size=x_frame_size, establish_fm_array=0, auto_focus_run=0,auto_expose_run=0, channels=['DAPI'])
+            self.image_cycle_acquire(0, experiment_directory, z_slices, 'Stain', offset_array,x_frame_size=x_frame_size, establish_fm_array=0, auto_focus_run=0,auto_expose_run=0, channels=['DAPI'])
             self.image_cycle_acquire(0, experiment_directory, z_slices, 'Stain', offset_array,x_frame_size=x_frame_size, establish_fm_array=0, auto_focus_run=0,auto_expose_run=0, channels=['DAPI'])
             self.image_cycle_acquire(0, experiment_directory, z_slices, 'Stain', offset_array,x_frame_size=x_frame_size, establish_fm_array=0, auto_focus_run=0,auto_expose_run=3)
         else:
