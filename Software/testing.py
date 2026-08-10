@@ -1,99 +1,197 @@
 import numpy as np
-import os
-from skimage import io, morphology, restoration, filters
-from matplotlib import pyplot as plt
-import os
-from autocyplex import cycif
-from pycromanager import Core
-import matplotlib.pyplot as plt
-import time
+import math
 
-microscope = cycif()
-core = Core()
 
-file_directory = r'E:\19-3-24 healthy\A488\Stain\cy_3\Tiles\focused'
-tiss_directory = r'E:\19-3-24 healthy\Tissue_Binary'
-os.chdir(tiss_directory)
-tissue = io.imread(r'x1_y_1_tissue.tif')
-os.chdir(file_directory)
-image = io.imread(r'x1_y_1_c_A488.tif')
+def generate_fm_array_from_xyz(xyz_points):
+    """
+    Generate an fm_array from manually supplied tissue-center XYZ positions.
 
-csum = lambda z: np.cumsum(z)[:-1]
-dsum = lambda z: np.cumsum(z[::-1])[-2::-1]
-argmax = lambda x, f: np.mean(x[:-1][f == np.max(f)])  # Use the mean for ties.
-clip = lambda z: np.maximum(1e-30, z)
+    Spatial convention:
+        - X increases from left to right
+        - Y decreases from top to bottom
 
-def preliminaries(n, x):
-  """Some math that is shared across multiple algorithms."""
-  assert np.all(n >= 0)
-  x = np.arange(len(n), dtype=n.dtype) if x is None else x
-  assert np.all(x[1:] >= x[:-1])
-  w0 = clip(csum(n))
-  w1 = clip(dsum(n))
-  p0 = w0 / (w0 + w1)
-  p1 = w1 / (w0 + w1)
-  mu0 = csum(n * x) / w0
-  mu1 = dsum(n * x) / w1
-  d0 = csum(n * x**2) - w0 * mu0**2
-  d1 = dsum(n * x**2) - w1 * mu1**2
-  return x, w0, w1, p0, p1, mu0, mu1, d0, d1
+    Therefore:
+        upper-left  = lowest X, highest Y
+        lower-right = highest X, lowest Y
 
-def GHT(n, x=None, nu=0, tau=0, kappa=0, omega=0.5):
-  assert nu >= 0
-  assert tau >= 0
-  assert kappa >= 0
-  assert omega >= 0 and omega <= 1
-  x, w0, w1, p0, p1, _, _, d0, d1 = preliminaries(n, x)
-  v0 = clip((p0 * nu * tau**2 + d0) / (p0 * nu + w0))
-  v1 = clip((p1 * nu * tau**2 + d1) / (p1 * nu + w1))
-  f0 = -d0 / v0 - w0 * np.log(v0) + 2 * (w0 + kappa *      omega)  * np.log(w0)
-  f1 = -d1 / v1 - w1 * np.log(v1) + 2 * (w1 + kappa * (1 - omega)) * np.log(w1)
-  return argmax(x, f0 + f1), f0 + f1
+    Input tissue centers are sorted by:
+        1. Highest Y first
+        2. Lowest X first
 
-image = image * tissue
-indicies = np.nonzero(image)
-bins = 256
-hist_n, hist_edge = np.histogram(image[indicies].ravel(), bins=bins)
+    Each tissue center generates a 3x3 tile montage with 10% overlap.
 
-thresh = GHT(hist_n[0:bins], hist_edge[0:bins],nu=2E1, tau=2E5, kappa=2E2, omega=.2)[0]
-print(thresh)
+    Parameters
+    ----------
+    xyz_points : list of tuple
+        List of (X, Y, DAPI_Z) tissue-center coordinates.
 
-thresh = filters.threshold_otsu(image[indicies])
-print(thresh)
+        Example:
+            [
+                (10000.0, 5000.0, 1245.3),
+                (25000.0, 18000.0, 1251.8),
+                (41000.0, 7000.0, 1247.1)
+            ]
 
-x_axis = np.linspace(0,30,30)
-signal_noises = np.linspace(0,10,30)
-for x in range(0, 30):
+    Returns
+    -------
+    fm_array : numpy.ndarray
 
-    core.set_exposure(5 + x*5)
+        Important layers:
+            fm_array[0]  = X stage position
+            fm_array[1]  = Y stage position
+            fm_array[2]  = DAPI in-focus Z
+            fm_array[12] = tissue ID
 
-    core.snap_image()
-    tagged_image = core.get_tagged_image()
-    pixels = np.reshape(tagged_image.pix, newshape=[tagged_image.tags["Height"], tagged_image.tags["Width"]])
-    image1= np.nan_to_num(pixels, posinf=65500)
-    image1 = image1.astype('int32')
+        fm_array[12] == 0 means filler / do not image.
+    """
 
-    core.snap_image()
-    tagged_image = core.get_tagged_image()
-    pixels = np.reshape(tagged_image.pix, newshape=[tagged_image.tags["Height"], tagged_image.tags["Width"]])
-    image2= np.nan_to_num(pixels, posinf=65500)
-    image2 = image2.astype('int32')
+    # ---------------------------------------------------------
+    # Hard-coded microscope geometry
+    # ---------------------------------------------------------
 
-    hist_n, hist_edge = np.histogram(image1.ravel(), bins=bins)
-    thresh = GHT(hist_n[0:bins], hist_edge[0:bins],nu=2E1, tau=2E5, kappa=2E2, omega=.2)[0]
-    image1[image1 < thresh] = 0
-    indicies = np.nonzero(image1)
+    TISSUE_ID_LAYER = 12
+    DAPI_Z_LAYER = 2
 
-    diff = image1 - image2
-    stdev = np.std(diff[indicies])
-    mean = (np.mean(image1[indicies]) + np.mean(image2[indicies]))/2
+    x_pixels = 2960
+    y_pixels = 2960
+    um_per_pixel = 0.204
 
-    signal_noise = mean/stdev
+    overlap = 0.10
 
-    signal_noises[x] = signal_noise
-    x_axis[x] = 5 + x*5
-#signal_noises = np.sqrt(signal_noises)
-print(signal_noises)
+    x_step = x_pixels * um_per_pixel * (1 - overlap)
+    y_step = y_pixels * um_per_pixel * (1 - overlap)
 
-plt.scatter(x_axis, signal_noises)
-plt.show()
+    # ---------------------------------------------------------
+    # Validate input
+    # ---------------------------------------------------------
+
+    if len(xyz_points) == 0:
+        raise ValueError(
+            "xyz_points must contain at least one (X, Y, Z) point."
+        )
+
+    for point in xyz_points:
+        if len(point) != 3:
+            raise ValueError(
+                "Each point must contain exactly (X, Y, Z)."
+            )
+
+    # ---------------------------------------------------------
+    # Sort tissue centers spatially
+    #
+    # Highest Y first = top
+    # Lowest X first when Y ordering is equal
+    # ---------------------------------------------------------
+
+    xyz_points = sorted(
+        xyz_points,
+        key=lambda point: (-point[1], point[0])
+    )
+
+    number_tissues = len(xyz_points)
+
+    # ---------------------------------------------------------
+    # Determine rectangular logical layout
+    # ---------------------------------------------------------
+
+    block_columns = math.ceil(math.sqrt(number_tissues))
+    block_rows = math.ceil(number_tissues / block_columns)
+
+    x_tiles = block_columns * 3
+    y_tiles = block_rows * 3
+
+    fm_array = np.zeros(
+        (13, y_tiles, x_tiles),
+        dtype=np.float64
+    )
+
+    # ---------------------------------------------------------
+    # Generate each tissue block
+    # ---------------------------------------------------------
+
+    for tissue_index, (center_x, center_y, dapi_z) in enumerate(xyz_points):
+
+        block_y = tissue_index // block_columns
+        block_x = tissue_index % block_columns
+
+        y_start = block_y * 3
+        x_start = block_x * 3
+
+        # -----------------------------------------------------
+        # X grows as we move RIGHT
+        # -----------------------------------------------------
+
+        x_positions = [
+            center_x - x_step,
+            center_x,
+            center_x + x_step
+        ]
+
+        # -----------------------------------------------------
+        # Y DECREASES as we move DOWN
+        #
+        # Array row 0 = highest physical Y
+        # Array row 2 = lowest physical Y
+        # -----------------------------------------------------
+
+        y_positions = [
+            center_y + y_step,
+            center_y,
+            center_y - y_step
+        ]
+
+        # -----------------------------------------------------
+        # Tissue ID
+        # -----------------------------------------------------
+
+        seed_number = tissue_index + 1
+
+        tissue_fm_code_number = float(
+            '1e+' + str(seed_number)
+        )
+
+        # -----------------------------------------------------
+        # Populate 3x3 block
+        # -----------------------------------------------------
+
+        for local_y in range(3):
+
+            for local_x in range(3):
+                array_y = y_start + local_y
+                array_x = x_start + local_x
+
+                fm_array[
+                    0,
+                    array_y,
+                    array_x
+                ] = x_positions[local_x]
+
+                fm_array[
+                    1,
+                    array_y,
+                    array_x
+                ] = y_positions[local_y]
+
+                fm_array[
+                    DAPI_Z_LAYER,
+                    array_y,
+                    array_x
+                ] = dapi_z
+
+                fm_array[
+                    TISSUE_ID_LAYER,
+                    array_y,
+                    array_x
+                ] = tissue_fm_code_number
+
+    return fm_array
+
+
+
+
+
+points = [(34,56,100), (-1750,2000,130),(-3750,500,200)]
+fm = generate_fm_array_from_xyz(points)
+
+
+print(fm[12])
