@@ -14,7 +14,7 @@ from openpyxl import load_workbook, Workbook
 from ome_types import from_xml, OME, to_xml
 from copy import deepcopy
 from pystackreg import StackReg
-#from pybasic import shading_correction
+from pybasic import shading_correction
 from path import Path
 from csbdeep.utils import normalize
 from stardist.models import StarDist2D
@@ -28,9 +28,9 @@ import tracemalloc
 import subprocess
 
 
-#magellan = Magellan()
-#
-#core = Core()
+magellan = Magellan()
+
+core = Core()
 
 tracemalloc.start()
 
@@ -1318,7 +1318,7 @@ class cycif:
 
         np.save('fm_array.npy', fm_array)
 
-    def generate_fm_array_from_xyz(xyz_points):
+    def generate_fm_array_from_xyz(self, experiment_directory, xyz_points):
         """
         Generate an fm_array from manually supplied tissue-center XYZ positions.
 
@@ -1365,10 +1365,14 @@ class cycif:
         # Hard-coded microscope geometry
         # ---------------------------------------------------------
 
+        numpy_path = experiment_directory + '/' + 'np_arrays'
+        os.chdir(numpy_path)
+        file_name = 'fm_array.npy'
+
         TISSUE_ID_LAYER = 12
         DAPI_Z_LAYER = 2
 
-        x_pixels = 5056
+        x_pixels = 2960
         y_pixels = 2960
         um_per_pixel = 0.204
 
@@ -1417,7 +1421,7 @@ class cycif:
         y_tiles = block_rows * 3
 
         fm_array = np.zeros(
-            (13, y_tiles, x_tiles),
+            (15, y_tiles, x_tiles),
             dtype=np.float64
         )
 
@@ -1432,6 +1436,8 @@ class cycif:
 
             y_start = block_y * 3
             x_start = block_x * 3
+
+            z_slices = 3
 
             # -----------------------------------------------------
             # X grows as we move RIGHT
@@ -1499,6 +1505,22 @@ class cycif:
                         array_y,
                         array_x
                     ] = tissue_fm_code_number
+
+        z_slice_array = np.full((y_tiles, x_tiles), z_slices)
+        all_ones_array = np.full((y_tiles, x_tiles), 1)
+
+        fm_array[3] = z_slice_array
+        fm_array[5] = z_slice_array
+        fm_array[7] = z_slice_array
+        fm_array[9] = z_slice_array
+        fm_array[11] = z_slice_array
+
+        fm_array[12] = np.full((y_tiles, x_tiles), 2)
+        fm_array[13] = all_ones_array
+        fm_array[14] = all_ones_array
+
+
+        np.save(file_name, fm_array)
 
         return fm_array
 
@@ -3040,7 +3062,7 @@ class cycif:
             self.save_files(z_tile_stack, channel, cycle_number, experiment_directory, stain_bleach)
 
         '''
-        self.fm_map_z_shifter(experiment_directory, z_slices, 1)
+        #self.fm_map_z_shifter(experiment_directory, z_slices, 1)
         self.exp_logbook(experiment_directory, cycle_number)
         start = time.time()
         self.multi_channel_z_stack_capture_dapi_focus(experiment_directory, cycle_number, stain_bleach,offset_array= offset_array, x_pixels=x_frame_size, slice_gap=slice_gap, channels=channels)
@@ -3258,7 +3280,7 @@ class cycif:
             self.tissue_region_identifier(experiment_directory, x_frame_size=x_frame_size, clusters_retained=number_clusters_retained)
 
 
-    def initialize(self, experiment_directory, offset_array, z_slices, x_frame_size=2960, focus_position = 'none'):
+    def initialize(self, experiment_directory):
         '''initialization section. Takes DAPI images, cluster filters tissue, minimally frames sampling grid, acquires all channels.
 
         :param experiment_directory:
@@ -3277,6 +3299,8 @@ class cycif:
         except:
             pass
 
+        self.file_structure(experiment_directory, 1)
+
         #self.recursive_stardist_autofocus(experiment_directory, cycle=0, remake_nuc_binary=0)
         #self.fm_map_z_shifter(experiment_directory, desired_z_slices_dapi=3, desired_z_slices_other=3)
         #self.image_cycle_acquire(0, experiment_directory, z_slices, 'Bleach', offset_array, x_frame_size=x_frame_size,establish_fm_array=0, auto_focus_run=0, auto_expose_run=0, channels=['DAPI'],focus_position=focus_position)
@@ -3294,11 +3318,11 @@ class cycif:
             #pump.liquid_action('Bleach', stain_valve=stain_valve)  # nuc is valve=7, pbs valve=8, bleach valve=1 (action, stain_valve, heater state (off = 0, on = 1))
             time.sleep(1)
             # print(status_str)
-            self.image_cycle_acquire(0, experiment_directory, 13, 'Stain', offset_array, x_frame_size=x_frame_size, establish_fm_array=0, auto_focus_run=0,auto_expose_run=0, channels=['DAPI'], slice_gap= 5)
+            #self.image_cycle_acquire(0, experiment_directory, 13, 'Stain', offset_array, x_frame_size=x_frame_size, establish_fm_array=0, auto_focus_run=0,auto_expose_run=0, channels=['DAPI'], slice_gap= 5)
+            #self.image_cycle_acquire(0, experiment_directory, z_slices, 'Stain', offset_array,x_frame_size=x_frame_size, establish_fm_array=0, auto_focus_run=0,auto_expose_run=0, channels=['DAPI'])
+            #self.image_cycle_acquire(0, experiment_directory, z_slices, 'Stain', offset_array,x_frame_size=x_frame_size, establish_fm_array=0, auto_focus_run=0,auto_expose_run=0, channels=['DAPI'])
             self.image_cycle_acquire(0, experiment_directory, z_slices, 'Stain', offset_array,x_frame_size=x_frame_size, establish_fm_array=0, auto_focus_run=0,auto_expose_run=0, channels=['DAPI'])
-            self.image_cycle_acquire(0, experiment_directory, z_slices, 'Stain', offset_array,x_frame_size=x_frame_size, establish_fm_array=0, auto_focus_run=0,auto_expose_run=0, channels=['DAPI'])
-            self.image_cycle_acquire(0, experiment_directory, z_slices, 'Stain', offset_array,x_frame_size=x_frame_size, establish_fm_array=0, auto_focus_run=0,auto_expose_run=0, channels=['DAPI'])
-            self.image_cycle_acquire(0, experiment_directory, z_slices, 'Stain', offset_array,x_frame_size=x_frame_size, establish_fm_array=0, auto_focus_run=0,auto_expose_run=3)
+            #self.image_cycle_acquire(0, experiment_directory, z_slices, 'Stain', offset_array,x_frame_size=x_frame_size, establish_fm_array=0, auto_focus_run=0,auto_expose_run=3)
         else:
 
             # print(status_str)
