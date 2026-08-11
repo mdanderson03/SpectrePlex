@@ -8,7 +8,8 @@ pump = 'pump'
 z_slices = 5
 x_frame_size = 2960
 
-offset_array = [0, -7, -6.7, -6, -7]
+#offset_array = [0, -7, -6.7, -6, -7]
+offset_array = [0, -9.6, -9, -8.6, -7]
 
 focus_position = 155
 
@@ -27,13 +28,13 @@ focus_position = 155
 
 
 
-for cycle in range(2,12):
-     stain_vial_num = cycle + 1
-     subprocess.run(['python','full_cycle.py', str(stain_vial_num), str(cycle), experiment_directory], capture_output=True, text=True)
+# for cycle in range(11,12):
+#      stain_vial_num = cycle + 1
+#      subprocess.run(['python','full_cycle.py', str(stain_vial_num), str(cycle), experiment_directory], capture_output=True, text=True)
 
 
-#microscope.inter_cycle_processing(experiment_directory, 1, x_frame_size=x_frame_size)
-#cycles = [0,2,3,4,5,6,7,8,9,10,11]
-#for cycle in cycles:
-#    microscope.inter_cycle_processing(experiment_directory, cycle, x_frame_size=x_frame_size)
+microscope.inter_cycle_processing(experiment_directory, 1, x_frame_size=x_frame_size)
+cycles = [0,2,3,4,5,6,7,8,9,10,11]
+for cycle in cycles:
+   microscope.inter_cycle_processing(experiment_directory, cycle, x_frame_size=x_frame_size)
 #microscope.archive(experiment_directory)

@@ -5,7 +5,8 @@ microscope = cycif() # initialize cycif object
 pump = fluidics(6,5,4)
 z_slices = 15
 x_frame_size = 2960
-offset_array = [0, -7, -6.7, -6, -7]
+#offset_array = [0, -7, -6.7, -6, -7]
+offset_array = [0, -9.6, -9, -8.6, -7]
 
 
 stain_vial = int(sys.argv[1])
