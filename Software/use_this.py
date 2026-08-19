@@ -1,28 +1,30 @@
 from autocyplex import *
 
 microscope = cycif() # initialize cycif object
-experiment_directory = r'D:\11_8_26_CLEM'
+experiment_directory = r'D:\19_8_26_CLEM'
 import matplotlib.pyplot as plt
 #pump = fluidics(6,5,4)
 pump = 'pump'
 z_slices = 3
 x_frame_size = 2960
 
-#offset_array = [0, -7, -6.7, -6, -7]
-offset_array = [0, -9.6, -9, -8.6, -7]
+offset_array = [0, -7, -6.7, -6, -7]
+#offset_array = [0, -7, -7.5, -7.3, -7]
+focus_position=0
 
-focus_position = 155
-xyz_points = [(22257, -34626, 9632)]
+xyz_points = [(-6242,2522,-657),(297,2865,-671), (-5797,-3627,-552),(775,-3951,-560)]
 microscope.initialize(experiment_directory)
-fm= microscope.generate_fm_array_from_xyz(experiment_directory, xyz_points)
+fm = microscope.generate_fm_array_from_xyz(experiment_directory, xyz_points)
+microscope.establish_exp_arrays(experiment_directory)
+microscope.hdr_exp_generator(experiment_directory, threshold_level=10000, max_exp=700, min_exp=20)
+microscope.establish_exp_arrays(experiment_directory)
 
-print(fm[0])
-#pump.valve_prime()
+
 #use first to set cluster surface
-#microscope.wide_net_auto_focus(experiment_directory, x_frame_size=x_frame_size, offset_array=offset_array, z_slice_search_range=9, focus_position=focus_position, number_clusters_retained=5, manual_cluster_update=1)
+microscope.wide_net_auto_focus(experiment_directory, x_frame_size=x_frame_size, offset_array=offset_array, z_slice_search_range=5, focus_position=focus_position, number_clusters_retained=4, manual_cluster_update=0)
 
 #uncomment to get autofluorescence
-#microscope.full_cycle(experiment_directory, 0, offset_array, 0, pump, z_slices, incub_val = 45, x_frame_size=x_frame_size,focus_position=focus_position)
+#microscope.full_cycle(experiment_directory, 0, offset_array, 0, pump, z_slices, incub_val = 45, x_frame_size=x_frame_size)
 
 
 

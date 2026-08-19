@@ -1437,7 +1437,7 @@ class cycif:
             y_start = block_y * 3
             x_start = block_x * 3
 
-            z_slices = 3
+            z_slices = 5
 
             # -----------------------------------------------------
             # X grows as we move RIGHT
@@ -1515,7 +1515,7 @@ class cycif:
         fm_array[9] = z_slice_array
         fm_array[11] = z_slice_array
 
-        fm_array[12] = np.full((y_tiles, x_tiles), 2)
+        #fm_array[12] = np.full((y_tiles, x_tiles), 2)
         fm_array[13] = all_ones_array
         fm_array[14] = all_ones_array
 
@@ -2760,13 +2760,14 @@ class cycif:
         width_pixels = x_pixels
         # determine attributes like tile counts,z slices and channel counts
         numpy_x = full_array[0]
-        numpy_y = full_array[1]
+        numpy_y = full_array[0]
         tissue_fm = full_array[12]
 
         side_pixel_count = int((5056 - x_pixels)/2)
 
-        x_tile_count = np.unique(numpy_x).size
-        y_tile_count = np.unique(numpy_y).size
+        x_tile_count = np.unique(numpy_x[0]).size
+        y_tile_count = np.unique(numpy_x[1]).size
+        print(x_tile_count, y_tile_count)
 
         z_slices = full_array[5][0][0]
         z_slices_dapi = full_array[3][0][0]
@@ -2976,6 +2977,8 @@ class cycif:
                                     image_number_counter += 1
                                     z_counter += 1
 
+
+
                                 # score each z slice
                                 scores = []
                                 for z in range(0, z_slices):
@@ -3013,10 +3016,12 @@ class cycif:
                                 pixels = self.core_capture(experiment_directory, x_pixels, channel, hdr=hdr_value)
                                 zc_tif_stack[zc_index][0] = pixels
 
+
                                 image_number_counter += 1
 
                         # save zc stack
                         self.numpy_size()
+
                         self.zc_save(zc_tif_stack, channels, x, y, cycle_number, x_pixels, experiment_directory,
                                      Stain_or_Bleach)
 
@@ -3035,7 +3040,7 @@ class cycif:
         return
 
     def image_cycle_acquire(self, cycle_number, experiment_directory, z_slices, stain_bleach, offset_array, x_frame_size=5056, fm_array_adjuster = 0, establish_fm_array=0, auto_focus_run=0, auto_expose_run=0,
-                            channels=['DAPI', 'A488', 'A555', 'A647', 'A750'], focus_position = 'none', slice_gap = 2):
+                            channels=['DAPI', 'A488', 'A555', 'A647', 'A750'], focus_position = 'none', slice_gap = 1):
 
         self.establish_fm_array(experiment_directory, cycle_number, z_slices, offset_array,
                                 initialize=establish_fm_array, x_frame_size=x_frame_size, fm_array_adjuster= fm_array_adjuster, autofocus=auto_focus_run,
@@ -3270,11 +3275,12 @@ class cycif:
             pass
 
         if manual_cluster_update == 0:
-            z_wide_range = z_slice_search_range
+            z_wide_range = 5
 
-            self.image_cycle_acquire(0, experiment_directory,z_wide_range, 'Bleach', offset_array, x_frame_size=x_frame_size,establish_fm_array=1, auto_focus_run=0, auto_expose_run=0, channels=['DAPI'],focus_position=focus_position, slice_gap = 5)
+
+            self.image_cycle_acquire(0, experiment_directory,z_wide_range, 'Bleach', offset_array, x_frame_size=x_frame_size,establish_fm_array=0, auto_focus_run=0, auto_expose_run=0, channels=['DAPI'],focus_position=focus_position, slice_gap = 1)
             self.generate_nuc_mask(experiment_directory, 0)
-            self.tissue_region_identifier(experiment_directory, x_frame_size = x_frame_size, clusters_retained=number_clusters_retained)
+            #self.tissue_region_identifier(experiment_directory, x_frame_size = x_frame_size, clusters_retained=number_clusters_retained)
 
         if manual_cluster_update == 1:
             self.tissue_region_identifier(experiment_directory, x_frame_size=x_frame_size, clusters_retained=number_clusters_retained)
@@ -3314,7 +3320,7 @@ class cycif:
         pump = fluidics_object
 
         if cycle_number == 0:
-            self.initialize(experiment_directory, offset_array, z_slices, x_frame_size=x_frame_size, focus_position = focus_position)
+            #self.initialize(experiment_directory, offset_array, z_slices, x_frame_size=x_frame_size, focus_position = focus_position)
             #pump.liquid_action('Bleach', stain_valve=stain_valve)  # nuc is valve=7, pbs valve=8, bleach valve=1 (action, stain_valve, heater state (off = 0, on = 1))
             time.sleep(1)
             # print(status_str)
@@ -6062,6 +6068,7 @@ class cycif:
 
         z_tile_count = np.shape(zc_tif_stack)[1]
 
+
         for channel in channels:
             if channel == 'DAPI':
                 zc_index = 0
@@ -6087,7 +6094,8 @@ class cycif:
                     file_name = 'z_' + str(z) + '_x' + str(x_tile) + '_y_' + str(y_tile) + '_c_' + str(channel) + '.tif'
                 elif single_fov == 1:
                     file_name = 'x' + str(x_tile) + '_y_' + str(y_tile) + '_c_' + str(channel) + '.tif'
-                image = zc_tif_stack[zc_index][z]
+                image = zc_tif_stack[zc_index][0]
+
                 imwrite(file_name, image, photometric='minisblack')
 
     def tissue_exist_array_generate(self, experiment_directory, x_frame_size):
