@@ -19,9 +19,11 @@ microscope.establish_exp_arrays(experiment_directory)
 microscope.hdr_exp_generator(experiment_directory, threshold_level=10000, max_exp=700, min_exp=20)
 microscope.establish_exp_arrays(experiment_directory)
 
-
+print(fm[12])
 #use first to set cluster surface
 microscope.wide_net_auto_focus(experiment_directory, x_frame_size=x_frame_size, offset_array=offset_array, z_slice_search_range=5, focus_position=focus_position, number_clusters_retained=4, manual_cluster_update=0)
+#microscope.image_cycle_acquire(0, experiment_directory,5, 'Bleach', offset_array, x_frame_size=x_frame_size,establish_fm_array=0, auto_focus_run=0, auto_expose_run=0, channels=['DAPI'],focus_position=focus_position, slice_gap = 1)
+
 
 #uncomment to get autofluorescence
 #microscope.full_cycle(experiment_directory, 0, offset_array, 0, pump, z_slices, incub_val = 45, x_frame_size=x_frame_size)
