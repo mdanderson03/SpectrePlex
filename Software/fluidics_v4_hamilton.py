@@ -344,7 +344,7 @@ class fluidics:
 
         bleach_valve = 14
         pbs_valve = 13
-        bleach_time = 7  # minutes
+        bleach_time = 4  # minutes
         bleach_flow_rate = 500
         wash_flow_rate = 500
         stain_flow_rate = 500

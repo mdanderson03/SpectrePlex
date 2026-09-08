@@ -878,12 +878,15 @@ class cycif:
             hdr_array[index] = scaled_im
             im[im > 65532] = 65532 #gets rid of saturation contributions
 
+            im[im < 0] = 0
             del_I = np.sqrt(im)
 
             weight_array[index] = del_I / scaled_im + del_offset / mag
 
         total_weight_array = np.sum(weight_array, axis=0)
-        scaled_weight_array = np.divide(weight_array, total_weight_array)
+        numerator = weight_array
+        denominator = total_weight_array
+        scaled_weight_array = np.divide(numerator,denominator,out=np.zeros_like(numerator, dtype=np.float32),where=denominator != 0)
 
         hdr_im = hdr_array[0] * scaled_weight_array[0]
         for x in range(1, np.shape(hdr_array)[0]):
@@ -1513,9 +1516,9 @@ class cycif:
         fm_array[5] = z_slice_array
         fm_array[7] = z_slice_array
         fm_array[9] = z_slice_array
+        fm_array[10] = all_ones_array*10
         fm_array[11] = z_slice_array
 
-        #fm_array[12] = np.full((y_tiles, x_tiles), 2)
         fm_array[13] = all_ones_array
         fm_array[14] = all_ones_array
 
@@ -2005,7 +2008,7 @@ class cycif:
         else:
             new_labelled_image = self.cluster_neighborhood(new_labelled_image, sorted_cluster_areas)
             new_labelled_image =  new_labelled_image.astype('uint16')
-            tf.imwrite(r'labelled_tissue_filtered.tif', new_labelled_image, compression='zlib', compressionargs={'level': 10})
+            tf.imwrite(r'labelled_tissue_filtered.tif', new_labelled_image, compression='zlib', compressionargs={'level': 6})
 
 
 
@@ -2520,21 +2523,126 @@ class cycif:
             # make array to hold images in
             hdr_array = np.random.rand(hdr_frame_count, 2960, x_frame_size).astype('float32')
 
+
+            # Remember current Auto Shutter state
+            auto_shutter_was_on = core.get_auto_shutter()
+            shutter_device = core.get_shutter_device()
+
+            try:
+                # For HDR, open the LightEngine only once for all 3 exposures
+                core.set_auto_shutter(False)
+
+                core.set_config("amp", "high")
+
+                core.set_shutter_open(True)
+                core.wait_for_device(shutter_device)
+
+                for x in range(0, hdr_frame_count):
+
+                    exp_time = int(hdr_times[x])
+
+                    core.set_exposure(exp_time)
+                    print("exposure set")
+
+                    # Give camera / LightEngine a little settling time
+                    time.sleep(0.1)
+
+                    # Verify exposure without an infinite loop
+                    actual_exp = core.get_exposure()
+
+                    for attempt in range(5):
+
+                        if abs(int(exp_time) - int(actual_exp)) <= 5:
+                            break
+
+                        print(
+                            "didnt match",
+                            "_got", actual_exp,
+                            "_asked for", exp_time
+                        )
+
+                        core.set_exposure(exp_time)
+                        time.sleep(0.05)
+                        actual_exp = core.get_exposure()
+
+                    else:
+                        raise RuntimeError(
+                            f"Exposure failed to settle: "
+                            f"requested {exp_time}, got {actual_exp}"
+                        )
+
+                    # Auto shutter is OFF, but LightEngine is already open
+                    core.snap_image()
+                    tagged_image = core.get_tagged_image()
+
+                    pixels = np.reshape(
+                        tagged_image.pix,
+                        newshape=[
+                            tagged_image.tags["Height"],
+                            tagged_image.tags["Width"]
+                        ]
+                    )
+
+                    pixels = np.nan_to_num(
+                        pixels,
+                        posinf=65000,
+                        nan=65000
+                    )
+
+                    pixels[pixels > 65535] = 65535
+                    pixels = pixels.astype("float32")
+
+                    hdr_array[x] = pixels[
+                        :,
+                        side_pixel_count:side_pixel_count + x_frame_size
+                    ]
+
+                averaged_image = self.hdr_fuser(hdr_array)
+
+
+
+            except Exception as e:
+                import traceback
+
+                print("!!!!!!!! ACQUISITION FAILED !!!!!!!!")
+                print("Exception:", repr(e))
+                traceback.print_exc()
+
+                raise
+
+
+            finally:
+                # Always try to turn illumination back off
+                try:
+                    core.set_shutter_open(False)
+                    core.wait_for_device(shutter_device)
+                except Exception as shutter_error:
+                    print("WARNING: failed to close shutter:", repr(shutter_error))
+
+                # Restore Micro-Manager to the state it had before core_capture()
+                core.set_auto_shutter(auto_shutter_was_on)
+
+                '''
             while image_good == 0:
                 try:
                     # acquire and populate array
                     for x in range(0, hdr_frame_count):
                         exp_time = int(hdr_times[x])
                         core.set_exposure(exp_time)
+                        time.sleep(0.05)
+                        print('exposure set')
+
                         #had issue where exp time wasnt being consistently set, so ijust repeated the command a second time
 
                         while abs(int(exp_time) - int(core.get_exposure())) > 5:
                             print('didnt match', '_got ',core.get_exposure(), '_asked for', exp_time )
                             core.set_exposure(exp_time)
+                            time.sleep(0.05)
 
-                        core.set_config("amp", 'high')
+                        #core.set_config("amp", 'high')
                         core.snap_image()
                         tagged_image = core.get_tagged_image()
+
                         pixels = np.reshape(tagged_image.pix,
                                             newshape=[tagged_image.tags["Height"], tagged_image.tags["Width"]])
                         pixels = np.nan_to_num(pixels, posinf=65000, nan=65000)
@@ -2546,10 +2654,21 @@ class cycif:
                     averaged_image = self.hdr_fuser(hdr_array)
                     #allow to pass on
                     image_good = 1
+                    
 
-                except:
-                    #force system to recapture images
-                    image_good = 0
+
+                except Exception as e:
+
+                    import traceback
+
+                    print("!!!!!!!! ACQUISITION FAILED !!!!!!!!")
+
+                    print("Exception:", repr(e))
+
+                    traceback.print_exc()
+
+                    raise
+                    '''
 
         return averaged_image
 
@@ -2760,14 +2879,16 @@ class cycif:
         width_pixels = x_pixels
         # determine attributes like tile counts,z slices and channel counts
         numpy_x = full_array[0]
-        numpy_y = full_array[0]
+        numpy_y = full_array[1]
         tissue_fm = full_array[12]
 
         side_pixel_count = int((5056 - x_pixels)/2)
 
-        x_tile_count = np.unique(numpy_x[0]).size
-        y_tile_count = np.unique(numpy_x[1]).size
+        x_tile_count = np.shape(numpy_x)[1]
+        y_tile_count = np.shape(numpy_x)[0]
         print(x_tile_count, y_tile_count)
+        print(numpy_x)
+        print(tissue_fm)
 
         z_slices = full_array[5][0][0]
         z_slices_dapi = full_array[3][0][0]
@@ -2787,7 +2908,7 @@ class cycif:
                     if tissue_fm[y][x] > 1:
 
                         core.set_xy_position(numpy_x[y][x], numpy_y[y][x])
-                        time.sleep(.5)
+                        time.sleep(3)
 
                         for channel in channels:
 
@@ -2832,10 +2953,11 @@ class cycif:
                                 core.set_config("Color", channel)
                                 core.set_exposure(exp_time)
 
+
                                 # burner image due to defect that makes signal 8% higher int he first one
-                                core.set_config("amp", 'high')
-                                core.snap_image()
-                                core.get_tagged_image()
+                                #core.set_config("amp", 'high')
+                                #core.snap_image()
+                                #core.get_tagged_image()
 
                                 z_end = int(numpy_z[y][x]) + slice_gap
                                 z_start = int(z_end - (z_slices) * slice_gap)
@@ -2882,10 +3004,11 @@ class cycif:
                                 core.set_config("Color", channel)
                                 core.set_exposure(exp_time)
 
+
                                 #burner image due to defect that makes signal 8% higher int he first one
-                                core.set_config("amp", 'high')
-                                core.snap_image()
-                                core.get_tagged_image()
+                                #core.set_config("amp", 'high')
+                                #core.snap_image()
+                                #core.get_tagged_image()
 
 
 
@@ -2910,7 +3033,7 @@ class cycif:
                     if tissue_fm[y][x] > 1:
 
                         core.set_xy_position(numpy_x[y][x], numpy_y[y][x])
-                        time.sleep(.5)
+                        time.sleep(3)
 
                         for channel in channels:
 
@@ -2956,9 +3079,9 @@ class cycif:
                                 core.set_exposure(exp_time)
 
                                 # burner image due to defect that makes signal 8% higher int he first one
-                                core.set_config("amp", 'high')
-                                core.snap_image()
-                                core.get_tagged_image()
+                                #core.set_config("amp", 'high')
+                                #core.snap_image()
+                                #core.get_tagged_image()
 
                                 z_end = int(numpy_z[y][x]) + slice_gap
                                 z_start = int(z_end - (z_slices) * slice_gap)
@@ -3006,14 +3129,16 @@ class cycif:
                                 core.set_exposure(exp_time)
 
                                 # burner image due to defect that makes signal 8% higher int he first one
-                                core.set_config("amp", 'high')
-                                core.snap_image()
-                                core.get_tagged_image()
+                                #core.set_config("amp", 'high')
+                                #core.snap_image()
+                                #core.get_tagged_image()
 
-                                print(z)
+
+
                                 core.set_position(color_z_position + offset_array[zc_index])
                                 time.sleep(0.05)
                                 pixels = self.core_capture(experiment_directory, x_pixels, channel, hdr=hdr_value)
+                                print('image acquired')
                                 zc_tif_stack[zc_index][0] = pixels
 
 
@@ -3039,8 +3164,7 @@ class cycif:
 
         return
 
-    def image_cycle_acquire(self, cycle_number, experiment_directory, z_slices, stain_bleach, offset_array, x_frame_size=5056, fm_array_adjuster = 0, establish_fm_array=0, auto_focus_run=0, auto_expose_run=0,
-                            channels=['DAPI', 'A488', 'A555', 'A647', 'A750'], focus_position = 'none', slice_gap = 1):
+    def image_cycle_acquire(self, cycle_number, experiment_directory, z_slices, stain_bleach, offset_array, x_frame_size=5056, fm_array_adjuster = 0, establish_fm_array=0, auto_focus_run=0, auto_expose_run=0,channels=['DAPI', 'A488', 'A555', 'A647', 'A750'], focus_position = 'none', slice_gap = 1):
 
         self.establish_fm_array(experiment_directory, cycle_number, z_slices, offset_array,
                                 initialize=establish_fm_array, x_frame_size=x_frame_size, fm_array_adjuster= fm_array_adjuster, autofocus=auto_focus_run,
@@ -3067,10 +3191,10 @@ class cycif:
             self.save_files(z_tile_stack, channel, cycle_number, experiment_directory, stain_bleach)
 
         '''
-        #self.fm_map_z_shifter(experiment_directory, z_slices, 1)
+        self.fm_map_z_shifter(experiment_directory, z_slices, 1)
         self.exp_logbook(experiment_directory, cycle_number)
         start = time.time()
-        #self.multi_channel_z_stack_capture_dapi_focus(experiment_directory, cycle_number, stain_bleach,offset_array= offset_array, x_pixels=x_frame_size, slice_gap=slice_gap, channels=channels)
+        self.multi_channel_z_stack_capture_dapi_focus(experiment_directory, cycle_number, stain_bleach,offset_array= offset_array, x_pixels=x_frame_size, slice_gap=slice_gap, channels=channels)
         #self.multi_channel_z_stack_capture(experiment_directory, cycle_number, stain_bleach,x_pixels=x_frame_size, slice_gap=2, channels=channels)
         end = time.time()
         print('acquistion time', end - start)
@@ -3275,12 +3399,12 @@ class cycif:
             pass
 
         if manual_cluster_update == 0:
-            z_wide_range = 5
+            z_wide_range = z_slice_search_range
 
 
-            self.image_cycle_acquire(0, experiment_directory,z_wide_range, 'Bleach', offset_array, x_frame_size=x_frame_size,establish_fm_array=0, auto_focus_run=0, auto_expose_run=0, channels=['DAPI'],focus_position=focus_position, slice_gap = 1)
-            #self.generate_nuc_mask(experiment_directory, 0)
-            #self.tissue_region_identifier(experiment_directory, x_frame_size = x_frame_size, clusters_retained=number_clusters_retained)
+            self.image_cycle_acquire(0, experiment_directory,z_wide_range, 'Bleach', offset_array, x_frame_size=x_frame_size,establish_fm_array=1, auto_focus_run=0, auto_expose_run=0, channels=['DAPI'],focus_position=focus_position, slice_gap = 3)
+            self.generate_nuc_mask(experiment_directory, 0)
+            self.tissue_region_identifier(experiment_directory, x_frame_size = x_frame_size, clusters_retained=number_clusters_retained)
 
         if manual_cluster_update == 1:
             self.tissue_region_identifier(experiment_directory, x_frame_size=x_frame_size, clusters_retained=number_clusters_retained)
@@ -3327,8 +3451,8 @@ class cycif:
             #self.image_cycle_acquire(0, experiment_directory, 13, 'Stain', offset_array, x_frame_size=x_frame_size, establish_fm_array=0, auto_focus_run=0,auto_expose_run=0, channels=['DAPI'], slice_gap= 5)
             #self.image_cycle_acquire(0, experiment_directory, z_slices, 'Stain', offset_array,x_frame_size=x_frame_size, establish_fm_array=0, auto_focus_run=0,auto_expose_run=0, channels=['DAPI'])
             #self.image_cycle_acquire(0, experiment_directory, z_slices, 'Stain', offset_array,x_frame_size=x_frame_size, establish_fm_array=0, auto_focus_run=0,auto_expose_run=0, channels=['DAPI'])
-            self.image_cycle_acquire(0, experiment_directory, z_slices, 'Stain', offset_array,x_frame_size=x_frame_size, establish_fm_array=0, auto_focus_run=0,auto_expose_run=0, channels=['DAPI'])
-            #self.image_cycle_acquire(0, experiment_directory, z_slices, 'Stain', offset_array,x_frame_size=x_frame_size, establish_fm_array=0, auto_focus_run=0,auto_expose_run=3)
+            #self.image_cycle_acquire(0, experiment_directory, z_slices, 'Stain', offset_array,x_frame_size=x_frame_size, establish_fm_array=0, auto_focus_run=0,auto_expose_run=0, channels=['DAPI'])
+            self.image_cycle_acquire(0, experiment_directory, z_slices, 'Stain', offset_array,x_frame_size=x_frame_size, establish_fm_array=0, auto_focus_run=0,auto_expose_run=3)
         else:
 
             # print(status_str)
@@ -3866,13 +3990,13 @@ class cycif:
         dapi_im_path = experiment_directory + '\DAPI\Stain\cy_' + str(
             cycle_number) + '\Tiles' + '/focused_basic_corrected'
         a488_im_path = experiment_directory + '\A488\Stain\cy_' + str(
-            cycle_number) + '\Tiles' + '/focused_basic_corrected'
+            cycle_number) + '\Tiles' + '/focused_basic_darkframe'
         a555_im_path = experiment_directory + '\A555\Stain\cy_' + str(
-            cycle_number) + '\Tiles' + '/focused_basic_corrected'
+            cycle_number) + '\Tiles' + '/focused_basic_darkframe'
         a647_im_path = experiment_directory + '\A647\Stain\cy_' + str(
-            cycle_number) + '\Tiles' + '/focused_basic_corrected'
+            cycle_number) + '\Tiles' + '/focused_basic_darkframe'
         a750_im_path = experiment_directory + '\A750\Stain\cy_' + str(
-            cycle_number) + '\Tiles' + '/focused_basic_corrected'
+            cycle_number) + '\Tiles' + '/focused_basic_darkframe'
 
         '''
 
@@ -4337,16 +4461,17 @@ class cycif:
                 if type == 'Stain':
                     if channel == 'DAPI':
                         im_path = experiment_directory + '/' + channel + "/" + type + '\cy_' + str(
-                            cycle_number) + '\Tiles' + r'\focused_basic'
+                            cycle_number) + '\Tiles' + r'\focused_basic_darkframe'
                     else:
                         im_path = experiment_directory + '/' + channel + "/" + type + '\cy_' + str(
-                            cycle_number) + '\Tiles' + '/focused_basic'
+                            cycle_number) + '\Tiles' + '/focused_basic_darkframe'
 
                 elif type == 'Bleach':
                     if single_fov != 1:
                         im_path = experiment_directory + '/' + channel + "/" + type + '\cy_' + str(cycle_number) + '\Tiles' + '/focused'
                     elif single_fov == 1:
                         im_path = experiment_directory + '/' + channel + "/" + type + '\cy_' + str(cycle_number) + '\Tiles'
+
                 os.chdir(im_path)
 
                 # place images into large array
@@ -4747,7 +4872,7 @@ class cycif:
 
         #flatten image
 
-        self.illumination_flattening(experiment_directory, cycle_number, single_fov=1)
+        #self.illumination_flattening(experiment_directory, cycle_number, single_fov=1)
 
         end = time.time()
         print('flatten', end - start)
@@ -4761,8 +4886,8 @@ class cycif:
 
 
         #compress to 16bit
-        self.stage_placement(experiment_directory, cycle_number, x_pixels=x_frame_size, down_sample_factor=4,single_fov=1)
-        self.hdr_compression_2(experiment_directory, cycle_number)
+        #self.stage_placement(experiment_directory, cycle_number, x_pixels=x_frame_size, down_sample_factor=4,single_fov=1)
+        #self.hdr_compression_2(experiment_directory, cycle_number)
 
 
 
@@ -4783,7 +4908,7 @@ class cycif:
 
 
         #if did DAPI focus then acquire one plane, please do the following
-        #self.delete_intermediate_folders(experiment_directory, cycle_number)
+        self.delete_intermediate_folders(experiment_directory, cycle_number)
         #self.archive(experiment_directory)
 
         #self.zlib_compress_raw(experiment_directory, cycle_number)
